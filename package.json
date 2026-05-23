@@ -1,0 +1,10 @@
+{
+  "name": "lifeos",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @lifeos/web dev",
+    "build": "pnpm --filter @lifeos/web build",
+    "check": "pnpm --filter @lifeos/web check"
+  },
+  "packageManager": "pnpm@10.11.0"
+}

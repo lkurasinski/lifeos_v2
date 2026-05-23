@@ -4,7 +4,15 @@
   "scripts": {
     "dev": "pnpm --filter @lifeos/web dev",
     "build": "pnpm --filter @lifeos/web build",
-    "check": "pnpm --filter @lifeos/web check"
+    "check": "pnpm --filter @lifeos/web check",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "format": "pnpm -r format",
+    "format:check": "pnpm -r format:check"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": "10.11.0"
   },
   "packageManager": "pnpm@10.11.0"
 }

@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5444:5432"
+    environment:
+      POSTGRES_DB: lifeos
+      POSTGRES_USER: lifeos
+      POSTGRES_PASSWORD: lifeos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.13
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: lifeos-dev-key
+      MEILI_ENV: development
+    volumes:
+      - msdata:/meili_data
+
+volumes:
+  pgdata:
+  msdata:

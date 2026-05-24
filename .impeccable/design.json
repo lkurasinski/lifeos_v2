@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-24T00:00:00Z",
+  "title": "Design System: LifeOS",
+  "extensions": {
+    "colorMeta": {
+      "ice-core": {
+        "role": "primary",
+        "displayName": "Ice Core",
+        "canonical": "oklch(0.588 0.155 210)",
+        "tonalRamp": [
+          "oklch(0.15 0.12 210)",
+          "oklch(0.25 0.135 210)",
+          "oklch(0.35 0.145 210)",
+          "oklch(0.45 0.150 210)",
+          "oklch(0.588 0.155 210)",
+          "oklch(0.68 0.130 210)",
+          "oklch(0.77 0.095 208)",
+          "oklch(0.88 0.055 206)"
+        ]
+      },
+      "ice-glow": {
+        "role": "primary-hover",
+        "displayName": "Ice Glow",
+        "canonical": "oklch(0.715 0.100 205)",
+        "tonalRamp": [
+          "oklch(0.15 0.080 205)",
+          "oklch(0.28 0.088 205)",
+          "oklch(0.40 0.093 205)",
+          "oklch(0.52 0.097 205)",
+          "oklch(0.715 0.100 205)",
+          "oklch(0.80 0.082 205)",
+          "oklch(0.88 0.055 205)",
+          "oklch(0.95 0.025 205)"
+        ]
+      },
+      "system-white": {
+        "role": "neutral-bg",
+        "displayName": "System White",
+        "canonical": "oklch(0.985 0.007 205)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 205)",
+          "oklch(0.30 0.005 205)",
+          "oklch(0.45 0.006 205)",
+          "oklch(0.60 0.006 205)",
+          "oklch(0.75 0.007 205)",
+          "oklch(0.87 0.007 205)",
+          "oklch(0.94 0.007 205)",
+          "oklch(0.985 0.007 205)"
+        ]
+      },
+      "frosted-panel": {
+        "role": "neutral-surface",
+        "displayName": "Frosted Panel",
+        "canonical": "oklch(0.972 0.012 205)",
+        "tonalRamp": [
+          "oklch(0.14 0.009 205)",
+          "oklch(0.28 0.010 205)",
+          "oklch(0.42 0.010 205)",
+          "oklch(0.56 0.011 205)",
+          "oklch(0.70 0.011 205)",
+          "oklch(0.82 0.012 205)",
+          "oklch(0.92 0.012 205)",
+          "oklch(0.972 0.012 205)"
+        ]
+      },
+      "dim-surface": {
+        "role": "neutral-muted",
+        "displayName": "Dim Surface",
+        "canonical": "oklch(0.955 0.018 210)",
+        "tonalRamp": [
+          "oklch(0.14 0.013 210)",
+          "oklch(0.27 0.014 210)",
+          "oklch(0.40 0.015 210)",
+          "oklch(0.53 0.016 210)",
+          "oklch(0.67 0.017 210)",
+          "oklch(0.80 0.017 210)",
+          "oklch(0.90 0.018 210)",
+          "oklch(0.955 0.018 210)"
+        ]
+      },
+      "deep-ink": {
+        "role": "neutral-fg",
+        "displayName": "Deep Ink",
+        "canonical": "oklch(0.175 0.012 220)",
+        "tonalRamp": [
+          "oklch(0.05 0.008 220)",
+          "oklch(0.10 0.009 220)",
+          "oklch(0.175 0.012 220)",
+          "oklch(0.28 0.014 220)",
+          "oklch(0.40 0.016 218)",
+          "oklch(0.52 0.018 215)",
+          "oklch(0.66 0.016 213)",
+          "oklch(0.82 0.012 210)"
+        ]
+      },
+      "system-text": {
+        "role": "neutral-fg-muted",
+        "displayName": "System Text",
+        "canonical": "oklch(0.508 0.020 215)",
+        "tonalRamp": [
+          "oklch(0.12 0.014 215)",
+          "oklch(0.22 0.016 215)",
+          "oklch(0.33 0.017 215)",
+          "oklch(0.43 0.019 215)",
+          "oklch(0.508 0.020 215)",
+          "oklch(0.62 0.019 215)",
+          "oklch(0.74 0.016 213)",
+          "oklch(0.87 0.011 210)"
+        ]
+      },
+      "boundary-line": {
+        "role": "neutral-border",
+        "displayName": "Boundary Line",
+        "canonical": "oklch(0.876 0.022 210)",
+        "tonalRamp": [
+          "oklch(0.15 0.016 210)",
+          "oklch(0.30 0.017 210)",
+          "oklch(0.44 0.018 210)",
+          "oklch(0.58 0.019 210)",
+          "oklch(0.72 0.020 210)",
+          "oklch(0.82 0.021 210)",
+          "oklch(0.876 0.022 210)",
+          "oklch(0.950 0.014 208)"
+        ]
+      },
+      "alert-red": {
+        "role": "signal-error",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.565 0.235 25)",
+        "tonalRamp": [
+          "oklch(0.15 0.180 25)",
+          "oklch(0.25 0.200 25)",
+          "oklch(0.35 0.220 25)",
+          "oklch(0.45 0.230 25)",
+          "oklch(0.565 0.235 25)",
+          "oklch(0.67 0.210 25)",
+          "oklch(0.78 0.150 25)",
+          "oklch(0.90 0.070 25)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles only. Appears once per screen maximum. Dashboard welcome, section introductions." },
+      "headline": { "displayName": "Headline", "purpose": "Major section headers within a screen. Used sparingly; one per screen section." },
+      "title": { "displayName": "Title", "purpose": "Card titles, form section headers, panel identifiers. Workhorse of in-screen hierarchy." },
+      "body": { "displayName": "Body", "purpose": "All paragraph and description text. Line length capped at 68ch." },
+      "label": { "displayName": "Label (Mono)", "purpose": "System metadata, nutrient labels, field identifiers, unit suffixes — KCAL, BIAŁKO, TŁUSZCZE. Tabular numbers enabled." }
+    },
+    "shadows": [
+      {
+        "name": "ice-aura",
+        "value": "0 0 0 3px oklch(0.715 0.100 205 / 0.35)",
+        "purpose": "Focus ring companion. Surrounds focused/hovered primary elements with a soft ice-blue halo. Never decorative."
+      },
+      {
+        "name": "float-lift",
+        "value": "0 8px 32px oklch(0.508 0.020 215 / 0.15), 0 2px 8px oklch(0.508 0.020 215 / 0.08)",
+        "purpose": "Floating elements only: dropdowns, tooltips, modal containers. Cool-tinted, diffuse. Not visible on static surfaces."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-quint",
+        "value": "cubic-bezier(0.23, 1, 0.320, 1)",
+        "purpose": "Standard easing for all state transitions: hover, focus, color shifts."
+      },
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.19, 1, 0.22, 1)",
+        "purpose": "Entrance animations: panels appearing, AI output assembling. Faster initial movement, longer tail."
+      },
+      {
+        "name": "duration-fast",
+        "value": "160ms",
+        "purpose": "Micro-interactions: color shifts, opacity changes, border transitions."
+      },
+      {
+        "name": "duration-standard",
+        "value": "240ms",
+        "purpose": "Panel entrances, AI output assembly, modal open/close."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main call-to-action. Ice Core background. Used for plan generation, save actions, primary form submissions.",
+      "html": "<button class=\"ds-btn-primary\">Zaplanuj tydzień</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 20px; background: oklch(0.588 0.155 210); color: oklch(0.985 0.007 205); border: none; border-radius: 10px; font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 500; letter-spacing: -0.01em; cursor: pointer; transition: background 160ms cubic-bezier(0.23, 1, 0.320, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.320, 1); white-space: nowrap; } .ds-btn-primary:hover { background: oklch(0.715 0.100 205); box-shadow: 0 0 0 3px oklch(0.715 0.100 205 / 0.35); } .ds-btn-primary:focus-visible { outline: 2px solid oklch(0.715 0.100 205); outline-offset: 2px; box-shadow: 0 0 0 3px oklch(0.715 0.100 205 / 0.35); } .ds-btn-primary:disabled { opacity: 0.4; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action. Transparent with Boundary Line border. Used for import, cancel, secondary navigation triggers.",
+      "html": "<button class=\"ds-btn-outline\">Importuj przepis</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 20px; background: transparent; color: oklch(0.175 0.012 220); border: 1px solid oklch(0.876 0.022 210); border-radius: 10px; font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 500; letter-spacing: -0.01em; cursor: pointer; transition: background 160ms cubic-bezier(0.23, 1, 0.320, 1), border-color 160ms cubic-bezier(0.23, 1, 0.320, 1); white-space: nowrap; } .ds-btn-outline:hover { background: oklch(0.955 0.018 210); } .ds-btn-outline:focus-visible { outline: 2px solid oklch(0.715 0.100 205); outline-offset: 2px; } .ds-btn-outline:disabled { opacity: 0.4; pointer-events: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary action. No border, no background. Used for logout, AI override actions (accept/reject), icon triggers.",
+      "html": "<button class=\"ds-btn-ghost\">Wyloguj</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; background: transparent; color: oklch(0.508 0.020 215); border: none; border-radius: 10px; font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 400; letter-spacing: -0.01em; cursor: pointer; transition: background 160ms cubic-bezier(0.23, 1, 0.320, 1), color 160ms cubic-bezier(0.23, 1, 0.320, 1); white-space: nowrap; } .ds-btn-ghost:hover { background: oklch(0.955 0.018 210); color: oklch(0.175 0.012 220); } .ds-btn-ghost:focus-visible { outline: 2px solid oklch(0.715 0.100 205); outline-offset: 2px; } .ds-btn-ghost:disabled { opacity: 0.4; pointer-events: none; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard text/email input with Geist Mono uppercase label. Focus activates Ice Core border and Ice Aura shadow.",
+      "html": "<div class=\"ds-input-wrap\"><label class=\"ds-input-label\">E-MAIL</label><input class=\"ds-input\" type=\"email\" placeholder=\"ty@przyklad.pl\" /></div>",
+      "css": ".ds-input-wrap { display: flex; flex-direction: column; gap: 6px; } .ds-input-label { font-family: 'Geist Mono', 'Geist', monospace; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.508 0.020 215); } .ds-input { display: flex; height: 36px; width: 100%; padding: 8px 12px; background: oklch(0.985 0.007 205); color: oklch(0.175 0.012 220); border: 1px solid oklch(0.876 0.022 210); border-radius: 10px; font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 400; box-sizing: border-box; transition: border-color 160ms cubic-bezier(0.23, 1, 0.320, 1), box-shadow 160ms cubic-bezier(0.23, 1, 0.320, 1); } .ds-input::placeholder { color: oklch(0.508 0.020 215); } .ds-input:focus { outline: none; border-color: oklch(0.588 0.155 210); box-shadow: 0 0 0 3px oklch(0.715 0.100 205 / 0.35); } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Panel Card",
+      "kind": "card",
+      "refersTo": "card-surface",
+      "description": "Standard content container. Frosted Panel background with Boundary Line border. Used for recipe cards, plan day containers, form wrappers.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><span class=\"ds-card-label\">PRZEPIS</span><h3 class=\"ds-card-title\">Kurczak z warzywami</h3></div><div class=\"ds-card-content\"><p class=\"ds-card-body\">Szybki obiad z piersią z kurczaka, papryką i cukinią. 487 kcal.</p></div></div>",
+      "css": ".ds-card { background: oklch(0.972 0.012 205); border: 1px solid oklch(0.876 0.022 210); border-radius: 10px; padding: 24px; color: oklch(0.175 0.012 220); } .ds-card-header { margin-bottom: 12px; } .ds-card-label { display: block; font-family: 'Geist Mono', 'Geist', monospace; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.508 0.020 215); margin-bottom: 4px; } .ds-card-title { font-family: 'Geist', system-ui, sans-serif; font-size: 1.125rem; font-weight: 500; letter-spacing: -0.01em; line-height: 1.3; margin: 0; color: oklch(0.175 0.012 220); } .ds-card-body { font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 400; line-height: 1.6; color: oklch(0.508 0.020 215); margin: 0; }"
+    },
+    {
+      "name": "Alert (Destructive)",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Error and destructive state messages. Alert Red border and text on Dim Surface background. Full border, never side-stripe.",
+      "html": "<div class=\"ds-alert-destructive\" role=\"alert\"><p class=\"ds-alert-text\">Nieprawidłowy adres e-mail lub hasło.</p></div>",
+      "css": ".ds-alert-destructive { display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 12px 16px; background: oklch(0.955 0.018 210); border: 1px solid oklch(0.565 0.235 25); border-radius: 10px; } .ds-alert-text { font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 400; line-height: 1.5; color: oklch(0.565 0.235 25); margin: 0; }"
+    },
+    {
+      "name": "Navigation Header",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "App header bar. System White background with Boundary Line bottom border. Brand mark left, user identity and actions right.",
+      "html": "<header class=\"ds-nav\"><div class=\"ds-nav-inner\"><span class=\"ds-nav-brand\">LifeOS</span><div class=\"ds-nav-end\"><span class=\"ds-nav-user\">Jan Kowalski</span><button class=\"ds-btn-ghost\">Wyloguj</button></div></div></header>",
+      "css": ".ds-nav { width: 100%; background: oklch(0.985 0.007 205); border-bottom: 1px solid oklch(0.876 0.022 210); } .ds-nav-inner { display: flex; align-items: center; justify-content: space-between; max-width: 80rem; margin: 0 auto; padding: 12px 16px; } .ds-nav-brand { font-family: 'Geist', system-ui, sans-serif; font-size: 1.125rem; font-weight: 500; letter-spacing: -0.01em; color: oklch(0.175 0.012 220); } .ds-nav-end { display: flex; align-items: center; gap: 12px; } .ds-nav-user { font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 400; color: oklch(0.508 0.020 215); }"
+    },
+    {
+      "name": "AI Output Panel",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Signature component. Shown when the AI generates a meal suggestion or plan. Dim Surface background, reduced-opacity Ice Core border, SYSTEM label in Ice Core mono. Assembles on entry with ease-out-expo.",
+      "html": "<div class=\"ds-ai-panel\"><div class=\"ds-ai-panel-header\"><span class=\"ds-ai-label\">SYSTEM — PROPOZYCJA AI</span></div><p class=\"ds-ai-body\">Grillowana pierś z kurczaka z komosą ryżową i warzywami mieszanymi — 487 kcal, 42g białka, 38g węglowodanów.</p><div class=\"ds-ai-actions\"><button class=\"ds-ai-accept\">Akceptuj</button><button class=\"ds-ai-reject\">Odrzuć</button></div></div>",
+      "css": ".ds-ai-panel { background: oklch(0.955 0.018 210); border: 1px solid oklch(0.588 0.155 210 / 0.35); border-radius: 10px; padding: 20px 24px; animation: ds-ai-assemble 240ms cubic-bezier(0.19, 1, 0.22, 1) both; } @keyframes ds-ai-assemble { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } } @media (prefers-reduced-motion: reduce) { .ds-ai-panel { animation: none; } } .ds-ai-panel-header { margin-bottom: 10px; } .ds-ai-label { font-family: 'Geist Mono', 'Geist', monospace; font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: oklch(0.588 0.155 210); } .ds-ai-body { font-family: 'Geist', system-ui, sans-serif; font-size: 0.9375rem; font-weight: 400; line-height: 1.6; color: oklch(0.175 0.012 220); margin: 0 0 16px; } .ds-ai-actions { display: flex; gap: 16px; } .ds-ai-accept { font-family: 'Geist', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.588 0.155 210); background: transparent; border: none; padding: 4px 0; cursor: pointer; transition: color 160ms cubic-bezier(0.23, 1, 0.320, 1); } .ds-ai-accept:hover { color: oklch(0.715 0.100 205); } .ds-ai-reject { font-family: 'Geist', system-ui, sans-serif; font-size: 0.875rem; font-weight: 400; color: oklch(0.508 0.020 215); background: transparent; border: none; padding: 4px 0; cursor: pointer; transition: color 160ms cubic-bezier(0.23, 1, 0.320, 1); } .ds-ai-reject:hover { color: oklch(0.175 0.012 220); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Biofield Console",
+    "overview": "LifeOS is not a wellness app. It is a precision instrument — an AI operating system applied to human biology. The visual language draws from aerospace control panels, biotech laboratory interfaces, and AI system displays. The surface feels bright, intelligent, and engineered: light and airy, with surfaces that breathe rather than crowd. Every element earns its position.\n\nThe palette is predominantly light. Users interact in bright environments — grocery aisles, kitchens, outdoor light. Surfaces are warm white tinted with the faintest trace of ice blue, as if illuminated from behind thin glass. The single accent — ice core blue transitioning toward soft cyan — is deployed with precision: interactive controls, AI-generated content markers, live data indicators. Everywhere else, the surface is calm.\n\nMotion is not decoration; it is language. Elements assemble rather than appear. Transitions follow molecular logic: smooth, progressive, purposeful. The interface communicates that it is processing and responding, not merely displaying. All ambient animation fully respects prefers-reduced-motion.",
+    "keyCharacteristics": [
+      "Light surfaces tinted with ghost-level ice blue (chroma 0.007–0.022 throughout)",
+      "Single accent color (Ice Core) used on 10% or less of any given screen",
+      "Geist Sans for prose and UI copy; Geist Mono for all data labels, measurements, and system metadata",
+      "Modular layouts with thin geometric boundary lines; no nested cards",
+      "Motion communicates intelligence: assemble, materialize, reconstruct — never bounce or elastic"
+    ],
+    "rules": [
+      { "name": "The Single Voice Rule", "body": "Ice Core is the only saturated accent in this system (excluding Alert Red). It appears on 10% or less of any given screen. Its rarity is its power. If more than one element on a screen feels lit up with Ice Core, one of them is wrong.", "section": "colors" },
+      { "name": "The Tint-Everything Rule", "body": "No color in this system has chroma 0. Every neutral is tinted toward hue 205°. The minimum is chroma 0.007. A neutral at chroma 0 reads as default gray; the tint reads as designed.", "section": "colors" },
+      { "name": "The Mono Protocol", "body": "Geist Mono is reserved for measurement data, system labels, and metadata — never for prose or UI copy. When a value has a unit (302 kcal, 28g białka), the value and unit together use Label style. Mono reads as machine output; Sans reads as human language.", "section": "typography" },
+      { "name": "The Scale Contract", "body": "Each step in the hierarchy differs by at least 1.25× in size and 100 in weight from its adjacent neighbor. No flat scales. The gap between Label (11px, mono) and Body (15px, sans) is intentionally wide — they should never be confused.", "section": "typography" },
+      { "name": "The Flat-First Rule", "body": "If you are reaching for a shadow on a static surface — a card at rest, a section container, a sidebar — stop. Use a Boundary Line border or a Frosted Panel background instead. Shadows appear only in response to state or genuine positional elevation.", "section": "elevation" },
+      { "name": "The Glow Exception", "body": "The Ice Aura is not a structural shadow; it is a system signal meaning this element is alive and in focus. It appears on primary buttons (focus/hover), inputs (focus), and active navigation items. Nowhere else.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do tint every neutral toward ice blue (hue 205°, minimum chroma 0.007). Zero-chroma neutrals read as default gray; the tint reads as designed.",
+      "Do use Geist Mono for all numerical data, unit labels, and system metadata — KCAL, BIAŁKO, TŁUSZCZE, WĘGLOWODANY, timestamps, record IDs.",
+      "Do express depth through tonal layering (System White → Frosted Panel → Dim Surface) before reaching for shadows or borders.",
+      "Do make AI-generated content look visually distinct from user-authored content. The Dim Surface background plus reduced-opacity Ice Core border is the signal for 'the system produced this.'",
+      "Do cap body text at 68ch. Nutrition tables and AI plan outputs may go wider when the layout demands it.",
+      "Do animate with ease-out-quint or ease-out-expo at 160–240ms. Never animate layout properties.",
+      "Do suppress all ambient and particle effects when prefers-reduced-motion is active. Replace with simple 240ms opacity transitions.",
+      "Do use uppercase Geist Mono Labels for all category and metadata labels — they visually encode 'this is a data field, not prose.'",
+      "Do maintain minimum 44×44px touch targets on all interactive elements. Users check this app on mobile in motion."
+    ],
+    "donts": [
+      "Don't use heavy neon, dark aggressive palettes, glitch effects, or RGB overload. This is not cyberpunk. The biotech aesthetic here is aerospace-clean and laboratory-precise.",
+      "Don't cram nutritional data without hierarchy. MyFitnessPal density — numbers stacked without breathing room — is the primary anti-reference.",
+      "Don't use food photography, green 'wholesome' branding, or HelloFresh-style warmth. The product's relationship to food is analytical, not appetitive.",
+      "Don't go clinical with white and light-blue sterility. The ice palette is luminous, not hospital-blank.",
+      "Don't use generic SaaS patterns: teal gradient headers, hero-metric cards, identical icon-heading-text card grids, confetti animations.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe on cards, list items, callouts, or alerts.",
+      "Don't use glassmorphism (backdrop-filter: blur) as a default surface treatment. Frosted glass is reserved for modals, tooltips, and floating overlays only.",
+      "Don't use gradient text (background-clip: text plus a gradient). Emphasis through weight and scale only.",
+      "Don't nest cards. Internal grouping uses Dim Surface background rows or horizontal dividers.",
+      "Don't add bounce or elastic easing to any motion. All transitions use ease-out curves."
+    ]
+  }
+}

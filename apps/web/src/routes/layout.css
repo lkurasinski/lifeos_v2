@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
+	--font-sans: "Geist", system-ui, sans-serif;
+	--font-mono: "Geist Mono", "Geist", monospace;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -35,64 +37,66 @@
 }
 
 :root {
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
-	--destructive-foreground: oklch(0.577 0.245 27.325);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
+	/* ── Biofield Console: Ice Field Palette ───────────────────────────── */
+	--background: oklch(0.985 0.007 205);
+	--foreground: oklch(0.175 0.012 220);
+	--card: oklch(0.972 0.012 205);
+	--card-foreground: oklch(0.175 0.012 220);
+	--popover: oklch(0.972 0.012 205);
+	--popover-foreground: oklch(0.175 0.012 220);
+	--primary: oklch(0.588 0.155 210);
+	--primary-foreground: oklch(0.985 0.007 205);
+	--secondary: oklch(0.955 0.018 210);
+	--secondary-foreground: oklch(0.175 0.012 220);
+	--muted: oklch(0.955 0.018 210);
+	--muted-foreground: oklch(0.508 0.02 215);
+	--accent: oklch(0.715 0.1 205);
+	--accent-foreground: oklch(0.175 0.012 220);
+	--destructive: oklch(0.565 0.235 25);
+	--destructive-foreground: oklch(0.985 0.007 205);
+	--border: oklch(0.876 0.022 210);
+	--input: oklch(0.876 0.022 210);
+	--ring: oklch(0.715 0.1 205);
 	--radius: 0.625rem;
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.205 0 0);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.97 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.708 0 0);
+	--sidebar: oklch(0.972 0.012 205);
+	--sidebar-foreground: oklch(0.175 0.012 220);
+	--sidebar-primary: oklch(0.588 0.155 210);
+	--sidebar-primary-foreground: oklch(0.985 0.007 205);
+	--sidebar-accent: oklch(0.955 0.018 210);
+	--sidebar-accent-foreground: oklch(0.175 0.012 220);
+	--sidebar-border: oklch(0.876 0.022 210);
+	--sidebar-ring: oklch(0.715 0.1 205);
 }
 
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.145 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.145 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.985 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.396 0.141 25.768);
-	--destructive-foreground: oklch(0.637 0.237 25.331);
-	--border: oklch(0.269 0 0);
-	--input: oklch(0.269 0 0);
-	--ring: oklch(0.439 0 0);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(0.269 0 0);
-	--sidebar-ring: oklch(0.439 0 0);
+	/* ── Biofield Console: Dark Mode (secondary) ───────────────────────── */
+	--background: oklch(0.155 0.012 220);
+	--foreground: oklch(0.945 0.008 205);
+	--card: oklch(0.185 0.015 218);
+	--card-foreground: oklch(0.945 0.008 205);
+	--popover: oklch(0.185 0.015 218);
+	--popover-foreground: oklch(0.945 0.008 205);
+	--primary: oklch(0.715 0.1 205);
+	--primary-foreground: oklch(0.155 0.012 220);
+	--secondary: oklch(0.215 0.018 215);
+	--secondary-foreground: oklch(0.945 0.008 205);
+	--muted: oklch(0.215 0.018 215);
+	--muted-foreground: oklch(0.63 0.02 212);
+	--accent: oklch(0.588 0.155 210);
+	--accent-foreground: oklch(0.945 0.008 205);
+	--destructive: oklch(0.5 0.2 25);
+	--destructive-foreground: oklch(0.945 0.008 205);
+	--border: oklch(0.28 0.022 212);
+	--input: oklch(0.28 0.022 212);
+	--ring: oklch(0.715 0.1 205);
+	--sidebar: oklch(0.185 0.015 218);
+	--sidebar-foreground: oklch(0.945 0.008 205);
+	--sidebar-primary: oklch(0.715 0.1 205);
+	--sidebar-primary-foreground: oklch(0.155 0.012 220);
+	--sidebar-accent: oklch(0.215 0.018 215);
+	--sidebar-accent-foreground: oklch(0.945 0.008 205);
+	--sidebar-border: oklch(0.28 0.022 212);
+	--sidebar-ring: oklch(0.715 0.1 205);
 }
 
 @layer base {
@@ -100,7 +104,7 @@
 		@apply border-border;
 	}
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-background text-foreground font-sans;
 		font-feature-settings:
 			"rlig" 1,
 			"calt" 1;

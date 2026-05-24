@@ -7,7 +7,13 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "$lib/components/ui/card";
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle,
+	} from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 
 	const registerSchema = z
@@ -39,10 +45,16 @@
 
 		loading = true;
 
-		const result = await authClient.signUp.email({ email, password, name: email });
+		const result = await authClient.signUp.email({
+			email,
+			password,
+			name: email,
+			callbackURL: resolve("/login"),
+		});
+
+		loading = false;
 
 		if (result.error) {
-			loading = false;
 			const code = result.error.code;
 			if (code === "USER_ALREADY_EXISTS") {
 				error = t("auth.emailInUse");
@@ -52,14 +64,7 @@
 			return;
 		}
 
-		const signInResult = await authClient.signIn.email({ email, password });
-		loading = false;
-
-		if (signInResult.error) {
-			error = t("auth.genericError");
-		} else {
-			goto(resolve("/"));
-		}
+		goto(resolve("/verify-email"));
 	}
 </script>
 
@@ -120,7 +125,10 @@
 
 			<p class="text-center text-sm text-muted-foreground">
 				{t("auth.hasAccount")}
-				<a href={resolve("/login")} class="text-foreground underline underline-offset-4 hover:text-primary">
+				<a
+					href={resolve("/login")}
+					class="text-foreground underline underline-offset-4 hover:text-primary"
+				>
 					{t("auth.login")}
 				</a>
 			</p>

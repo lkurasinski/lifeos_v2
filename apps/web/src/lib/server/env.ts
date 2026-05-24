@@ -5,6 +5,7 @@ const envSchema = z.object({
 	DATABASE_URL: z.string().nonempty(),
 	BETTER_AUTH_SECRET: z.string().nonempty(),
 	BETTER_AUTH_URL: z.string().nonempty(),
+	RESEND_API_KEY: z.string().nonempty(),
 	OPENAI_API_KEY: z.string().optional().default(""),
 	ANTHROPIC_API_KEY: z.string().optional().default(""),
 	MEILISEARCH_HOST: z.string().nonempty(),

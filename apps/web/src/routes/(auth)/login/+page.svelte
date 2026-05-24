@@ -6,7 +6,13 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "$lib/components/ui/card";
+	import {
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle,
+	} from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 
 	let email = $state("");
@@ -24,7 +30,12 @@
 		loading = false;
 
 		if (result.error) {
-			error = t("auth.invalidCredentials");
+			const code = result.error.code;
+			if (code === "EMAIL_NOT_VERIFIED") {
+				error = t("auth.emailNotVerified");
+			} else {
+				error = t("auth.invalidCredentials");
+			}
 		} else {
 			goto(resolve("/"));
 		}
@@ -71,13 +82,25 @@
 				/>
 			</div>
 
+			<div class="flex justify-end">
+				<a
+					href={resolve("/forgot-password")}
+					class="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary"
+				>
+					{t("auth.forgotPassword")}
+				</a>
+			</div>
+
 			<Button type="submit" disabled={loading} class="w-full">
 				{loading ? t("common.loading") : t("auth.login")}
 			</Button>
 
 			<p class="text-center text-sm text-muted-foreground">
 				{t("auth.noAccount")}
-				<a href={resolve("/register")} class="text-foreground underline underline-offset-4 hover:text-primary">
+				<a
+					href={resolve("/register")}
+					class="text-foreground underline underline-offset-4 hover:text-primary"
+				>
 					{t("auth.register")}
 				</a>
 			</p>

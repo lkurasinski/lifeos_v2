@@ -3,7 +3,7 @@ import { RESEND_API_KEY } from "$env/static/private";
 
 const resend = new Resend(RESEND_API_KEY);
 
-const FROM_EMAIL = "LifeOS <onboarding@resend.dev>";
+const FROM_EMAIL = "LifeOS <onboarding@lifeos.lukaszkurasinski.pl>";
 
 export async function sendEmail(opts: { to: string; subject: string; html: string }) {
 	await resend.emails.send({

@@ -1,0 +1,13 @@
+{
+	"$schema": "https://shadcn-svelte.com/schema/v1.json",
+	"tailwind": {
+		"css": "src/routes/layout.css"
+	},
+	"aliases": {
+		"utils": "$lib/utils",
+		"components": "$lib/components",
+		"ui": "$lib/components/ui",
+		"hooks": "$lib/hooks",
+		"lib": "$lib"
+	}
+}

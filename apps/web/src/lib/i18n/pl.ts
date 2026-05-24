@@ -19,6 +19,22 @@ export const pl = {
 		email: "Email",
 		password: "Hasło",
 		name: "Imię",
+		confirmPassword: "Potwierdź hasło",
+		noAccount: "Nie masz konta?",
+		hasAccount: "Masz już konto?",
+		loginTitle: "Zaloguj się do LifeOS",
+		loginDescription: "Wprowadź swój email i hasło, aby się zalogować",
+		registerTitle: "Utwórz konto",
+		registerDescription: "Wprowadź swoje dane, aby zarejestrować nowe konto",
+		invalidCredentials: "Nieprawidłowy email lub hasło",
+		emailInUse: "Ten adres email jest już zajęty",
+		passwordTooShort: "Hasło musi mieć co najmniej 8 znaków",
+		passwordMismatch: "Hasła nie są zgodne",
+		genericError: "Wystąpił błąd. Spróbuj ponownie.",
+	},
+	dashboard: {
+		welcome: "Witaj",
+		title: "Panel główny",
 	},
 } as const;
 

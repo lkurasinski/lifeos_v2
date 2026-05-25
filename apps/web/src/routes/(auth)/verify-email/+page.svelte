@@ -5,13 +5,6 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
-	import {
-		Card,
-		CardContent,
-		CardDescription,
-		CardHeader,
-		CardTitle,
-	} from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 
 	let email = $state("");
@@ -45,27 +38,32 @@
 	<title>{t("auth.verifyEmailTitle")} — {t("common.appName")}</title>
 </svelte:head>
 
-<Card>
-	<CardHeader>
-		<CardTitle>{t("auth.verifyEmailTitle")}</CardTitle>
-		<CardDescription>{t("auth.verifyEmailDescription")}</CardDescription>
-	</CardHeader>
-	<CardContent>
-		<form onsubmit={resendEmail} class="flex flex-col gap-4">
-			{#if error}
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-			{/if}
+<div>
+	<header>
+		<p class="auth-sys-label">{t("auth.verifyEmailTitle")}</p>
+		<h1 class="auth-page-title">{t("auth.verifyEmailTitle")}</h1>
+	</header>
 
-			{#if sent}
-				<Alert>
-					<AlertDescription>{t("auth.verificationSent")}</AlertDescription>
-				</Alert>
-			{/if}
+	<form onsubmit={resendEmail} class="flex flex-col gap-5">
+		{#if error}
+			<Alert variant="destructive">
+				<AlertDescription>{error}</AlertDescription>
+			</Alert>
+		{/if}
 
-			<div class="flex flex-col gap-2">
-				<Label for="email">{t("auth.email")}</Label>
+		{#if sent}
+			<Alert>
+				<AlertDescription>{t("auth.verificationSent")}</AlertDescription>
+			</Alert>
+		{/if}
+
+		<p class="text-[0.9375rem] leading-[1.6] text-muted-foreground">
+			{t("auth.verifyEmailDescription")}
+		</p>
+
+		<div class="flex flex-col gap-1.5">
+			<Label for="email">{t("auth.email")}</Label>
+			<div class="auth-field">
 				<Input
 					id="email"
 					type="email"
@@ -75,21 +73,17 @@
 					placeholder="ty@przyklad.pl"
 				/>
 			</div>
+		</div>
 
-			<Button type="submit" disabled={loading} class="w-full">
-				{loading ? t("common.loading") : t("auth.resendVerification")}
-			</Button>
+		<Button size="lg" type="submit" disabled={loading} class="mt-2 w-full">
+			{loading ? t("common.loading") : t("auth.resendVerification")}
+		</Button>
 
-			<p class="text-center text-sm text-muted-foreground">
-				{t("auth.alreadyHaveAccount")}
-				{" "}
-				<a
-					href={resolve("/login")}
-					class="text-foreground underline underline-offset-4 hover:text-primary"
-				>
-					{t("auth.login")}
-				</a>
-			</p>
-		</form>
-	</CardContent>
-</Card>
+		<p class="auth-sys-label text-center">
+			{t("auth.hasAccount")}
+			<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
+				{t("auth.login")}
+			</a>
+		</p>
+	</form>
+</div>

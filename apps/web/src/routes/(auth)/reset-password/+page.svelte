@@ -7,13 +7,6 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
-	import {
-		Card,
-		CardContent,
-		CardDescription,
-		CardHeader,
-		CardTitle,
-	} from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 
 	const resetSchema = z
@@ -71,48 +64,45 @@
 	<title>{t("auth.resetPassword")} — {t("common.appName")}</title>
 </svelte:head>
 
-<Card>
-	<CardHeader>
-		<CardTitle>{t("auth.resetPassword")}</CardTitle>
-		{#if !success && !urlError && token}
-			<CardDescription>{t("auth.resetPasswordDescription")}</CardDescription>
-		{/if}
-	</CardHeader>
-	<CardContent>
-		{#if success}
-			<div class="flex flex-col gap-4">
-				<Alert>
-					<AlertDescription>{t("auth.resetPasswordSuccess")}</AlertDescription>
-				</Alert>
-				<a
-					href={resolve("/login")}
-					class="text-center text-sm text-foreground underline underline-offset-4 hover:text-primary"
-				>
+<div>
+	<header>
+		<p class="auth-sys-label">{t("auth.resetPassword")}</p>
+		<h1 class="auth-page-title">{t("auth.resetPasswordTitle")}</h1>
+	</header>
+
+	{#if success}
+		<div class="flex flex-col gap-5">
+			<Alert>
+				<AlertDescription>{t("auth.resetPasswordSuccess")}</AlertDescription>
+			</Alert>
+			<p class="auth-sys-label text-center">
+				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
 					{t("auth.backToLogin")}
 				</a>
-			</div>
-		{:else if urlError || !token}
-			<div class="flex flex-col gap-4">
-				<Alert variant="destructive">
-					<AlertDescription>{t("auth.invalidOrExpiredToken")}</AlertDescription>
-				</Alert>
-				<a
-					href={resolve("/forgot-password")}
-					class="text-center text-sm text-foreground underline underline-offset-4 hover:text-primary"
-				>
+			</p>
+		</div>
+	{:else if urlError || !token}
+		<div class="flex flex-col gap-5">
+			<Alert variant="destructive">
+				<AlertDescription>{t("auth.invalidOrExpiredToken")}</AlertDescription>
+			</Alert>
+			<p class="auth-sys-label text-center">
+				<a href={resolve("/forgot-password")} class="text-foreground transition-colors hover:text-primary">
 					{t("auth.forgotPassword")}
 				</a>
-			</div>
-		{:else}
-			<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-				{#if error}
-					<Alert variant="destructive">
-						<AlertDescription>{error}</AlertDescription>
-					</Alert>
-				{/if}
+			</p>
+		</div>
+	{:else}
+		<form onsubmit={handleSubmit} class="flex flex-col gap-5">
+			{#if error}
+				<Alert variant="destructive">
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
+			{/if}
 
-				<div class="flex flex-col gap-2">
-					<Label for="password">{t("auth.newPassword")}</Label>
+			<div class="flex flex-col gap-1.5">
+				<Label for="password">{t("auth.newPassword")}</Label>
+				<div class="auth-field">
 					<Input
 						id="password"
 						type="password"
@@ -121,9 +111,11 @@
 						autocomplete="new-password"
 					/>
 				</div>
+			</div>
 
-				<div class="flex flex-col gap-2">
-					<Label for="confirm-password">{t("auth.confirmNewPassword")}</Label>
+			<div class="flex flex-col gap-1.5">
+				<Label for="confirm-password">{t("auth.confirmNewPassword")}</Label>
+				<div class="auth-field">
 					<Input
 						id="confirm-password"
 						type="password"
@@ -132,20 +124,17 @@
 						autocomplete="new-password"
 					/>
 				</div>
+			</div>
 
-				<Button type="submit" disabled={loading} class="w-full">
-					{loading ? t("common.loading") : t("auth.resetPassword")}
-				</Button>
+			<Button size="lg" type="submit" disabled={loading} class="mt-2 w-full">
+				{loading ? t("common.loading") : t("auth.resetPassword")}
+			</Button>
 
-				<p class="text-center text-sm text-muted-foreground">
-					<a
-						href={resolve("/login")}
-						class="text-foreground underline underline-offset-4 hover:text-primary"
-					>
-						{t("auth.backToLogin")}
-					</a>
-				</p>
-			</form>
-		{/if}
-	</CardContent>
-</Card>
+			<p class="auth-sys-label text-center">
+				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
+					{t("auth.backToLogin")}
+				</a>
+			</p>
+		</form>
+	{/if}
+</div>

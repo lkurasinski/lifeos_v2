@@ -5,13 +5,6 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
-	import {
-		Card,
-		CardContent,
-		CardDescription,
-		CardHeader,
-		CardTitle,
-	} from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 
 	let email = $state("");
@@ -43,36 +36,38 @@
 	<title>{t("auth.resetPasswordTitle")} — {t("common.appName")}</title>
 </svelte:head>
 
-<Card>
-	<CardHeader>
-		<CardTitle>{t("auth.resetPasswordTitle")}</CardTitle>
-		<CardDescription>{t("auth.resetPasswordDescription")}</CardDescription>
-	</CardHeader>
-	<CardContent>
-		{#if submitted}
-			<div class="flex flex-col gap-4">
+<div>
+	<header class="auth-holo" style="--hd: 0ms">
+		<p class="auth-sys-label">{t("auth.resetPasswordTitle")}</p>
+		<h1 class="auth-page-title">{t("auth.resetPasswordTitle")}</h1>
+	</header>
+
+	{#if submitted}
+		<div class="flex flex-col gap-5">
+			<div class="auth-holo" style="--hd: 80ms">
 				<Alert>
 					<AlertDescription>{t("auth.resetLinkSent")}</AlertDescription>
 				</Alert>
-				<p class="text-center text-sm text-muted-foreground">
-					<a
-						href={resolve("/login")}
-						class="text-foreground underline underline-offset-4 hover:text-primary"
-					>
-						{t("auth.backToLogin")}
-					</a>
-				</p>
 			</div>
-		{:else}
-			<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-				{#if error}
+			<p class="auth-holo auth-sys-label text-center" style="--hd: 180ms">
+				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
+					{t("auth.backToLogin")}
+				</a>
+			</p>
+		</div>
+	{:else}
+		<form onsubmit={handleSubmit} class="flex flex-col gap-5">
+			{#if error}
+				<div class="auth-holo" style="--hd: 80ms">
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
-				{/if}
+				</div>
+			{/if}
 
-				<div class="flex flex-col gap-2">
-					<Label for="email">{t("auth.email")}</Label>
+			<div class="auth-holo flex flex-col gap-1.5" style="--hd: 160ms">
+				<Label for="email">{t("auth.email")}</Label>
+				<div class="auth-field">
 					<Input
 						id="email"
 						type="email"
@@ -82,20 +77,19 @@
 						placeholder="ty@przyklad.pl"
 					/>
 				</div>
+			</div>
 
-				<Button type="submit" disabled={loading} class="w-full">
+			<div class="auth-holo" style="--hd: 260ms">
+				<Button size="lg" type="submit" disabled={loading} class="w-full">
 					{loading ? t("common.loading") : t("auth.sendResetLink")}
 				</Button>
+			</div>
 
-				<p class="text-center text-sm text-muted-foreground">
-					<a
-						href={resolve("/login")}
-						class="text-foreground underline underline-offset-4 hover:text-primary"
-					>
-						{t("auth.backToLogin")}
-					</a>
-				</p>
-			</form>
-		{/if}
-	</CardContent>
-</Card>
+			<p class="auth-holo auth-sys-label text-center" style="--hd: 340ms">
+				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
+					{t("auth.backToLogin")}
+				</a>
+			</p>
+		</form>
+	{/if}
+</div>

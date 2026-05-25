@@ -6,13 +6,6 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
-	import {
-		Card,
-		CardContent,
-		CardDescription,
-		CardHeader,
-		CardTitle,
-	} from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 
 	let email = $state("");
@@ -46,21 +39,24 @@
 	<title>{t("auth.loginTitle")} — {t("common.appName")}</title>
 </svelte:head>
 
-<Card>
-	<CardHeader>
-		<CardTitle>{t("auth.loginTitle")}</CardTitle>
-		<CardDescription>{t("auth.loginDescription")}</CardDescription>
-	</CardHeader>
-	<CardContent>
-		<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-			{#if error}
+<div>
+	<header class="auth-holo" style="--hd: 0ms">
+		<p class="auth-sys-label">{t("auth.login")}</p>
+		<h1 class="auth-page-title">{t("auth.loginTitle")}</h1>
+	</header>
+
+	<form onsubmit={handleSubmit} class="flex flex-col gap-5">
+		{#if error}
+			<div class="auth-holo" style="--hd: 80ms">
 				<Alert variant="destructive">
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
-			{/if}
+			</div>
+		{/if}
 
-			<div class="flex flex-col gap-2">
-				<Label for="email">{t("auth.email")}</Label>
+		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 160ms">
+			<Label for="email">{t("auth.email")}</Label>
+			<div class="auth-field">
 				<Input
 					id="email"
 					type="email"
@@ -70,9 +66,20 @@
 					placeholder="ty@przyklad.pl"
 				/>
 			</div>
+		</div>
 
-			<div class="flex flex-col gap-2">
+		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 260ms">
+			<div class="flex items-center justify-between">
 				<Label for="password">{t("auth.password")}</Label>
+				<a
+					href={resolve("/forgot-password")}
+					class="auth-sys-label transition-colors hover:text-foreground"
+					style="opacity: 0.5;"
+				>
+					{t("auth.forgotPassword")}
+				</a>
+			</div>
+			<div class="auth-field">
 				<Input
 					id="password"
 					type="password"
@@ -81,29 +88,19 @@
 					autocomplete="current-password"
 				/>
 			</div>
+		</div>
 
-			<div class="flex justify-end">
-				<a
-					href={resolve("/forgot-password")}
-					class="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary"
-				>
-					{t("auth.forgotPassword")}
-				</a>
-			</div>
-
-			<Button type="submit" disabled={loading} class="w-full">
+		<div class="auth-holo" style="--hd: 360ms">
+			<Button size="lg" type="submit" disabled={loading} class="mt-1 w-full">
 				{loading ? t("common.loading") : t("auth.login")}
 			</Button>
+		</div>
 
-			<p class="text-center text-sm text-muted-foreground">
-				{t("auth.noAccount")}
-				<a
-					href={resolve("/register")}
-					class="text-foreground underline underline-offset-4 hover:text-primary"
-				>
-					{t("auth.register")}
-				</a>
-			</p>
-		</form>
-	</CardContent>
-</Card>
+		<p class="auth-holo auth-sys-label text-center" style="--hd: 440ms">
+			{t("auth.noAccount")}
+			<a href={resolve("/register")} class="text-foreground transition-colors hover:text-primary">
+				{t("auth.register")}
+			</a>
+		</p>
+	</form>
+</div>

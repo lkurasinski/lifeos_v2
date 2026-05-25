@@ -22,5 +22,5 @@ export function t(key: TranslationKey, locale: string = "pl"): string {
 	for (const part of parts) {
 		result = (result as Record<string, unknown>)[part];
 	}
-	return result as string;
+	return (result as string) ?? key;
 }

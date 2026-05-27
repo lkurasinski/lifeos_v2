@@ -70,3 +70,85 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+// ─── Food Data Domain ──────────────────────────────────────────────────────────
+
+enum FoodSource {
+  USDA_SR
+  USDA_FOUNDATION
+  OFF
+  CUSTOM
+}
+
+enum NutrientCategory {
+  ENERGY
+  PROXIMATE
+  MINERAL
+  VITAMIN
+  LIPID
+  AMINO_ACID
+  CAROTENOID
+  OTHER
+}
+
+model Nutrient {
+  id             String           @id @default(uuid()) @db.Uuid
+  infoodsTagname String           @unique
+  usdaNutrientId Int?
+  usdaNutrientNbr String?
+  offSlug        String?
+  nameEn         String
+  namePl         String           @default("")
+  unit           String
+  category       NutrientCategory
+  displayRank    Int?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  foodNutrients  FoodNutrient[]
+
+  @@map("nutrient")
+}
+
+model FoodCategory {
+  id        String        @id @default(uuid()) @db.Uuid
+  slug      String        @unique
+  namePl    String
+  nameEn    String
+  products  FoodProduct[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("food_category")
+}
+
+model FoodProduct {
+  id             String        @id @default(uuid()) @db.Uuid
+  source         FoodSource
+  sourceId       String
+  nameEn         String
+  namePl         String?
+  categoryId     String?       @db.Uuid
+  category       FoodCategory? @relation(fields: [categoryId], references: [id])
+  sourceCategory String?
+  servingSizeG   Float?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  foodNutrients  FoodNutrient[]
+
+  @@unique([source, sourceId])
+  @@index([categoryId])
+  @@map("food_product")
+}
+
+model FoodNutrient {
+  foodId        String      @db.Uuid
+  nutrientId    String      @db.Uuid
+  amountPer100g Decimal?    @db.Decimal(10, 4)
+  food          FoodProduct @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  nutrient      Nutrient    @relation(fields: [nutrientId], references: [id])
+  createdAt     DateTime    @default(now())
+
+  @@id([foodId, nutrientId])
+  @@index([nutrientId])
+  @@map("food_nutrient")
+}

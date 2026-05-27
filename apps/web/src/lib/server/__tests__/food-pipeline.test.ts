@@ -5,6 +5,7 @@ import {
 	normalizeUnit,
 	classifyNutrient,
 } from '../../../../scripts/steps/seed-nutrients.js';
+import { mapCategorySlug, parseAmount } from '../../../../scripts/steps/import-usda.js';
 
 describe('isBaseUnit', () => {
 	it('accepts simple per-100g units', () => {
@@ -152,5 +153,60 @@ describe('classifyNutrient', () => {
 	it('falls back to OTHER for unknown tagnames', () => {
 		expect(classifyNutrient('CAFFN')).toBe('OTHER');
 		expect(classifyNutrient('THEBRN')).toBe('OTHER');
+	});
+});
+
+describe('mapCategorySlug', () => {
+	it('maps known USDA category IDs to correct slugs', () => {
+		expect(mapCategorySlug('5')).toBe('poultry');
+		expect(mapCategorySlug('11')).toBe('vegetables');
+		expect(mapCategorySlug('13')).toBe('beef');
+		expect(mapCategorySlug('15')).toBe('seafood');
+		expect(mapCategorySlug('20')).toBe('grains');
+		expect(mapCategorySlug('1')).toBe('dairy');
+		expect(mapCategorySlug('9')).toBe('fruits');
+	});
+
+	it('falls back to "other" for unknown category IDs', () => {
+		expect(mapCategorySlug('99')).toBe('other');
+		expect(mapCategorySlug('999')).toBe('other');
+	});
+
+	it('falls back to "other" for empty or missing category', () => {
+		expect(mapCategorySlug('')).toBe('other');
+		expect(mapCategorySlug(undefined)).toBe('other');
+	});
+
+	it('maps multiple USDA categories to the same slug', () => {
+		// 21 (Fast Foods), 22 (Meals), 24 (Native Foods), 27 (QC) all → "other"
+		expect(mapCategorySlug('21')).toBe('other');
+		expect(mapCategorySlug('22')).toBe('other');
+		expect(mapCategorySlug('27')).toBe('other');
+	});
+
+	it('maps both beverage categories to "beverages"', () => {
+		expect(mapCategorySlug('14')).toBe('beverages'); // Beverages
+		expect(mapCategorySlug('28')).toBe('beverages'); // Alcoholic Beverages
+	});
+});
+
+describe('parseAmount', () => {
+	it('parses valid numeric strings', () => {
+		expect(parseAmount('1.5')).toBe(1.5);
+		expect(parseAmount('100')).toBe(100);
+		expect(parseAmount('3.14')).toBeCloseTo(3.14);
+	});
+
+	it('returns null for empty/missing amount (no data available)', () => {
+		expect(parseAmount('')).toBeNull();
+		expect(parseAmount('  ')).toBeNull();
+	});
+
+	it('returns 0 for "0" — zero means absent, not missing data', () => {
+		expect(parseAmount('0')).toBe(0);
+	});
+
+	it('handles whitespace-padded values', () => {
+		expect(parseAmount('  3.14  ')).toBeCloseTo(3.14);
 	});
 });

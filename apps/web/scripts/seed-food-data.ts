@@ -18,6 +18,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { Meilisearch } from 'meilisearch';
 import { seedNutrients } from './steps/seed-nutrients.js';
+import { importUsda } from './steps/import-usda.js';
+import { translateProducts } from './steps/translate-products.js';
 
 const VALID_STEPS = ['nutrients', 'usda', 'translate', 'index'] as const;
 type Step = (typeof VALID_STEPS)[number];
@@ -52,11 +54,13 @@ async function main() {
 			console.log('\n=== Step: nutrients ===');
 			await seedNutrients(prisma, anthropic);
 		}
-		if (step === 'usda') {
-			console.log('\n=== Step: usda (Phase 3 — not yet implemented) ===');
+		if (!step || step === 'usda') {
+			console.log('\n=== Step: usda ===');
+			await importUsda(prisma);
 		}
-		if (step === 'translate') {
-			console.log('\n=== Step: translate (Phase 3 — not yet implemented) ===');
+		if (!step || step === 'translate') {
+			console.log('\n=== Step: translate ===');
+			await translateProducts(prisma, anthropic);
 		}
 		if (step === 'index') {
 			console.log('\n=== Step: index (Phase 4 — not yet implemented) ===');

@@ -4,6 +4,7 @@
  * Usage:
  *   pnpm tsx scripts/seed-food-data.ts              # all implemented steps
  *   pnpm tsx scripts/seed-food-data.ts --step nutrients
+ *   pnpm tsx scripts/seed-food-data.ts --step nutrients --reset
  *   pnpm tsx scripts/seed-food-data.ts --step usda
  *   pnpm tsx scripts/seed-food-data.ts --step translate
  *   pnpm tsx scripts/seed-food-data.ts --step index
@@ -35,8 +36,13 @@ function parseStep(): Step | undefined {
 	return val as Step;
 }
 
+function hasFlag(flag: string): boolean {
+	return process.argv.includes(flag);
+}
+
 async function main() {
 	const step = parseStep();
+	const reset = hasFlag('--reset');
 
 	const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 	const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
@@ -52,7 +58,7 @@ async function main() {
 	try {
 		if (!step || step === 'nutrients') {
 			console.log('\n=== Step: nutrients ===');
-			await seedNutrients(prisma, anthropic);
+			await seedNutrients(prisma, { reset });
 		}
 		if (!step || step === 'usda') {
 			console.log('\n=== Step: usda ===');

@@ -1,158 +1,90 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import {
-	isBaseUnit,
-	normalizeUnit,
-	classifyNutrient,
-} from '../../../../scripts/steps/seed-nutrients.js';
+import { NUTRIENT_REGISTRY } from '../../../../scripts/data/nutrient-registry.js';
 import { mapCategorySlug, parseAmount } from '../../../../scripts/steps/import-usda.js';
 
-describe('isBaseUnit', () => {
-	it('accepts simple per-100g units', () => {
-		expect(isBaseUnit('g')).toBe(true);
-		expect(isBaseUnit('mg')).toBe(true);
-		expect(isBaseUnit('µg')).toBe(true);
-		expect(isBaseUnit('mcg')).toBe(true);
-		expect(isBaseUnit('kJ')).toBe(true);
-		expect(isBaseUnit('kcal')).toBe(true);
-		expect(isBaseUnit('%')).toBe(true);
+describe('nutrient registry integrity', () => {
+	it('has no duplicate tags', () => {
+		const tags = NUTRIENT_REGISTRY.map((e) => e.tag);
+		expect(new Set(tags).size).toBe(tags.length);
 	});
 
-	it('accepts INFOODS compound units via first part', () => {
-		// "kJ; kcal" — both are base units
-		expect(isBaseUnit('kJ; kcal')).toBe(true);
-		// "mcg; IU" — mcg is base
-		expect(isBaseUnit('mcg; IU')).toBe(true);
-		// "mg; mmol" — mg is base
-		expect(isBaseUnit('mg; mmol')).toBe(true);
+	it('has no duplicate USDA IDs', () => {
+		const ids = NUTRIENT_REGISTRY.filter((e) => e.usda && typeof e.usda.id === 'number').map(
+			(e) => e.usda!.id
+		);
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	it('accepts mcg DFE (folate equivalent)', () => {
-		expect(isBaseUnit('mcg DFE')).toBe(true);
+	it('has no duplicate OFF slugs', () => {
+		const slugs = NUTRIENT_REGISTRY.filter((e) => e.off).map((e) => e.off!.id);
+		expect(new Set(slugs).size).toBe(slugs.length);
 	});
 
-	it('rejects DERIVED units (lab-relative)', () => {
-		expect(isBaseUnit('mg/g nitrogen')).toBe(false);
-		expect(isBaseUnit('g/100 g fatty acid')).toBe(false);
-		expect(isBaseUnit('mg/100 g protein')).toBe(false);
-		expect(isBaseUnit('g/100g total fatty acid')).toBe(false);
+	it('has no duplicate displayRank values', () => {
+		const ranks = NUTRIENT_REGISTRY.map((e) => e.displayRank);
+		expect(new Set(ranks).size).toBe(ranks.length);
 	});
 
-	it('rejects empty or missing unit', () => {
-		expect(isBaseUnit('')).toBe(false);
-		expect(isBaseUnit('  ')).toBe(false);
+	it('every entry has non-empty tag, nameEn, namePl, unit, category', () => {
+		for (const entry of NUTRIENT_REGISTRY) {
+			expect(entry.tag, `tag empty for ${entry.nameEn}`).toBeTruthy();
+			expect(entry.nameEn, `nameEn empty for ${entry.tag}`).toBeTruthy();
+			expect(entry.namePl, `namePl empty for ${entry.tag}`).toBeTruthy();
+			expect(entry.unit, `unit empty for ${entry.tag}`).toBeTruthy();
+			expect(entry.category, `category empty for ${entry.tag}`).toBeTruthy();
+		}
 	});
 
-	it('rejects IU-only (not per-100g)', () => {
-		expect(isBaseUnit('IU')).toBe(false);
-	});
-});
-
-describe('normalizeUnit', () => {
-	it('replaces mcg with µg', () => {
-		expect(normalizeUnit('mcg')).toBe('µg');
+	it('units are from allowed set', () => {
+		const allowed = new Set(['g', 'mg', 'µg', 'kcal', 'kJ']);
+		for (const entry of NUTRIENT_REGISTRY) {
+			expect(allowed.has(entry.unit), `${entry.tag} has invalid unit "${entry.unit}"`).toBe(true);
+		}
 	});
 
-	it('takes first unit from compound unit string', () => {
-		expect(normalizeUnit('kJ; kcal')).toBe('kJ');
-		expect(normalizeUnit('mcg; IU')).toBe('µg');
+	it('conversion factors are > 0 where specified', () => {
+		for (const entry of NUTRIENT_REGISTRY) {
+			if (entry.usda?.factor !== undefined) {
+				expect(entry.usda.factor, `${entry.tag} USDA factor`).toBeGreaterThan(0);
+			}
+			if (entry.off?.factor !== undefined) {
+				expect(entry.off.factor, `${entry.tag} OFF factor`).toBeGreaterThan(0);
+			}
+		}
 	});
 
-	it('trims whitespace', () => {
-		expect(normalizeUnit('  mg  ')).toBe('mg');
+	it('ENERC_KCAL has energyFallback with non-empty usdaIds', () => {
+		const kcal = NUTRIENT_REGISTRY.find((e) => e.tag === 'ENERC_KCAL');
+		expect(kcal).toBeDefined();
+		expect(kcal!.energyFallback).toBeDefined();
+		expect(kcal!.energyFallback!.usdaIds.length).toBeGreaterThan(0);
 	});
 
-	it('leaves already-normalized units unchanged', () => {
-		expect(normalizeUnit('g')).toBe('g');
-		expect(normalizeUnit('mg')).toBe('mg');
-		expect(normalizeUnit('µg')).toBe('µg');
-	});
-});
-
-describe('classifyNutrient', () => {
-	it('classifies energy nutrients', () => {
-		expect(classifyNutrient('ENERC')).toBe('ENERGY');
-		expect(classifyNutrient('ENERC_KCAL')).toBe('ENERGY');
-		expect(classifyNutrient('ENERCAWG')).toBe('ENERGY');
+	it('spot-check USDA IDs: PROCNT→1003, VITC→1162, CA→1087, FE→1089', () => {
+		const byTag = new Map(NUTRIENT_REGISTRY.map((e) => [e.tag, e]));
+		expect(byTag.get('PROCNT')!.usda!.id).toBe(1003);
+		expect(byTag.get('VITC')!.usda!.id).toBe(1162);
+		expect(byTag.get('CA')!.usda!.id).toBe(1087);
+		expect(byTag.get('FE')!.usda!.id).toBe(1089);
 	});
 
-	it('classifies vitamins', () => {
-		expect(classifyNutrient('VITC')).toBe('VITAMIN');
-		expect(classifyNutrient('VITB12')).toBe('VITAMIN');
-		expect(classifyNutrient('VITA_RAE')).toBe('VITAMIN');
-		expect(classifyNutrient('VITD')).toBe('VITAMIN');
-		expect(classifyNutrient('THIA')).toBe('VITAMIN');
-		expect(classifyNutrient('RIBF')).toBe('VITAMIN');
-		expect(classifyNutrient('NIAC')).toBe('VITAMIN');
-		expect(classifyNutrient('FOLAC')).toBe('VITAMIN');
-		expect(classifyNutrient('BIOT')).toBe('VITAMIN');
-		expect(classifyNutrient('CHOLN')).toBe('VITAMIN');
+	it('sodium OFF mapping has factor 1000 (g→mg conversion)', () => {
+		const na = NUTRIENT_REGISTRY.find((e) => e.tag === 'NA');
+		expect(na!.off!.factor).toBe(1000);
 	});
 
-	it('classifies proximate nutrients', () => {
-		expect(classifyNutrient('PROCNT')).toBe('PROXIMATE');
-		expect(classifyNutrient('FAT')).toBe('PROXIMATE');
-		expect(classifyNutrient('WATER')).toBe('PROXIMATE');
-		expect(classifyNutrient('ASH')).toBe('PROXIMATE');
-		expect(classifyNutrient('ALCO')).toBe('PROXIMATE');
-		expect(classifyNutrient('CHOCDF')).toBe('PROXIMATE');
-		expect(classifyNutrient('FIBTG')).toBe('PROXIMATE');
-		expect(classifyNutrient('SUGAR')).toBe('PROXIMATE');
-		expect(classifyNutrient('STARCH')).toBe('PROXIMATE');
-		expect(classifyNutrient('FATNLEA')).toBe('PROXIMATE');
+	it('salt OFF mapping has factor 1000 (g→mg conversion)', () => {
+		const nacl = NUTRIENT_REGISTRY.find((e) => e.tag === 'NACL');
+		expect(nacl!.off!.factor).toBe(1000);
 	});
 
-	it('classifies minerals', () => {
-		expect(classifyNutrient('CA')).toBe('MINERAL');
-		expect(classifyNutrient('FE')).toBe('MINERAL');
-		expect(classifyNutrient('MG')).toBe('MINERAL');
-		expect(classifyNutrient('NA')).toBe('MINERAL');
-		expect(classifyNutrient('ZN')).toBe('MINERAL');
-		expect(classifyNutrient('K')).toBe('MINERAL');
-		expect(classifyNutrient('P')).toBe('MINERAL');
-		expect(classifyNutrient('SE')).toBe('MINERAL');
-	});
-
-	it('classifies amino acids', () => {
-		expect(classifyNutrient('ALA')).toBe('AMINO_ACID');
-		expect(classifyNutrient('LEU')).toBe('AMINO_ACID');
-		expect(classifyNutrient('LYS')).toBe('AMINO_ACID');
-		expect(classifyNutrient('TRP')).toBe('AMINO_ACID');
-		expect(classifyNutrient('VAL')).toBe('AMINO_ACID');
-		expect(classifyNutrient('PRO')).toBe('AMINO_ACID');
-	});
-
-	it('does NOT misclassify PROCNT as amino acid', () => {
-		// PROCNT starts with PRO but is protein (proximate)
-		expect(classifyNutrient('PROCNT')).toBe('PROXIMATE');
-	});
-
-	it('classifies lipids', () => {
-		expect(classifyNutrient('FASAT')).toBe('LIPID');
-		expect(classifyNutrient('FAMS')).toBe('LIPID');
-		expect(classifyNutrient('FAPU')).toBe('LIPID');
-		expect(classifyNutrient('CHOL')).toBe('LIPID');
-		// Individual fatty acids: F<digit> pattern
-		expect(classifyNutrient('F18D2')).toBe('LIPID');
-		expect(classifyNutrient('F20D5')).toBe('LIPID');
-	});
-
-	it('does NOT misclassify total FAT as lipid', () => {
-		// FAT (total fat) is proximate, not a fatty acid
-		expect(classifyNutrient('FAT')).toBe('PROXIMATE');
-	});
-
-	it('classifies carotenoids', () => {
-		expect(classifyNutrient('CARTA')).toBe('CAROTENOID');
-		expect(classifyNutrient('CARTB')).toBe('CAROTENOID');
-		expect(classifyNutrient('LYCO')).toBe('CAROTENOID');
-		expect(classifyNutrient('LUTN')).toBe('CAROTENOID');
-		expect(classifyNutrient('CRYPX')).toBe('CAROTENOID');
-	});
-
-	it('falls back to OTHER for unknown tagnames', () => {
-		expect(classifyNutrient('CAFFN')).toBe('OTHER');
-		expect(classifyNutrient('THEBRN')).toBe('OTHER');
+	it('FAPUN3 has computeFromSum with expected components', () => {
+		const omega3 = NUTRIENT_REGISTRY.find((e) => e.tag === 'FAPUN3');
+		expect(omega3!.computeFromSum).toBeDefined();
+		expect(omega3!.computeFromSum).toContain('F18D3CN3');
+		expect(omega3!.computeFromSum).toContain('F20D5N3');
+		expect(omega3!.computeFromSum).toContain('F22D6N3');
 	});
 });
 
@@ -178,15 +110,14 @@ describe('mapCategorySlug', () => {
 	});
 
 	it('maps multiple USDA categories to the same slug', () => {
-		// 21 (Fast Foods), 22 (Meals), 24 (Native Foods), 27 (QC) all → "other"
 		expect(mapCategorySlug('21')).toBe('other');
 		expect(mapCategorySlug('22')).toBe('other');
 		expect(mapCategorySlug('27')).toBe('other');
 	});
 
 	it('maps both beverage categories to "beverages"', () => {
-		expect(mapCategorySlug('14')).toBe('beverages'); // Beverages
-		expect(mapCategorySlug('28')).toBe('beverages'); // Alcoholic Beverages
+		expect(mapCategorySlug('14')).toBe('beverages');
+		expect(mapCategorySlug('28')).toBe('beverages');
 	});
 });
 

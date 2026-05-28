@@ -20,6 +20,7 @@ import { Meilisearch } from 'meilisearch';
 import { seedNutrients } from './steps/seed-nutrients.js';
 import { importUsda } from './steps/import-usda.js';
 import { translateProducts } from './steps/translate-products.js';
+import { indexMeilisearch } from './steps/index-meilisearch.js';
 
 const VALID_STEPS = ['nutrients', 'usda', 'translate', 'index'] as const;
 type Step = (typeof VALID_STEPS)[number];
@@ -47,7 +48,6 @@ async function main() {
 		apiKey: process.env.MEILISEARCH_API_KEY,
 	});
 
-	void meili; // will be used in Phase 4
 
 	try {
 		if (!step || step === 'nutrients') {
@@ -62,8 +62,9 @@ async function main() {
 			console.log('\n=== Step: translate ===');
 			await translateProducts(prisma, anthropic);
 		}
-		if (step === 'index') {
-			console.log('\n=== Step: index (Phase 4 — not yet implemented) ===');
+		if (!step || step === 'index') {
+			console.log('\n=== Step: index ===');
+			await indexMeilisearch(prisma, meili);
 		}
 	} finally {
 		await prisma.$disconnect();

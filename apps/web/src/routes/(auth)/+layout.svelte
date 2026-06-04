@@ -1,40 +1,54 @@
 <script lang="ts">
-	import ParticleField from '$lib/components/particle-field.svelte';
+	import { t } from '$lib/i18n';
 	let { children } = $props();
 </script>
 
 <div class="auth-grid">
 	<!-- Brand panel -->
-	<aside class="auth-brand overflow-hidden">
-		<!-- Orbital rings -->
-		<div class="auth-brand-ring auth-brand-ring-1" aria-hidden="true"></div>
-		<div class="auth-brand-ring auth-brand-ring-2" aria-hidden="true"></div>
-		<div class="auth-brand-ring auth-brand-ring-3" aria-hidden="true"></div>
-
-		<!-- Vertical data streams -->
-		<div class="auth-stream-field" aria-hidden="true">
-			<span class="auth-stream" style="left: 11%; --dur: 17s; --delay: 0s">ATGCATGCTAGCTAGC·0xFF1A2B·NEURAL·01001101·BIOMECH·ATCG</span>
-			<span class="auth-stream" style="left: 46%; --dur: 24s; --delay: -10s">CGTATGCG·0x3C4D·HELIX·110101·SYSINIT·0xCAFE·ATGCATGC</span>
-			<span class="auth-stream" style="left: 81%; --dur: 19s; --delay: -15s">0110101·BIND·0x2B·MOLBIO·01110101·CGCGATCG·NEURAL·HX</span>
-		</div>
-
-		<div class="auth-brand-inner relative z-10">
-			<div class="auth-brand-main">
-				<p class="auth-sys-label hidden lg:block">SYSTEM ŻYWIENIA — AI</p>
-				<p class="auth-wordmark">LifeOS</p>
-				<p class="auth-tagline hidden lg:block">
-					Katalog przepisów → plan tygodniowy → lista zakupów. AI proponuje, ty&nbsp;decydujesz.
-				</p>
+	<aside class="auth-brand">
+		<div class="auth-brand-inner">
+			<div class="auth-brand-main auth-holo">
+				<p class="auth-sys-label auth-brand-eyebrow">{t('auth.brandLabel')}</p>
+				<p class="auth-wordmark">Life<span>OS</span></p>
+				<p class="auth-tagline">{t('auth.brandTagline')}</p>
 			</div>
-			<div class="hidden lg:block">
-				<span class="auth-sys-label" style="opacity: 0.4;">v1.0 — BETA</span>
+
+			<!-- Abstract data motif: macro-style bars, no literal nutrition data -->
+			<div class="auth-motif auth-holo" style="--hd: 140ms" aria-hidden="true">
+				<div class="auth-motif-head">
+					<span class="auth-motif-legend">
+						<i style="background: var(--primary)"></i>
+						<i style="background: var(--positive)"></i>
+						<i style="background: var(--caution)"></i>
+					</span>
+					<span class="auth-motif-fig">1&thinsp;900</span>
+				</div>
+				<div class="auth-motif-row">
+					<span class="auth-motif-track">
+						<i class="auth-motif-fill" style="--w: 72%; --d: 240ms"></i>
+					</span>
+					<span class="auth-motif-val">72</span>
+				</div>
+				<div class="auth-motif-row">
+					<span class="auth-motif-track">
+						<i class="auth-motif-fill" style="--w: 88%; --c: var(--positive); --d: 340ms"></i>
+					</span>
+					<span class="auth-motif-val">88</span>
+				</div>
+				<div class="auth-motif-row">
+					<span class="auth-motif-track">
+						<i class="auth-motif-fill" style="--w: 54%; --c: var(--caution); --d: 440ms"></i>
+					</span>
+					<span class="auth-motif-val">54</span>
+				</div>
 			</div>
+
+			<p class="auth-sys-label auth-brand-status">{t('auth.brandStatus')}</p>
 		</div>
 	</aside>
 
 	<!-- Form area -->
 	<main class="auth-form-area">
-		<ParticleField />
 		<div class="auth-form-inner">
 			{@render children()}
 		</div>

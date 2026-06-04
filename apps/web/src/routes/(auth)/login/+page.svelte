@@ -73,8 +73,7 @@
 				<Label for="password">{t("auth.password")}</Label>
 				<a
 					href={resolve("/forgot-password")}
-					class="auth-sys-label transition-colors hover:text-foreground"
-					style="opacity: 0.5;"
+					class="auth-sys-label transition-colors hover:text-primary"
 				>
 					{t("auth.forgotPassword")}
 				</a>

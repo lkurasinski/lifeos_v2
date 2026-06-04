@@ -49,6 +49,9 @@ export const pl = {
 		invalidOrExpiredToken: "Link jest nieprawidłowy lub wygasł.",
 		backToLogin: "Wróć do logowania",
 		alreadyHaveAccount: "Masz już konto? Zaloguj się zamiast tego.",
+		brandLabel: "System żywienia · AI",
+		brandTagline: "Katalog przepisów → plan tygodniowy → lista zakupów. AI proponuje, ty decydujesz.",
+		brandStatus: "v1.0 · beta",
 	},
 	dashboard: {
 		welcome: "Witaj",

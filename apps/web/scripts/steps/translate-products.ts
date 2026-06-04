@@ -54,14 +54,28 @@ Names to translate:
 ${batch.map((n, idx) => `${idx + 1}. ${n.nameEn}`).join('\n')}`,
 			});
 
+			// Models silently fix spacing/punctuation in echoed names ("fat,with" →
+			// "fat, with"), so collapsing whitespace isn't enough — match on an
+			// alphanumeric-only key that ignores all spacing and punctuation.
+			const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+			const byNormalizedName = new Map(batch.map((p) => [normalize(p.nameEn), p]));
+
+			let unmatched = 0;
 			for (const t of object.translations) {
-				const product = batch.find((p) => p.nameEn === t.name_en);
-				if (!product?.id || !t.name_pl?.trim()) continue;
+				const product = byNormalizedName.get(normalize(t.name_en));
+				if (!product?.id || !t.name_pl?.trim()) {
+					unmatched++;
+					continue;
+				}
 				await prisma.foodProduct.update({
 					where: { id: product.id },
 					data: { namePl: t.name_pl.trim() },
 				});
 				translated++;
+			}
+			if (unmatched > 0) {
+				console.warn(`  ${unmatched} translation(s) did not match any product name`);
+				failed += unmatched;
 			}
 		} catch (err) {
 			console.error(`  Batch ${batchNum} failed:`, err);

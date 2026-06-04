@@ -2,7 +2,10 @@
  * Step: index
  *
  * Configure the food_products Meilisearch index and bulk-index all FoodProduct rows.
- * Idempotent: addDocuments with same id overwrites existing documents.
+ * Idempotent via a full clear-then-load: the index is emptied with
+ * deleteAllDocuments() before re-adding, because FoodProduct UUIDs are reminted
+ * on every TRUNCATE+reseed — so addDocuments alone would leave stale documents
+ * from prior runs (which is how the index drifted to ~6.7K against ~3K rows).
  */
 
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
@@ -32,6 +35,12 @@ export async function indexMeilisearch(prisma: PrismaClient, meili: Meilisearch)
 		filterableAttributes: ['source', 'categorySlug'],
 		sortableAttributes: ['nameEn'],
 	});
+
+	// 1b. Clear stale documents — FoodProduct ids are reminted on every reseed,
+	// so without this the index accumulates orphaned docs across runs.
+	console.log('Clearing existing documents...');
+	const clearTask = await index.deleteAllDocuments();
+	await meili.tasks.waitForTask(clearTask.taskUid);
 
 	// 2. Load all products with category
 	console.log('Loading products from database...');

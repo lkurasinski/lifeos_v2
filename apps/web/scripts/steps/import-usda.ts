@@ -2,18 +2,21 @@
  * Step: usda
  *
  * 1. Seed FoodCategory table from static mapping
- * 2. Read USDA Foundation Foods CSVs (food.csv, food_nutrient.csv)
- * 3. Filter to foundation_food data_type rows only (~395 products)
- * 4. Upsert FoodProduct + FoodNutrient rows with:
+ * 2. Read USDA SR Legacy CSVs (food.csv, food_nutrient.csv) from the full dataset
+ * 3. Filter to sr_legacy_food rows, then apply the RAW-ONLY catalog filter
+ *    (shouldKeepProduct): drop prepared categories, cooked-state variants, and
+ *    branded products → ~3.3K generic raw ingredients (canned/smoked/cured kept).
+ * 4. Upsert FoodProduct (source = USDA_SR) + FoodNutrient rows with:
  *    - Unit conversion factors from nutrient registry
- *    - Energy kcal fallback chain (Atwater Specific → General → basic → computed)
+ *    - Energy kcal fallback chain (Atwater Specific → General → basic → computed);
+ *      SR Legacy has direct energy for ~100% of products, so compute rarely fires
  *    - Computed-from-sum nutrients (FAPUN3 = ALA + EPA + DPA + DHA)
  *
- * Supports two dataset layouts (auto-detected):
- *   Full USDA dataset:   apps/web/data/usda/full/FoodData_Central_csv_<date>/
- *   Foundation-only zip: apps/web/data/usda/foundation/
+ * SR Legacy requires the FULL USDA dataset (the foundation-only download omits it):
+ *   apps/web/data/usda/full/FoodData_Central_csv_<date>/
  *
- * Download from https://fdc.nal.usda.gov/download-datasets
+ * Download "Full Download of All Data Types" from
+ * https://fdc.nal.usda.gov/download-datasets
  */
 
 import path from 'path';
@@ -60,6 +63,61 @@ export const USDA_CATEGORY_TO_SLUG: Record<string, string> = {
 export function mapCategorySlug(usdaCategoryId: string | undefined): string {
 	if (!usdaCategoryId?.trim()) return 'other';
 	return USDA_CATEGORY_TO_SLUG[usdaCategoryId.trim()] ?? 'other';
+}
+
+// ── Raw-only catalog filter (SR Legacy) ────────────────────────────
+//
+// The catalog is SR Legacy on a RAW-WEIGHT basis: recipe ingredients are
+// authored and weighed raw (chicken + oil measured separately), so nutrition
+// is computed from raw products. Three filters narrow ~7.8K SR Legacy foods
+// to ~3.3K generic raw ingredients.
+
+// Categories that are prepared/composite/non-ingredient — never a recipe input.
+export const DROP_CATEGORY_IDS = new Set([
+	'3', // Baby Foods
+	'6', // Soups, Sauces, and Gravies
+	'8', // Breakfast Cereals
+	'14', // Beverages
+	'19', // Sweets
+	'21', // Fast Foods
+	'22', // Meals, Entrees, and Side Dishes
+	'23', // Snacks
+	'24', // American Indian/Alaska Native Foods
+	'25', // Restaurant Foods
+]);
+
+// Cooked preparation states — dropped to keep the raw-weight basis.
+// canned / smoked / cured are intentionally NOT here: they are as-purchased
+// staples (canned tomatoes, tuna, cured ham) measured in the state bought.
+// `prepared` matches "commercially prepared" / "..., prepared" but NOT
+// "unprepared" (\b sits between word chars in "unprepared", so it won't match).
+// Use `broiled|pan-broil`, NOT `broil\w*` — the latter wrongly catches "broilers
+// or fryers", which is a chicken TYPE, not a cooking method.
+const COOKED_STATE =
+	/\b(cooked|boiled|roasted|braised|fried|grilled|baked|broiled|pan-broil|stewed|saut\w*|steamed|microwav\w*|poached|toasted|heated|reheated|parboil\w*|blanched|prepared)\b/i;
+
+// Brand detection — branded shelf products belong to S-01/OFF, not the
+// generic ingredient catalog. ALL-CAPS proper-noun tokens flag most SR Legacy
+// branded entries; a known-brand list catches Title-Case stragglers.
+const BRAND_ACRONYMS = new Set(['USDA', 'NFS', 'NS', 'UHT', 'HVP', 'TVP', 'RTE', 'LSRO']);
+const KNOWN_BRANDS =
+	/\b(Pillsbury|Kraft|Pepperidge Farm|Thomas|George Weston|Hormel|Ocean Spray|Naked Juice|Bolthouse|Campbell|Nestle|Kellogg|General Mills|Quaker|Betty Crocker|Stouffer|Healthy Choice|Lean Cuisine|Oscar Mayer|Jimmy Dean|Tyson|Sara Lee|Keebler|Nabisco|Frito|Hellmann|Heinz|Hunt's|Del Monte|Green Giant)\b/i;
+
+export function hasBrandToken(description: string): boolean {
+	if (KNOWN_BRANDS.test(description)) return true;
+	const capsTokens = description.match(/\b[A-Z][A-Z'&.]{2,}\b/g) ?? [];
+	return capsTokens.some((tok) => !BRAND_ACRONYMS.has(tok.replace(/['&.]/g, '')));
+}
+
+/** Raw-only generic-ingredient filter. Returns false for products to skip. */
+export function shouldKeepProduct(
+	categoryId: string | undefined,
+	description: string
+): boolean {
+	if (categoryId && DROP_CATEGORY_IDS.has(categoryId.trim())) return false;
+	if (COOKED_STATE.test(description)) return false;
+	if (hasBrandToken(description)) return false;
+	return true;
 }
 
 const FOOD_CATEGORIES: Array<{ slug: string; namePl: string; nameEn: string }> = [
@@ -117,13 +175,18 @@ interface UsdaNutrientMapping {
 	tag: string;
 }
 
-function buildUsdaMap(nutrients: Array<{ id: string; infoodsTagname: string }>): {
+export interface UsdaMaps {
 	standardMap: Map<number, UsdaNutrientMapping>;
 	energyEntry: NutrientEntry | undefined;
 	energyDbId: string | undefined;
 	computeEntries: Array<{ entry: NutrientEntry; dbId: string }>;
 	macroTagToDbId: Map<string, string>;
-} {
+}
+
+export function buildUsdaMap(
+	nutrients: Array<{ id: string; infoodsTagname: string }>,
+	registry: NutrientEntry[] = NUTRIENT_REGISTRY
+): UsdaMaps {
 	const tagToDbId = new Map(nutrients.map((n) => [n.infoodsTagname, n.id]));
 	const standardMap = new Map<number, UsdaNutrientMapping>();
 
@@ -131,7 +194,7 @@ function buildUsdaMap(nutrients: Array<{ id: string; infoodsTagname: string }>):
 	let energyDbId: string | undefined;
 	const computeEntries: Array<{ entry: NutrientEntry; dbId: string }> = [];
 
-	for (const entry of NUTRIENT_REGISTRY) {
+	for (const entry of registry) {
 		const dbId = tagToDbId.get(entry.tag);
 		if (!dbId) continue;
 
@@ -195,28 +258,38 @@ async function* streamCsv<T>(csvPath: string): AsyncGenerator<T> {
 	}
 }
 
-async function loadFoundationFdcIds(csvDir: string): Promise<Set<string>> {
-	const foundationFile = path.join(csvDir, 'foundation_food.csv');
-	if (existsSync(foundationFile)) {
-		const rows = parseCsvSync(readFileSync(foundationFile, 'utf-8'), {
-			columns: true,
-			skip_empty_lines: true,
-		}) as Array<{ fdc_id: string }>;
-		return new Set(rows.map((r) => r.fdc_id));
+async function loadSrLegacyFdcIds(csvDir: string): Promise<Set<string>> {
+	const srFile = path.join(csvDir, 'sr_legacy_food.csv');
+	if (!existsSync(srFile)) {
+		throw new Error(
+			`sr_legacy_food.csv not found in ${csvDir}.\n` +
+				`SR Legacy requires the FULL USDA dataset (the foundation-only download does not include it).\n` +
+				`Download "Full Download of All Data Types" from https://fdc.nal.usda.gov/download-datasets`
+		);
 	}
-	const ids = new Set<string>();
-	for await (const row of streamCsv<FoodRow>(path.join(csvDir, 'food.csv'))) {
-		ids.add(row.fdc_id);
-	}
-	return ids;
+	const rows = parseCsvSync(readFileSync(srFile, 'utf-8'), {
+		columns: true,
+		skip_empty_lines: true,
+	}) as Array<{ fdc_id: string }>;
+	return new Set(rows.map((r) => r.fdc_id));
 }
 
-async function loadFoundationFoods(csvDir: string, fdcIds: Set<string>): Promise<FoodRow[]> {
-	const result: FoodRow[] = [];
+// Stream food.csv, keep SR Legacy rows that pass the raw-only filter.
+async function loadSourceFoods(
+	csvDir: string,
+	fdcIds: Set<string>
+): Promise<{ kept: FoodRow[]; dropped: number }> {
+	const kept: FoodRow[] = [];
+	let dropped = 0;
 	for await (const row of streamCsv<FoodRow>(path.join(csvDir, 'food.csv'))) {
-		if (fdcIds.has(row.fdc_id)) result.push(row);
+		if (!fdcIds.has(row.fdc_id)) continue;
+		if (shouldKeepProduct(row.food_category_id, row.description)) {
+			kept.push(row);
+		} else {
+			dropped++;
+		}
 	}
-	return result;
+	return { kept, dropped };
 }
 
 async function loadFoodNutrients(
@@ -265,7 +338,7 @@ const ENERGY_FALLBACK_LABELS: Record<number, string> = {
 	1008: 'basic Energy',
 };
 
-function resolveEnergyKcal(
+export function resolveEnergyKcal(
 	rawNutrientsByUsdaId: Map<number, number | null>,
 	importedValues: Map<string, number | null>,
 	energyEntry: NutrientEntry
@@ -297,6 +370,74 @@ function resolveEnergyKcal(
 	return { value: null, source: 'no data' };
 }
 
+// ── Per-food nutrient row construction (pure, testable) ───────────
+
+export interface BuiltNutrientRow {
+	nutrientId: string;
+	amountPer100g: number | null;
+}
+
+export function buildFoodNutrientRows(
+	fnRows: Array<Pick<FoodNutrientRow, 'nutrient_id' | 'amount'>>,
+	maps: UsdaMaps
+): { rows: BuiltNutrientRow[]; energySource: string | null } {
+	const { standardMap, energyEntry, energyDbId, computeEntries } = maps;
+
+	// Raw USDA nutrient ID → amount map for energy fallback
+	const rawByUsdaId = new Map<number, number | null>();
+	for (const row of fnRows) {
+		const usdaId = parseInt(row.nutrient_id, 10);
+		if (!isNaN(usdaId)) {
+			rawByUsdaId.set(usdaId, parseAmount(row.amount));
+		}
+	}
+
+	// Standard nutrients with unit conversion
+	const rows: BuiltNutrientRow[] = [];
+	const importedValues = new Map<string, number | null>();
+
+	for (const row of fnRows) {
+		const usdaId = parseInt(row.nutrient_id, 10);
+		const mapping = standardMap.get(usdaId);
+		if (!mapping) continue;
+
+		const raw = parseAmount(row.amount);
+		const converted = raw !== null ? raw * mapping.factor : null;
+		rows.push({ nutrientId: mapping.nutrientDbId, amountPer100g: converted });
+		importedValues.set(mapping.tag, converted);
+	}
+
+	// Energy kcal via fallback chain
+	let energySource: string | null = null;
+	if (energyEntry && energyDbId) {
+		const { value, source } = resolveEnergyKcal(rawByUsdaId, importedValues, energyEntry);
+		rows.push({ nutrientId: energyDbId, amountPer100g: value });
+		energySource = source;
+	}
+
+	// Computed-from-sum nutrients (FAPUN3 = ALA + EPA + DPA + DHA)
+	for (const { entry, dbId } of computeEntries) {
+		let sum: number | null = null;
+
+		for (const componentTag of entry.computeFromSum!) {
+			let val = importedValues.get(componentTag);
+
+			// DPA (F22D5N3, USDA:1280) is not a standalone registry entry
+			if (val === undefined && componentTag === 'F22D5N3') {
+				val = rawByUsdaId.get(DPA_USDA_ID) ?? null;
+			}
+
+			if (val !== null && val !== undefined) {
+				sum = (sum ?? 0) + val;
+			}
+		}
+
+		rows.push({ nutrientId: dbId, amountPer100g: sum });
+	}
+
+	return { rows, energySource };
+}
+
 // ── Main import ────────────────────────────────────────────────────
 
 export async function importUsda(prisma: PrismaClient) {
@@ -319,46 +460,47 @@ export async function importUsda(prisma: PrismaClient) {
 	const allNutrients = await prisma.nutrient.findMany({
 		select: { id: true, infoodsTagname: true },
 	});
-	const { standardMap, energyEntry, energyDbId, computeEntries, macroTagToDbId } =
-		buildUsdaMap(allNutrients);
+	const maps = buildUsdaMap(allNutrients);
+	const { standardMap, energyEntry, computeEntries } = maps;
 	console.log(`  ${standardMap.size} standard USDA nutrient mappings`);
 	if (energyEntry) console.log(`  Energy fallback chain: [${energyEntry.energyFallback!.usdaIds.join(', ')}] → compute`);
 	if (computeEntries.length > 0) console.log(`  ${computeEntries.length} computed-from-sum nutrients`);
 
-	// 4. Load foundation FDC IDs
-	console.log('Loading foundation food FDC IDs...');
-	const foundationFdcIds = await loadFoundationFdcIds(csvDir);
-	console.log(`  Foundation FDC IDs: ${foundationFdcIds.size}`);
+	// 4. Load SR Legacy FDC IDs
+	console.log('Loading SR Legacy FDC IDs...');
+	const srLegacyFdcIds = await loadSrLegacyFdcIds(csvDir);
+	console.log(`  SR Legacy FDC IDs: ${srLegacyFdcIds.size}`);
 
-	// 5. Stream food.csv → foundation food rows
-	console.log('Streaming food.csv...');
-	const foundationFoods = await loadFoundationFoods(csvDir, foundationFdcIds);
-	console.log(`  Foundation foods: ${foundationFoods.length}`);
+	// 5. Stream food.csv → SR Legacy rows passing the raw-only filter
+	console.log('Streaming food.csv (applying raw-only catalog filter)...');
+	const { kept: sourceFoods, dropped } = await loadSourceFoods(csvDir, srLegacyFdcIds);
+	console.log(`  Kept ${sourceFoods.length} raw-only products (dropped ${dropped} cooked/branded/excluded-category)`);
 
-	// 6. Stream food_nutrient.csv → group by FDC ID (foundation only)
+	// 6. Stream food_nutrient.csv → group by FDC ID (kept products only)
 	console.log('Streaming food_nutrient.csv (this may take a minute for the full dataset)...');
+	const keptFdcIds = new Set(sourceFoods.map((f) => f.fdc_id));
 	const nutrientsByFdcId = await loadFoodNutrients(
 		path.join(csvDir, 'food_nutrient.csv'),
-		foundationFdcIds
+		keptFdcIds
 	);
 	let fnTotal = 0;
 	for (const rows of nutrientsByFdcId.values()) fnTotal += rows.length;
-	console.log(`  Foundation nutrient rows: ${fnTotal}`);
+	console.log(`  Nutrient rows: ${fnTotal}`);
 
-	// 7. Import each foundation food
-	console.log('Importing foundation foods...');
+	// 7. Import each product
+	console.log('Importing products...');
 	let imported = 0;
 	let totalNutrients = 0;
 	const energyFallbackStats: Record<string, number> = {};
 
-	for (const food of foundationFoods) {
+	for (const food of sourceFoods) {
 		const slug = mapCategorySlug(food.food_category_id);
 		const categoryId = categoryBySlug.get(slug) ?? null;
 
 		const product = await prisma.foodProduct.upsert({
-			where: { source_sourceId: { source: 'USDA_FOUNDATION', sourceId: food.fdc_id } },
+			where: { source_sourceId: { source: 'USDA_SR', sourceId: food.fdc_id } },
 			create: {
-				source: 'USDA_FOUNDATION',
+				source: 'USDA_SR',
 				sourceId: food.fdc_id,
 				nameEn: food.description,
 				namePl: null,
@@ -375,68 +517,11 @@ export async function importUsda(prisma: PrismaClient) {
 
 		const fnRows = nutrientsByFdcId.get(food.fdc_id) ?? [];
 
-		// Build raw USDA nutrient ID → amount map for energy fallback
-		const rawByUsdaId = new Map<number, number | null>();
-		for (const row of fnRows) {
-			const usdaId = parseInt(row.nutrient_id, 10);
-			if (!isNaN(usdaId)) {
-				rawByUsdaId.set(usdaId, parseAmount(row.amount));
-			}
+		const { rows, energySource } = buildFoodNutrientRows(fnRows, maps);
+		if (energySource) {
+			energyFallbackStats[energySource] = (energyFallbackStats[energySource] ?? 0) + 1;
 		}
-
-		// Import standard nutrients with unit conversion
-		const nutrientData: Array<{ foodId: string; nutrientId: string; amountPer100g: number | null }> = [];
-		const importedValues = new Map<string, number | null>();
-
-		for (const row of fnRows) {
-			const usdaId = parseInt(row.nutrient_id, 10);
-			const mapping = standardMap.get(usdaId);
-			if (!mapping) continue;
-
-			const raw = parseAmount(row.amount);
-			const converted = raw !== null ? raw * mapping.factor : null;
-			nutrientData.push({
-				foodId: product.id,
-				nutrientId: mapping.nutrientDbId,
-				amountPer100g: converted,
-			});
-			importedValues.set(mapping.tag, converted);
-		}
-
-		// Energy kcal via fallback chain
-		if (energyEntry && energyDbId) {
-			const { value, source } = resolveEnergyKcal(rawByUsdaId, importedValues, energyEntry);
-			nutrientData.push({
-				foodId: product.id,
-				nutrientId: energyDbId,
-				amountPer100g: value,
-			});
-			energyFallbackStats[source] = (energyFallbackStats[source] ?? 0) + 1;
-		}
-
-		// Computed-from-sum nutrients (FAPUN3 = ALA + EPA + DPA + DHA)
-		for (const { entry, dbId } of computeEntries) {
-			let sum: number | null = null;
-
-			for (const componentTag of entry.computeFromSum!) {
-				let val = importedValues.get(componentTag);
-
-				// DPA (F22D5N3, USDA:1280) is not a standalone registry entry
-				if (val === undefined && componentTag === 'F22D5N3') {
-					val = rawByUsdaId.get(DPA_USDA_ID) ?? null;
-				}
-
-				if (val !== null && val !== undefined) {
-					sum = (sum ?? 0) + val;
-				}
-			}
-
-			nutrientData.push({
-				foodId: product.id,
-				nutrientId: dbId,
-				amountPer100g: sum,
-			});
-		}
+		const nutrientData = rows.map((r) => ({ foodId: product.id, ...r }));
 
 		if (nutrientData.length > 0) {
 			await prisma.foodNutrient.createMany({ data: nutrientData, skipDuplicates: true });
@@ -446,7 +531,7 @@ export async function importUsda(prisma: PrismaClient) {
 		imported++;
 		if (imported % 100 === 0) {
 			console.log(
-				`  Progress: ${imported}/${foundationFoods.length} foods, ${totalNutrients} nutrient rows`
+				`  Progress: ${imported}/${sourceFoods.length} foods, ${totalNutrients} nutrient rows`
 			);
 		}
 	}

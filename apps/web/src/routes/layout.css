@@ -1,6 +1,10 @@
 @import "@fontsource-variable/plus-jakarta-sans";
 @import "tailwindcss";
 
+/* Dark theme is toggled by the `.dark` class (not prefers-color-scheme), so bind
+   the `dark:` variant to that class for it to follow our theme switch. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
 	/* Single family. The fontsource-variable package exposes "… Variable"; keep
 	   the plain name as a fallback for a system-installed Plus Jakarta Sans. */
@@ -159,6 +163,71 @@
 }
 @utility shadow-lift {
 	box-shadow: var(--shadow-lift);
+}
+
+@layer components {
+	/* ── Spatial-glass material (ported 1:1 from lifeos-kit.css) ─────────────
+	   Glass is the primary material: borderless, shadow + tone do the lift.
+	   It needs the varied tinted field (.env) behind it to read as glass.
+	   Where backdrop-filter is unsupported, every tier resolves to solid card. */
+	.glass {
+		background: var(--glass-fill);
+		backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+	}
+	.glass-thick {
+		background: var(--glass-fill-thick);
+		backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
+		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
+	}
+	/* Panel = the default surface (borderless; shadow + tone separate it). */
+	.panel {
+		background: var(--glass-fill);
+		backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+		-webkit-backdrop-filter: blur(var(--blur)) saturate(var(--sat));
+		border: 0;
+		border-radius: var(--radius);
+		box-shadow: var(--shadow-soft);
+	}
+	.panel--thick {
+		background: var(--glass-fill-thick);
+		backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
+		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
+		box-shadow: var(--shadow-lift);
+	}
+	/* Near-opaque backing for hero metrics / dense data so numbers never wash out. */
+	.panel--solid {
+		background: var(--card);
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
+	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+		.glass,
+		.glass-thick,
+		.panel,
+		.panel--thick {
+			background: var(--card);
+		}
+	}
+
+	/* Tinted environment behind glass: 3–4 soft radial hue zones, balanced
+	   warm-to-cool, so the frost has color to refract and never reads flat. */
+	.env {
+		background:
+			radial-gradient(64% 50% at 10% -4%, oklch(0.93 0.034 80 / 0.45), transparent 68%),
+			radial-gradient(56% 46% at 98% 2%, oklch(0.92 0.03 32 / 0.4), transparent 70%),
+			radial-gradient(60% 50% at 24% 108%, oklch(0.91 0.03 152 / 0.36), transparent 72%),
+			radial-gradient(58% 48% at 100% 96%, oklch(0.92 0.022 250 / 0.36), transparent 72%),
+			var(--background);
+	}
+	.dark .env {
+		background:
+			radial-gradient(64% 50% at 10% -4%, oklch(0.42 0.05 80 / 0.5), transparent 68%),
+			radial-gradient(56% 46% at 98% 2%, oklch(0.4 0.05 32 / 0.45), transparent 70%),
+			radial-gradient(60% 50% at 24% 108%, oklch(0.4 0.05 152 / 0.42), transparent 72%),
+			radial-gradient(58% 48% at 100% 96%, oklch(0.42 0.04 250 / 0.42), transparent 72%),
+			var(--background);
+	}
 }
 
 @layer base {

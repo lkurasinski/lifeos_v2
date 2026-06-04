@@ -9,7 +9,7 @@
 
 <label
 	class={cn(
-		"font-mono text-[0.6875rem] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+		"text-[0.6875rem] font-medium uppercase leading-none tracking-[0.06em] text-muted-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
 		className,
 	)}
 	{...restProps}

@@ -7,6 +7,6 @@
 	let { class: className, children, ...restProps }: Props = $props();
 </script>
 
-<div class={cn("rounded-lg border bg-card text-card-foreground", className)} {...restProps}>
+<div class={cn("rounded-lg bg-card text-card-foreground shadow-soft", className)} {...restProps}>
 	{@render children?.()}
 </div>

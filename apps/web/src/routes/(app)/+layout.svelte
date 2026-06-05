@@ -26,8 +26,13 @@
 	}
 
 	async function handleLogout() {
-		await authClient.signOut();
-		goto(resolve("/login"));
+		// Always navigate away, even if signOut rejects (network/server error),
+		// so a failed sign-out never strands the user on an authenticated screen.
+		try {
+			await authClient.signOut();
+		} finally {
+			goto(resolve("/login"));
+		}
 	}
 </script>
 

@@ -1,12 +1,13 @@
 <script lang="ts">
-	import { goto, pushState } from "$app/navigation";
+	import { goto, invalidateAll, pushState } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { page } from "$app/state";
 	import { MediaQuery } from "svelte/reactivity";
-	import type { FoodSource, SortKey } from "$lib/food/schema";
+	import type { FoodDocument, FoodSource, SortKey } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
 	import { Button } from "$lib/components/ui/button";
 	import { Dialog } from "$lib/components/ui/dialog";
+	import { toast } from "$lib/components/ui/sonner";
 	import CatalogSearchBar from "$lib/components/catalog/CatalogSearchBar.svelte";
 	import FacetChips from "$lib/components/catalog/FacetChips.svelte";
 	import Pagination from "$lib/components/catalog/Pagination.svelte";
@@ -131,6 +132,47 @@
 		// ESC / overlay click → pop the pushed entry so back-button and dialog agree.
 		if (!open && page.state.detailId) history.back();
 	}
+
+	// ─── Edit / delete ──────────────────────────────────────────────────────────
+	// Edit routes to its own page (mirrors /foods/new). Delete is gated behind a confirm
+	// Dialog; on success it de-indexes server-side, so a re-query drops the row.
+	let pendingDelete = $state<FoodDocument | null>(null);
+	let deleting = $state(false);
+
+	function onEditProduct(hit: FoodDocument) {
+		goto(resolve(`/foods/${hit.id}/edit`));
+	}
+	function onRequestDelete(hit: FoodDocument) {
+		pendingDelete = hit;
+	}
+	function onConfirmOpenChange(open: boolean) {
+		if (!open && !deleting) pendingDelete = null;
+	}
+
+	async function confirmDelete() {
+		const target = pendingDelete;
+		if (!target || deleting) return;
+		deleting = true;
+		const name = target.namePl ?? target.nameEn;
+		try {
+			const res = await fetch(`/api/foods/${target.id}`, { method: "DELETE" });
+			// 404 means it's already gone — treat as success (the goal is "not in the catalog").
+			if (!res.ok && res.status !== 404) {
+				toast.error(t("catalog.deleteError"), { description: name });
+				return;
+			}
+			toast.success(t("catalog.deleted"), { description: name });
+			pendingDelete = null;
+			selectedId = null;
+			// Close the mobile modal (pop its history entry) before re-querying.
+			if (page.state.detailId) history.back();
+			await invalidateAll();
+		} catch {
+			toast.error(t("catalog.deleteError"), { description: name });
+		} finally {
+			deleting = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -198,7 +240,12 @@
 		{#if !modalMode.current}
 			<div class="detailcol">
 				{#if inlineProduct}
-					<ProductDetail hit={inlineProduct} registry={data.registry} />
+					<ProductDetail
+						hit={inlineProduct}
+						registry={data.registry}
+						onEdit={onEditProduct}
+						onDelete={onRequestDelete}
+					/>
 				{:else if data.result.hits.length > 0}
 					<div class="detail-empty">
 						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -224,7 +271,37 @@
 	closeLabel={t("catalog.closeDetail")}
 >
 	{#if modalProduct}
-		<ProductDetail hit={modalProduct} registry={data.registry} embedded />
+		<ProductDetail
+			hit={modalProduct}
+			registry={data.registry}
+			embedded
+			onEdit={onEditProduct}
+			onDelete={onRequestDelete}
+		/>
+	{/if}
+</Dialog>
+
+<!-- Delete confirmation — destructive action gated behind an explicit confirm step. -->
+<Dialog
+	open={pendingDelete !== null}
+	onOpenChange={onConfirmOpenChange}
+	title={t("catalog.deleteConfirmTitle")}
+	closeLabel={t("common.cancel")}
+>
+	{#if pendingDelete}
+		<div class="confirm">
+			<h2>{t("catalog.deleteConfirmTitle")}</h2>
+			<p class="cmsg">{t("catalog.deleteConfirmBody")}</p>
+			<p class="cname">{pendingDelete.namePl ?? pendingDelete.nameEn}</p>
+			<div class="cactions">
+				<Button variant="secondary" onclick={() => (pendingDelete = null)} disabled={deleting}>
+					{t("common.cancel")}
+				</Button>
+				<Button variant="destructive" onclick={confirmDelete} disabled={deleting}>
+					{deleting ? t("catalog.deleting") : t("common.delete")}
+				</Button>
+			</div>
+		</div>
 	{/if}
 </Dialog>
 
@@ -323,6 +400,39 @@
 	.detail-empty p {
 		font-size: 0.875rem;
 		max-width: 24ch;
+	}
+
+	/* Delete-confirmation dialog body. */
+	.confirm {
+		padding: 26px 24px 22px;
+	}
+	.confirm h2 {
+		font-size: 1.125rem;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		color: var(--foreground);
+	}
+	.confirm .cmsg {
+		font-size: 0.875rem;
+		line-height: 1.5;
+		color: var(--muted-foreground);
+		margin-top: 8px;
+	}
+	.confirm .cname {
+		font-size: 0.9375rem;
+		font-weight: 600;
+		color: var(--foreground);
+		margin-top: 12px;
+		padding: 10px 12px;
+		background: var(--secondary);
+		border-radius: var(--radius-sm);
+		word-break: break-word;
+	}
+	.confirm .cactions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 10px;
+		margin-top: 22px;
 	}
 
 	.empty {

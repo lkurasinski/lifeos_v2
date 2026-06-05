@@ -21,10 +21,13 @@ import {
 } from "./food-document";
 import {
 	partitionNutrients,
+	resolveSourceId,
 	shouldFlagUserModified,
 	type SavePayload,
 	type PatchPayload,
 	type SearchParams,
+	type DraftProduct,
+	type FoodSource,
 	type FoodDocument,
 	type FoodSearchResult,
 	type FoodCategoryMeta,
@@ -137,11 +140,7 @@ async function syncAfterCommit(op: () => Promise<void>, id: string): Promise<voi
  * `FoodProductConflictError` when `(source, sourceId)` already exists.
  */
 export async function saveFoodProduct(input: SavePayload) {
-	const sourceId =
-		input.sourceId ?? (input.source === "CUSTOM" ? crypto.randomUUID() : undefined);
-	if (!sourceId) {
-		throw new Error("sourceId is required for non-CUSTOM products");
-	}
+	const sourceId = resolveSourceId(input.source, input.sourceId);
 
 	const existing = await prisma.foodProduct.findUnique({
 		where: { source_sourceId: { source: input.source, sourceId } },
@@ -234,6 +233,38 @@ export async function updateFoodProduct(id: string, input: PatchPayload) {
 
 	await syncAfterCommit(() => syncFoodDocument(id), id);
 	return prisma.foodProduct.findUnique({ where: { id } });
+}
+
+/**
+ * Load a persisted product as an editable `DraftProduct` for the edit route. Reads
+ * Postgres directly (NOT the Meili hit) so the draft carries `categoryId` and all four
+ * image fields verbatim — the Meili doc only has `categorySlug`, so `meiliNutrientsToDraft`
+ * would leave `categoryId` null. Nutrient rows map by `nutrientId` (present values only;
+ * NULL = "no data" stays absent, never 0). Returns null when the id is unknown.
+ */
+export async function getFoodProductDraft(id: string): Promise<DraftProduct | null> {
+	const product = await prisma.foodProduct.findUnique({
+		where: { id },
+		include: { foodNutrients: true },
+	});
+	if (!product) return null;
+
+	return {
+		source: product.source as FoodSource,
+		sourceId: product.sourceId,
+		nameEn: product.nameEn,
+		namePl: product.namePl,
+		brand: product.brand,
+		categoryId: product.categoryId,
+		servingSizeG: product.servingSizeG,
+		imageUrl: product.imageUrl,
+		imageThumbUrl: product.imageThumbUrl,
+		imageIngredientsUrl: product.imageIngredientsUrl,
+		imageNutritionUrl: product.imageNutritionUrl,
+		nutrients: product.foodNutrients
+			.filter((fn) => fn.amountPer100g !== null)
+			.map((fn) => ({ nutrientId: fn.nutrientId, amountPer100g: Number(fn.amountPer100g) })),
+	};
 }
 
 /** Delete a product (FoodNutrient cascades) and remove its Meili document. */

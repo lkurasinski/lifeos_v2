@@ -408,3 +408,20 @@ export function partitionNutrients(nutrients: DraftNutrientValue[]): {
 export function shouldFlagUserModified(source: string): boolean {
 	return source !== "CUSTOM";
 }
+
+/**
+ * Resolve the persisted `sourceId` for a new product. A CUSTOM product without a
+ * supplied id gets a freshly minted UUID (CUSTOM products are global, keyed by that
+ * generated id); any verified source MUST carry its own id (an OFF barcode), so this
+ * throws when one is missing. Pure given an injected generator, so the generation
+ * rule is unit-testable without touching `crypto` directly.
+ */
+export function resolveSourceId(
+	source: string,
+	sourceId?: string,
+	generate: () => string = () => crypto.randomUUID(),
+): string {
+	if (sourceId) return sourceId;
+	if (source === "CUSTOM") return generate();
+	throw new Error("sourceId is required for non-CUSTOM products");
+}

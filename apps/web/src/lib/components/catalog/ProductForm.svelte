@@ -48,17 +48,22 @@
 	// `untrack` takes that snapshot without subscribing this seed to later draft churn.
 	// Nutrient values are raw input strings keyed by nutrientId — "" = NULL (no data),
 	// distinct from "0"; seeded only with present (non-null) amounts.
+	// `bind:value` on a `type="number"` input yields a NUMBER (or `null` when the field is
+	// emptied), not a string — so these slots hold `number | string | null` at runtime, and
+	// `parseAmount` must tolerate all three. An empty number field binds to `null` = NULL,
+	// distinct from a typed `0` (NULL≠0 preserved). Seed only present values; absent = NULL.
+	type AmountField = string | number | null;
 	const init = untrack(() => {
-		const values: Record<string, string> = {};
+		const values: Record<string, AmountField> = {};
 		for (const n of draft.nutrients) {
-			if (n.amountPer100g !== null) values[n.nutrientId] = String(n.amountPer100g);
+			if (n.amountPer100g !== null) values[n.nutrientId] = n.amountPer100g;
 		}
 		return {
 			nameEn: draft.nameEn,
 			namePl: draft.namePl ?? "",
 			brand: draft.brand ?? "",
 			categoryId: draft.categoryId ?? "",
-			servingSizeG: draft.servingSizeG != null ? String(draft.servingSizeG) : "",
+			servingSizeG: (draft.servingSizeG ?? null) as AmountField,
 			values,
 		};
 	});
@@ -67,8 +72,8 @@
 	let namePl = $state(init.namePl);
 	let brand = $state(init.brand);
 	let categoryId = $state(init.categoryId);
-	let servingSizeG = $state(init.servingSizeG);
-	let values = $state<Record<string, string>>(init.values);
+	let servingSizeG = $state<AmountField>(init.servingSizeG);
+	let values = $state<Record<string, AmountField>>(init.values);
 
 	// Group expand/collapse — default every group open (the locked probe shows them expanded).
 	let collapsed = $state<Record<string, boolean>>({});
@@ -76,9 +81,14 @@
 		collapsed[category] = !collapsed[category];
 	}
 
-	/** Parse a raw input into a canonical amount: "" → null (NULL≠0); accepts comma decimals. */
-	function parseAmount(raw: string | undefined): number | null {
-		if (raw === undefined) return null;
+	/**
+	 * Parse a raw field into a canonical amount. A number input binds as a number (or null
+	 * when empty); the initial seed and any text fallback bind as a string. Empty/blank/null
+	 * → null (NULL≠0); a typed `0` stays `0`. Accepts comma decimals for the string path.
+	 */
+	function parseAmount(raw: AmountField | undefined): number | null {
+		if (raw === null || raw === undefined) return null;
+		if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
 		const trimmed = raw.trim();
 		if (trimmed === "") return null;
 		const n = Number(trimmed.replace(",", "."));

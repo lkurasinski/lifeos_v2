@@ -118,6 +118,12 @@ export const pl = {
 		nutrientsCount: "składników",
 		itemsCount: "pozycji",
 		edited: "Edytowano",
+		editProduct: "Edytuj produkt",
+		deleteConfirmTitle: "Usunąć produkt?",
+		deleteConfirmBody: "Produkt zostanie usunięty z katalogu i wyszukiwarki. Tej operacji nie można cofnąć.",
+		deleting: "Usuwam…",
+		deleted: "Usunięto produkt z katalogu",
+		deleteError: "Nie udało się usunąć produktu. Spróbuj ponownie.",
 		photos: "Zdjęcia",
 		photoAlt: "Zdjęcie produktu",
 		photoIngredients: "Składniki",
@@ -185,6 +191,14 @@ export const pl = {
 		saveError: "Nie udało się zapisać produktu. Spróbuj ponownie.",
 		alreadySaved: "Ten produkt jest już w katalogu.",
 		created: "Dodano produkt do katalogu",
+		or: "albo",
+		manualTitle: "Dodaj ręcznie",
+		manualSub: "Pusty produkt · źródło Własny",
+	},
+	edit: {
+		title: "Edytuj produkt",
+		updated: "Zaktualizowano produkt",
+		notFound: "Nie znaleziono produktu — mógł zostać usunięty.",
 	},
 } as const;
 

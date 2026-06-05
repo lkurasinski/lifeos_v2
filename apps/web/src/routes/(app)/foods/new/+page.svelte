@@ -7,6 +7,7 @@
 	import ProductForm from "$lib/components/catalog/ProductForm.svelte";
 	import {
 		draftToSavePayload,
+		emptyDraft,
 		isBarcodeQuery,
 		type DraftProduct,
 		type PreviewResult,
@@ -45,9 +46,25 @@
 	let saving = $state(false);
 	let saveError = $state<string | null>(null);
 
+	// Manual entry shares this screen (per the locked off-add.html): "Dodaj ręcznie" opens
+	// a blank CUSTOM draft in the preview pane, bypassing the OFF finder. Save goes through
+	// the same POST /api/foods — the server mints the CUSTOM sourceId.
+	let manualDraft = $state<DraftProduct | null>(null);
+
 	const selected = $derived(selectedIndex !== null ? (results[selectedIndex] ?? null) : null);
 	// Only non-existing results open the editable preview; existing ones route instead.
 	const selectedDraft = $derived(selected && !selected.existing ? selected.draft : null);
+	// The preview pane shows the manual draft when active, otherwise the picked OFF draft.
+	const previewDraft = $derived(manualDraft ?? selectedDraft);
+	// Remount key so the form re-seeds when switching between manual and OFF results.
+	const previewKey = $derived(manualDraft ? "manual" : selectedIndex);
+
+	function startManual() {
+		// Entering manual entry clears any OFF selection so the panes don't fight.
+		selectedIndex = null;
+		saveError = null;
+		manualDraft = emptyDraft("CUSTOM");
+	}
 
 	function toCatalog() {
 		goto(resolve("/foods"));
@@ -62,6 +79,7 @@
 		if (!q || loading) return;
 		loading = true;
 		saveError = null;
+		manualDraft = null;
 		results = [];
 		selectedIndex = null;
 		attempt = 1;
@@ -127,6 +145,7 @@
 			return;
 		}
 		saveError = null;
+		manualDraft = null;
 		selectedIndex = index;
 	}
 
@@ -265,6 +284,21 @@
 					<p class="statemsg err">{t("add.rateLimitError")}</p>
 				{/if}
 
+				<div class="orline">{t("add.or")}</div>
+				<button type="button" class="manual" class:on={!!manualDraft} onclick={startManual}>
+					<span class="mi">
+						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+							<path
+								d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
+							/>
+						</svg>
+					</span>
+					<span class="mb">
+						<span class="mt">{t("add.manualTitle")}</span>
+						<span class="ms">{t("add.manualSub")}</span>
+					</span>
+				</button>
+
 				<div class="srcfoot">
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 						<path
@@ -279,10 +313,10 @@
 		</div>
 
 		<div class="pv">
-			{#if selectedDraft}
-				{#key selectedIndex}
+			{#if previewDraft}
+				{#key previewKey}
 					<ProductForm
-						draft={selectedDraft}
+						draft={previewDraft}
 						registry={data.registry}
 						categories={data.categories}
 						mode="create"
@@ -290,7 +324,7 @@
 						errorMessage={saveError}
 						onSubmit={handleSubmit}
 						onCancel={toCatalog}
-						cancelLabel={t("add.reject")}
+						cancelLabel={manualDraft ? t("common.cancel") : t("add.reject")}
 					/>
 				{/key}
 			{:else}
@@ -590,6 +624,79 @@
 	}
 	.statemsg.err {
 		color: var(--destructive);
+	}
+
+	/* "albo" divider before the manual-entry escape hatch. */
+	.orline {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin: 18px 2px 12px;
+		font-size: 0.6875rem;
+		letter-spacing: 0.04em;
+		color: var(--muted-foreground);
+	}
+	.orline::before,
+	.orline::after {
+		content: "";
+		flex: 1;
+		height: 1px;
+		background: var(--hairline);
+	}
+	/* Manual entry — opens a blank CUSTOM draft in the preview pane (probe `.manual`). */
+	.manual {
+		display: flex;
+		align-items: center;
+		gap: 11px;
+		width: 100%;
+		text-align: left;
+		border: 0;
+		cursor: pointer;
+		background: var(--card);
+		box-shadow: var(--shadow-soft);
+		border-radius: var(--radius-sm);
+		padding: 11px 12px;
+		font-family: inherit;
+	}
+	.manual:hover {
+		background: var(--accent);
+	}
+	.manual:focus-visible {
+		outline: none;
+		box-shadow: var(--focus);
+	}
+	.manual.on {
+		box-shadow: var(--shadow-soft), inset 0 0 0 1px var(--hairline);
+	}
+	.manual .mi {
+		width: 34px;
+		height: 34px;
+		border-radius: 9px;
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		background: var(--secondary);
+		color: var(--foreground);
+	}
+	.manual .mi svg {
+		width: 18px;
+		height: 18px;
+	}
+	.manual .mb {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+	}
+	.manual .mt {
+		font-size: 0.875rem;
+		font-weight: 600;
+		letter-spacing: -0.005em;
+		color: var(--foreground);
+	}
+	.manual .ms {
+		font-size: 0.6875rem;
+		color: var(--muted-foreground);
 	}
 
 	.srcfoot {

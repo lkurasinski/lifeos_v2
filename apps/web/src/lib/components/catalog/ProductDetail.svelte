@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Badge } from "$lib/components/ui/badge";
+	import { Button } from "$lib/components/ui/button";
 	import { Gauge, type Macro } from "$lib/components/ui/gauge";
 	import { Panel } from "$lib/components/ui/panel";
 	import type { FoodDocument, NutrientRegistryGroup } from "$lib/food/schema";
@@ -16,9 +17,13 @@
 		registry: NutrientRegistryGroup[];
 		/** When true, drop the glass Panel chrome — the host (a Dialog) is the surface. */
 		embedded?: boolean;
+		/** Edit affordance — the host routes to /foods/[id]/edit. Hidden when omitted. */
+		onEdit?: (hit: FoodDocument) => void;
+		/** Delete affordance — the host opens the confirm step. Hidden when omitted. */
+		onDelete?: (hit: FoodDocument) => void;
 	};
 
-	let { hit, registry, embedded = false }: Props = $props();
+	let { hit, registry, embedded = false, onEdit, onDelete }: Props = $props();
 
 	let open = $state(true);
 
@@ -162,6 +167,26 @@
 				</div>
 			{/each}
 		{/if}
+	{/if}
+
+	{#if onEdit || onDelete}
+		<div class="dactions">
+			{#if onDelete}
+				<Button variant="secondary" onclick={() => onDelete?.(hit)}>
+					{t("common.delete")}
+				</Button>
+			{/if}
+			{#if onEdit}
+				<Button class="dedit" onclick={() => onEdit?.(hit)}>
+					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+						<path
+							d="M13.94 3.31a1.75 1.75 0 0 1 2.475 2.475l-8.3 8.3a2 2 0 0 1-.86.503l-2.74.76a.75.75 0 0 1-.922-.923l.76-2.74a2 2 0 0 1 .503-.86l8.3-8.3Z"
+						/>
+					</svg>
+					{t("catalog.editProduct")}
+				</Button>
+			{/if}
+		</div>
 	{/if}
 
 	{#if extraPhotos.length > 0}
@@ -399,6 +424,15 @@
 		font-variant-numeric: tabular-nums;
 		letter-spacing: -0.01em;
 		color: var(--foreground);
+	}
+	/* Edit / delete actions — glass "Usuń" shrinks, primary "Edytuj" fills (probe). */
+	.dactions {
+		display: flex;
+		gap: 10px;
+		margin-top: 22px;
+	}
+	.dactions :global(.dedit) {
+		flex: 1;
 	}
 	.origin {
 		font-size: 0.75rem;

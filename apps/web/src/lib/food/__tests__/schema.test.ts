@@ -7,6 +7,7 @@ import {
 	meiliNutrientsToDraft,
 	draftToSavePayload,
 	partitionNutrients,
+	resolveSourceId,
 	shouldFlagUserModified,
 	type FoodDocument,
 } from "../schema.js";
@@ -196,5 +197,21 @@ describe("shouldFlagUserModified", () => {
 		expect(shouldFlagUserModified("OFF")).toBe(true);
 		expect(shouldFlagUserModified("USDA_SR")).toBe(true);
 		expect(shouldFlagUserModified("CUSTOM")).toBe(false);
+	});
+});
+
+describe("resolveSourceId", () => {
+	it("generates a sourceId for a CUSTOM product when none is supplied", () => {
+		const id = resolveSourceId("CUSTOM", undefined, () => "generated-uuid");
+		expect(id).toBe("generated-uuid");
+	});
+
+	it("keeps an explicitly supplied sourceId (even for CUSTOM)", () => {
+		expect(resolveSourceId("CUSTOM", "barcode-123", () => "generated-uuid")).toBe("barcode-123");
+		expect(resolveSourceId("OFF", "5901234123457")).toBe("5901234123457");
+	});
+
+	it("throws for a non-CUSTOM source missing its sourceId", () => {
+		expect(() => resolveSourceId("OFF")).toThrow();
 	});
 });

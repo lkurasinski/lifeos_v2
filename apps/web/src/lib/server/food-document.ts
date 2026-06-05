@@ -21,6 +21,10 @@ export const FOOD_INDEX_SETTINGS = {
 	searchableAttributes: ["namePl", "nameEn", "categoryNamePl"],
 	filterableAttributes: ["source", "categorySlug"],
 	sortableAttributes: ["nameEn", "energyKcal", "protein", "fat", "carbs"],
+	// Meili caps `estimatedTotalHits` at `maxTotalHits` (default 1000), which would
+	// understate the catalog count + page count. Raise it well above the catalog size
+	// so the "N produktów" header and pagination reflect the real total.
+	pagination: { maxTotalHits: 50000 },
 };
 
 /** INFOODS tag → the top-level document field promoted for sorting. */

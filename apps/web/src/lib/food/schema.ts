@@ -91,6 +91,13 @@ export interface NutrientRegistryGroup {
 	nutrients: NutrientRegistryEntry[];
 }
 
+/** One catalog category — slug + names, for the browse facet chips. */
+export interface FoodCategoryMeta {
+	slug: string;
+	namePl: string;
+	nameEn: string;
+}
+
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
 
 /** A nutrient amount accepts `number | null` and keeps "absent" distinct from `0`. */

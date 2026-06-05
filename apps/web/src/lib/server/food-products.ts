@@ -27,6 +27,7 @@ import {
 	type SearchParams,
 	type FoodDocument,
 	type FoodSearchResult,
+	type FoodCategoryMeta,
 	type NutrientRegistryEntry,
 	type NutrientRegistryGroup,
 } from "$lib/food/schema";
@@ -266,6 +267,19 @@ export async function getNutrientRegistry(): Promise<{
 	}));
 
 	return { groups, tagToId };
+}
+
+/**
+ * Load every catalog category (slug + names) ordered by Polish name. The browse
+ * facet chips need names + a stable order for ALL categories, including ones absent
+ * from the current page of hits — the search facet distribution only carries
+ * `slug → count`, so the names come from here.
+ */
+export async function getFoodCategories(): Promise<FoodCategoryMeta[]> {
+	return prisma.foodCategory.findMany({
+		select: { slug: true, namePl: true, nameEn: true },
+		orderBy: { namePl: "asc" },
+	});
 }
 
 // ─── Read path: index config + search ──────────────────────────────────────────

@@ -131,6 +131,7 @@ model FoodProduct {
   category       FoodCategory? @relation(fields: [categoryId], references: [id])
   sourceCategory String?
   servingSizeG   Float?
+  userModified   Boolean       @default(false)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   foodNutrients  FoodNutrient[]

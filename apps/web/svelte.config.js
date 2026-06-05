@@ -12,8 +12,10 @@ const config = {
 			directives: {
 				"script-src": ["self"],
 				"style-src": ["self", "unsafe-inline"],
-				// OFF product photos are served from the images.openfoodfacts.org CDN.
-				"img-src": ["self", "data:", "https://images.openfoodfacts.org"],
+				// OFF product photos: images.openfoodfacts.org is the current CDN, but OFF
+				// has also served static./world. hosts — allow any openfoodfacts.org
+				// subdomain (matches the *.openfoodfacts.org host check in savePayloadSchema).
+				"img-src": ["self", "data:", "https://*.openfoodfacts.org"],
 				"font-src": ["self"],
 				"connect-src": ["self"],
 				"frame-ancestors": ["none"],

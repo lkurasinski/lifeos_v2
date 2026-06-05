@@ -7,7 +7,9 @@
  * macro / WHICH category" exception (DESIGN.md / lifeos-kit.css) — identity, not a
  * score against a target.
  */
+import type { Macro } from "$lib/components/ui/gauge";
 import type { FoodSource } from "$lib/food/schema";
+import { t } from "$lib/i18n";
 
 // ─── Number formatting (Polish: comma decimal, tabular) ───────────────────────
 
@@ -68,6 +70,40 @@ export const MACRO_REFERENCE = { kcal: 900, protein: 40, carbs: 90, fat: 100 } a
 export function macroPct(value: number | undefined, max: number): number {
 	if (value === undefined) return 0;
 	return Math.max(0, Math.min(100, (value / max) * 100));
+}
+
+/**
+ * Descriptor for the four macro rings — the locked kcal/protein/carbs/fat set with
+ * its INFOODS tag, Polish label, unit, and reference max. Shared by the detail view
+ * (reads the value from the Meili hit) and the editable form (reads it live from the
+ * matching field). A function because the labels resolve through `t()`.
+ */
+export type MacroGauge = { macro: Macro; label: string; tag: string; unit: string; max: number };
+export function macroGauges(): MacroGauge[] {
+	return [
+		{ macro: "kcal", label: t("catalog.macros.energy"), tag: "ENERC_KCAL", unit: "kcal", max: MACRO_REFERENCE.kcal },
+		{ macro: "pro", label: t("catalog.macros.protein"), tag: "PROCNT", unit: "g", max: MACRO_REFERENCE.protein },
+		{ macro: "carb", label: t("catalog.macros.carbs"), tag: "CHOCDF", unit: "g", max: MACRO_REFERENCE.carbs },
+		{ macro: "fat", label: t("catalog.macros.fat"), tag: "FAT", unit: "g", max: MACRO_REFERENCE.fat },
+	];
+}
+
+/**
+ * NutrientCategory enum → Polish group heading, shared by the form and the detail view
+ * (both render the registry grouped by category). A function because the labels resolve
+ * through `t()` (literal keys keep `t()` typed).
+ */
+export function nutrientGroupLabels(): Record<string, string> {
+	return {
+		ENERGY: t("catalog.nutrientGroup.energy"),
+		PROXIMATE: t("catalog.nutrientGroup.proximate"),
+		LIPID: t("catalog.nutrientGroup.lipid"),
+		MINERAL: t("catalog.nutrientGroup.mineral"),
+		VITAMIN: t("catalog.nutrientGroup.vitamin"),
+		AMINO_ACID: t("catalog.nutrientGroup.aminoAcid"),
+		CAROTENOID: t("catalog.nutrientGroup.carotenoid"),
+		OTHER: t("catalog.nutrientGroup.other"),
+	};
 }
 
 // ─── Category icons (identity colour; `cc` feeds the glyph's currentColor) ─────

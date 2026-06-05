@@ -188,6 +188,29 @@ export function parseSearchParams(searchParams: URLSearchParams): SearchParams {
 	});
 }
 
+/** OFF photo URL (CC-BY-SA). These fields are stored verbatim and later rendered
+ *  in `<img src>`, so the save/patch endpoint is the trust boundary — validate the
+ *  scheme/host here rather than relying on CSP alone (defense-in-depth). Only
+ *  `https://*.openfoodfacts.org` is accepted; anything else (incl. `data:`) is
+ *  rejected. Absent/blank → null. Not user-entered (carried through from the draft). */
+const offImageUrlSchema = z
+	.string()
+	.trim()
+	.max(2048)
+	.refine((u) => {
+		try {
+			const { protocol, hostname } = new URL(u);
+			return (
+				protocol === "https:" &&
+				(hostname === "openfoodfacts.org" || hostname.endsWith(".openfoodfacts.org"))
+			);
+		} catch {
+			return false;
+		}
+	}, "image URL must be an https://*.openfoodfacts.org URL")
+	.nullable()
+	.optional();
+
 /** Create payload (manual CUSTOM or confirmed OFF). */
 export const savePayloadSchema = z.object({
 	source: z.enum(ADDABLE_SOURCES),
@@ -197,11 +220,10 @@ export const savePayloadSchema = z.object({
 	brand: z.string().trim().max(200).nullable().optional(),
 	categoryId: z.uuid().nullable().optional(),
 	servingSizeG: z.number().min(0).nullable().optional(),
-	// OFF photo URLs (CC-BY-SA). Bounded length; absent/blank → null. Not user-entered.
-	imageUrl: z.string().trim().max(2048).nullable().optional(),
-	imageThumbUrl: z.string().trim().max(2048).nullable().optional(),
-	imageIngredientsUrl: z.string().trim().max(2048).nullable().optional(),
-	imageNutritionUrl: z.string().trim().max(2048).nullable().optional(),
+	imageUrl: offImageUrlSchema,
+	imageThumbUrl: offImageUrlSchema,
+	imageIngredientsUrl: offImageUrlSchema,
+	imageNutritionUrl: offImageUrlSchema,
 	nutrients: z.array(nutrientAmountSchema),
 });
 export type SavePayload = z.infer<typeof savePayloadSchema>;
@@ -240,132 +262,6 @@ export function emptyDraft(source: FoodSource): DraftProduct {
 }
 
 /**
- * Keyword → catalog-slug table for best-effort OFF category matching. OFF's taxonomy is
- * large and free-form, so we match whole tokens against these fixed slugs. Order is
- * priority: when one OFF tag's tokens hit several rows, the earlier row wins (e.g. a
- * "chicken broth" tag resolves to poultry before soups). Tokens are matched as whole
- * words, so "nut" never fires inside "butternut".
- */
-const CATEGORY_KEYWORDS: Array<{ slug: string; tokens: string[] }> = [
-	{ slug: "processed-meat", tokens: ["sausage", "sausages", "luncheon", "charcuterie", "ham", "hams", "salami", "bacon", "deli", "prosciutto", "kielbasa"] },
-	{ slug: "lamb-game", tokens: ["lamb", "veal", "game", "mutton", "venison"] },
-	{ slug: "beef", tokens: ["beef"] },
-	{ slug: "pork", tokens: ["pork"] },
-	{ slug: "poultry", tokens: ["poultry", "chicken", "turkey", "duck"] },
-	{ slug: "seafood", tokens: ["fish", "seafood", "finfish", "shellfish", "tuna", "salmon", "shrimp", "cod", "mackerel", "herring", "sardine", "sardines"] },
-	{ slug: "dairy", tokens: ["dairy", "dairies", "milk", "milks", "cheese", "cheeses", "yogurt", "yogurts", "yoghurt", "yoghurts", "cream", "creams", "butter", "egg", "eggs", "kefir"] },
-	{ slug: "fruits", tokens: ["fruit", "fruits", "juice", "juices", "nectar", "nectars"] },
-	{ slug: "vegetables", tokens: ["vegetable", "vegetables"] },
-	{ slug: "legumes", tokens: ["legume", "legumes", "lentil", "lentils", "bean", "beans", "chickpea", "chickpeas", "tofu"] },
-	{ slug: "nuts", tokens: ["nut", "nuts", "seed", "seeds", "almond", "almonds", "peanut", "peanuts", "cashew", "cashews", "walnut", "walnuts", "pistachio"] },
-	{ slug: "cereals", tokens: ["cereal", "cereals", "muesli", "granola", "cornflakes"] },
-	{ slug: "grains", tokens: ["pasta", "pastas", "noodle", "noodles", "rice", "grain", "grains", "flour", "wheat", "oat", "oats", "quinoa"] },
-	{ slug: "baked", tokens: ["bread", "breads", "bakery", "pastry", "pastries", "cake", "cakes", "bun", "buns", "croissant", "baked"] },
-	{ slug: "sweets", tokens: ["chocolate", "chocolates", "candy", "candies", "sweet", "sweets", "dessert", "desserts", "confectionery", "biscuit", "biscuits", "cookie", "cookies", "jam", "honey"] },
-	{ slug: "snacks", tokens: ["snack", "snacks", "crisp", "crisps", "chips", "cracker", "crackers", "popcorn"] },
-	{ slug: "spices", tokens: ["spice", "spices", "herb", "herbs", "condiment", "condiments", "seasoning", "seasonings"] },
-	{ slug: "fats", tokens: ["oil", "oils", "fat", "fats", "margarine", "lard"] },
-	{ slug: "soups", tokens: ["soup", "soups", "sauce", "sauces", "gravy", "gravies", "broth", "broths", "dip", "dips"] },
-	{ slug: "beverages", tokens: ["water", "waters", "soda", "sodas", "drink", "drinks", "beverage", "beverages", "tea", "teas", "coffee", "coffees", "lemonade", "cola", "smoothie"] },
-];
-
-/**
- * Best-effort map from an OFF product's `categories_tags` hierarchy to one of our fixed
- * FoodCategory slugs. OFF orders tags general→specific, so we scan from the most specific
- * tag backwards (a specific tag is a better signal than its broad parent) and match whole
- * tokens against `CATEGORY_KEYWORDS`. Returns null when nothing matches — the user then
- * picks a category in the form. Deliberately NOT exhaustive; it only needs to pre-fill the
- * obvious cases and leave the rest to the human.
- */
-export function matchFoodCategorySlug(categoriesTags: string[] | undefined): string | null {
-	if (!categoriesTags?.length) return null;
-	for (let i = categoriesTags.length - 1; i >= 0; i--) {
-		const raw = categoriesTags[i];
-		// Strip the language prefix ("en:orange-juices" → "orange-juices") then tokenize.
-		const label = raw.includes(":") ? raw.slice(raw.indexOf(":") + 1) : raw;
-		const tokens = new Set(label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean));
-		for (const { slug, tokens: keys } of CATEGORY_KEYWORDS) {
-			if (keys.some((k) => tokens.has(k))) return slug;
-		}
-	}
-	return null;
-}
-
-/**
- * Assemble a canonical OFF draft from the OFF product metadata and the
- * already-mapped, factor-applied nutrient rows (produced by `buildNutrimentRows`
- * in `$lib/server/off`, where the registry conversion factors live). The output
- * carries canonical-unit amounts only — no raw→converted annotation reaches the form.
- * No nutriments → an empty `nutrients` array → every field renders as "brak danych".
- * `categorySlugToId` (slug → FoodCategory id) lets the OFF `categories_tags` pre-fill the
- * category select via `matchFoodCategorySlug`; absent map or no match → null (user picks).
- */
-export function offToDraft(
-	off: {
-		code: string;
-		product_name?: string;
-		product_name_pl?: string | null;
-		brands?: string;
-		categories_tags?: string[];
-		image_url?: string;
-		image_thumb_url?: string;
-		image_ingredients_url?: string;
-		image_nutrition_url?: string;
-	},
-	nutrientRows: Array<{ nutrientId: string; amountPer100g: number }>,
-	categorySlugToId?: Map<string, string>,
-): DraftProduct {
-	// OFF `brands` is a comma-separated list — keep the first (primary) brand; the user
-	// can correct it in the editable preview before saving.
-	const brand = off.brands?.split(",")[0]?.trim() || null;
-	const slug = matchFoodCategorySlug(off.categories_tags);
-	const categoryId = slug ? (categorySlugToId?.get(slug) ?? null) : null;
-	return {
-		source: "OFF",
-		sourceId: off.code,
-		nameEn: off.product_name?.trim() || off.code,
-		namePl: off.product_name_pl?.trim() || null,
-		brand,
-		categoryId,
-		servingSizeG: null,
-		imageUrl: off.image_url || null,
-		imageThumbUrl: off.image_thumb_url || null,
-		imageIngredientsUrl: off.image_ingredients_url || null,
-		imageNutritionUrl: off.image_nutrition_url || null,
-		nutrients: nutrientRows.map((r) => ({ nutrientId: r.nutrientId, amountPer100g: r.amountPer100g })),
-	};
-}
-
-/**
- * Map a Meili hit's tagname-keyed `nutrients` map to a `nutrientId`-keyed draft for
- * edit prefill. Tags absent from `tagToId` are skipped; the map carries only present
- * values, so missing nutrients stay absent (rendered "brak danych"), never 0.
- * `categoryId` is left null — the caller resolves `categorySlug` → id if needed.
- */
-export function meiliNutrientsToDraft(hit: FoodDocument, tagToId: Map<string, string>): DraftProduct {
-	const nutrients: DraftNutrientValue[] = [];
-	for (const [tag, amount] of Object.entries(hit.nutrients)) {
-		const nutrientId = tagToId.get(tag);
-		if (!nutrientId) continue;
-		nutrients.push({ nutrientId, amountPer100g: amount });
-	}
-	return {
-		source: hit.source as FoodSource,
-		sourceId: hit.sourceId,
-		nameEn: hit.nameEn,
-		namePl: hit.namePl,
-		brand: hit.brand,
-		categoryId: null,
-		servingSizeG: hit.servingSizeG,
-		imageUrl: hit.imageUrl ?? null,
-		imageThumbUrl: hit.imageThumbUrl ?? null,
-		imageIngredientsUrl: hit.imageIngredientsUrl ?? null,
-		imageNutritionUrl: hit.imageNutritionUrl ?? null,
-		nutrients,
-	};
-}
-
-/**
  * Normalize a draft into a save payload: preserves an explicit `0` and DROPS absent
  * (null) amounts, so a missing nutrient never lands as a row. Near-identity otherwise.
  */
@@ -384,6 +280,20 @@ export function draftToSavePayload(draft: DraftProduct): SavePayload {
 		imageNutritionUrl: draft.imageNutritionUrl ?? null,
 		nutrients: draft.nutrients.filter((n) => n.amountPer100g !== null),
 	};
+}
+
+/**
+ * Normalize a draft into an edit (PATCH) payload. Unlike `draftToSavePayload`, this
+ * KEEPS null amounts: on edit the server reconciles against existing rows, so a
+ * nutrient the user cleared must arrive as an explicit null for `partitionNutrients`
+ * to drop its row (NULL = "no data", distinct from a stored 0). Drops the immutable
+ * identity fields (`source`/`sourceId`) the patch endpoint forbids.
+ */
+export function draftToPatchPayload(draft: DraftProduct): PatchPayload {
+	// Carry the full create payload through (a spread, so a new model field is never
+	// silently dropped) but override `nutrients` to keep nulls. `patchPayloadSchema`
+	// strips the immutable `source`/`sourceId` at the endpoint.
+	return { ...draftToSavePayload(draft), nutrients: draft.nutrients };
 }
 
 /**

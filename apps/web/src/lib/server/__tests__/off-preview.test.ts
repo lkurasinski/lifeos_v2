@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
 import { buildNutrimentRows } from "../off.js";
-import { isBarcodeQuery, offToDraft } from "../../food/schema.js";
+import { isBarcodeQuery } from "../../food/schema.js";
+import { offToDraft } from "../../food/off-mapping.js";
 
 // Pure coverage for the OFF preview endpoint's decision + mapping logic (no live
 // services — the endpoint's I/O is exercised in the integration/manual pass).

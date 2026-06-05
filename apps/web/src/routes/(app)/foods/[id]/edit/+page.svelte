@@ -4,7 +4,8 @@
 	import { IconButton } from "$lib/components/ui/icon-button";
 	import { toast } from "$lib/components/ui/sonner";
 	import ProductForm from "$lib/components/catalog/ProductForm.svelte";
-	import { draftToSavePayload, type DraftProduct } from "$lib/food/schema";
+	import { draftDisplayName, saveDraft } from "$lib/components/catalog/save-product";
+	import { draftToPatchPayload, type DraftProduct } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
 
 	// Edit any product (CUSTOM / OFF / USDA) via the shared ProductForm, prefilled from
@@ -20,42 +21,25 @@
 		goto(resolve("/foods"));
 	}
 
-	function productName(d: DraftProduct): string {
-		return d.namePl?.trim() || d.nameEn;
-	}
-
 	async function handleSubmit(draft: DraftProduct) {
 		if (saving) return;
 		saving = true;
 		saveError = null;
-		// The full save payload carries every field through (no field-by-field rebuild);
-		// the endpoint's patchPayloadSchema strips the immutable source/sourceId.
-		const payload = draftToSavePayload(draft);
-		const name = productName(draft);
-		try {
-			const res = await fetch(`/api/foods/${data.id}`, {
-				method: "PATCH",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify(payload),
-			});
-			if (res.status === 404) {
-				// The product vanished (deleted in another tab) — toast and return to the list.
-				toast.error(t("edit.notFound"), { description: name });
-				toCatalog();
-				return;
-			}
-			if (!res.ok) {
-				saveError = t("add.saveError");
-				toast.error(t("add.saveError"), { description: name });
-				return;
-			}
-			toast.success(t("edit.updated"), { description: name });
+		const name = draftDisplayName(draft);
+		// draftToPatchPayload drops the immutable source/sourceId AND keeps null amounts so
+		// the server removes the rows of nutrients the user cleared (NULL = "no data",
+		// distinct from a stored 0). 404 = the product vanished (deleted in another tab).
+		const outcome = await saveDraft(`/api/foods/${data.id}`, "PATCH", draftToPatchPayload(draft), 404);
+		saving = false;
+		if (outcome === "special") {
+			toast.error(t("edit.notFound"), { description: name });
 			toCatalog();
-		} catch {
+		} else if (outcome === "error") {
 			saveError = t("add.saveError");
 			toast.error(t("add.saveError"), { description: name });
-		} finally {
-			saving = false;
+		} else {
+			toast.success(t("edit.updated"), { description: name });
+			toCatalog();
 		}
 	}
 </script>

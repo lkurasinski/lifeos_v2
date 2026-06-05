@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { Badge } from "$lib/components/ui/badge";
 	import { Button } from "$lib/components/ui/button";
-	import { Gauge, type Macro } from "$lib/components/ui/gauge";
+	import { Gauge } from "$lib/components/ui/gauge";
 	import { Panel } from "$lib/components/ui/panel";
 	import type { FoodDocument, NutrientRegistryGroup } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
 	import CategoryIcon from "./CategoryIcon.svelte";
-	import { MACRO_REFERENCE, formatAmount, macroPct, sourceBadgeKey } from "./meta";
+	import NutrientGroupSection from "./NutrientGroupSection.svelte";
+	import { formatAmount, macroGauges, macroPct, nutrientGroupLabels, sourceBadgeKey } from "./meta";
 
 	// Detail panel for the selected product — four identity-hued macro rings (graphite
 	// figure) over the full nutrient profile, grouped by registry category and
@@ -43,28 +44,19 @@
 		usda: t("catalog.sourceId.usda"),
 		off: t("catalog.sourceId.off"),
 	};
-	// NutrientCategory enum → Polish group heading (literal keys keep t() typed).
-	const GROUP_LABEL: Record<string, string> = {
-		ENERGY: t("catalog.nutrientGroup.energy"),
-		PROXIMATE: t("catalog.nutrientGroup.proximate"),
-		LIPID: t("catalog.nutrientGroup.lipid"),
-		MINERAL: t("catalog.nutrientGroup.mineral"),
-		VITAMIN: t("catalog.nutrientGroup.vitamin"),
-		AMINO_ACID: t("catalog.nutrientGroup.aminoAcid"),
-		CAROTENOID: t("catalog.nutrientGroup.carotenoid"),
-		OTHER: t("catalog.nutrientGroup.other"),
-	};
+	const GROUP_LABEL = nutrientGroupLabels();
 
 	const badgeKey = $derived(sourceBadgeKey(hit.source));
 
-	const gauges = $derived(
-		[
-			{ macro: "kcal", label: t("catalog.macros.energy"), value: hit.energyKcal, unit: "kcal", max: MACRO_REFERENCE.kcal },
-			{ macro: "pro", label: t("catalog.macros.protein"), value: hit.protein, unit: "g", max: MACRO_REFERENCE.protein },
-			{ macro: "carb", label: t("catalog.macros.carbs"), value: hit.carbs, unit: "g", max: MACRO_REFERENCE.carbs },
-			{ macro: "fat", label: t("catalog.macros.fat"), value: hit.fat, unit: "g", max: MACRO_REFERENCE.fat },
-		] satisfies { macro: Macro; label: string; value: number | undefined; unit: string; max: number }[],
-	);
+	// The macro value for each ring comes from the in-hand Meili hit (absent = undefined,
+	// rendered as "—" — NULL≠0). The descriptor (label/unit/max) is the shared one.
+	const macroValue = $derived<Record<string, number | undefined>>({
+		kcal: hit.energyKcal,
+		pro: hit.protein,
+		carb: hit.carbs,
+		fat: hit.fat,
+	});
+	const gauges = $derived(macroGauges().map((g) => ({ ...g, value: macroValue[g.macro] })));
 
 	// Present nutrients grouped by registry category (absent ones already omitted from
 	// the hit's `nutrients` map). Empty groups are dropped.
@@ -153,18 +145,14 @@
 
 		{#if open}
 			{#each groups as group (group.label)}
-				<div class="ng">
-					<div class="ngh">
-						<span class="gt">{group.label}</span>
-						<span class="gx">{group.rows.length} {t("catalog.itemsCount")}</span>
-					</div>
+				<NutrientGroupSection label={group.label} count={`${group.rows.length} ${t("catalog.itemsCount")}`}>
 					{#each group.rows as row (row.id)}
 						<div class="nr">
 							<span class="k">{row.name}</span>
 							<span class="v">{formatAmount(row.value)} {row.unit}</span>
 						</div>
 					{/each}
-				</div>
+				</NutrientGroupSection>
 			{/each}
 		{/if}
 	{/if}
@@ -387,27 +375,6 @@
 	}
 	.expand.open .chev {
 		transform: rotate(180deg);
-	}
-	.ng {
-		margin-top: 8px;
-	}
-	.ngh {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		padding: 9px 2px;
-		border-bottom: 1px solid var(--hairline);
-	}
-	.ngh .gt {
-		font-size: 0.8125rem;
-		font-weight: 600;
-		letter-spacing: -0.005em;
-		color: var(--foreground);
-	}
-	.ngh .gx {
-		font-size: 0.8125rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--muted-foreground);
 	}
 	.nr {
 		display: flex;

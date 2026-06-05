@@ -2,12 +2,13 @@
 	import { untrack } from "svelte";
 	import { Badge } from "$lib/components/ui/badge";
 	import { Button } from "$lib/components/ui/button";
-	import { Gauge, type Macro } from "$lib/components/ui/gauge";
+	import { Gauge } from "$lib/components/ui/gauge";
 	import { Panel } from "$lib/components/ui/panel";
 	import type { DraftNutrientValue, DraftProduct, NutrientRegistryGroup } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
 	import CategoryIcon from "./CategoryIcon.svelte";
-	import { MACRO_REFERENCE, formatAmount, sourceBadgeKey } from "./meta";
+	import NutrientGroupSection from "./NutrientGroupSection.svelte";
+	import { formatAmount, macroGauges, macroPct, nutrientGroupLabels, sourceBadgeKey } from "./meta";
 
 	// The shared editable product surface — the DESIGN.md "AI suggestion surface /
 	// editable preview", realizing the locked off-add.html. One form for OFF preview,
@@ -100,16 +101,7 @@
 		new Map(registry.flatMap((g) => g.nutrients.map((n) => [n.infoodsTagname, n.id]))),
 	);
 
-	const GROUP_LABEL: Record<string, string> = {
-		ENERGY: t("catalog.nutrientGroup.energy"),
-		PROXIMATE: t("catalog.nutrientGroup.proximate"),
-		LIPID: t("catalog.nutrientGroup.lipid"),
-		MINERAL: t("catalog.nutrientGroup.mineral"),
-		VITAMIN: t("catalog.nutrientGroup.vitamin"),
-		AMINO_ACID: t("catalog.nutrientGroup.aminoAcid"),
-		CAROTENOID: t("catalog.nutrientGroup.carotenoid"),
-		OTHER: t("catalog.nutrientGroup.other"),
-	};
+	const GROUP_LABEL = nutrientGroupLabels();
 
 	const badgeKey = $derived(sourceBadgeKey(draft.source));
 	const SOURCE_BADGE: Record<"usda" | "custom" | "off", string> = {
@@ -129,17 +121,10 @@
 
 	// Four presentational macro rings, driven live by the matching field values.
 	const gauges = $derived(
-		(
-			[
-				{ macro: "kcal", label: t("catalog.macros.energy"), tag: "ENERC_KCAL", unit: "kcal", max: MACRO_REFERENCE.kcal },
-				{ macro: "pro", label: t("catalog.macros.protein"), tag: "PROCNT", unit: "g", max: MACRO_REFERENCE.protein },
-				{ macro: "carb", label: t("catalog.macros.carbs"), tag: "CHOCDF", unit: "g", max: MACRO_REFERENCE.carbs },
-				{ macro: "fat", label: t("catalog.macros.fat"), tag: "FAT", unit: "g", max: MACRO_REFERENCE.fat },
-			] satisfies { macro: Macro; label: string; tag: string; unit: string; max: number }[]
-		).map((g) => {
+		macroGauges().map((g) => {
 			const id = tagToId.get(g.tag);
 			const value = id ? parseAmount(values[id]) : null;
-			const pct = value === null ? 0 : Math.max(0, Math.min(100, (value / g.max) * 100));
+			const pct = value === null ? 0 : macroPct(value, g.max);
 			return { ...g, value, pct };
 		}),
 	);
@@ -151,8 +136,8 @@
 
 	function submit() {
 		// Emit every registry nutrient: present values keep their amount, empties become
-		// null. The parent normalizes (draftToSavePayload drops nulls; the edit path
-		// removes their rows) — both honor NULL≠0.
+		// null. The parent normalizes — create drops nulls (draftToSavePayload), edit keeps
+		// them (draftToPatchPayload) so the server removes their rows. Both honor NULL≠0.
 		const nutrients: DraftNutrientValue[] = [];
 		for (const group of registry) {
 			for (const n of group.nutrients) {
@@ -278,37 +263,33 @@
 		</div>
 
 		{#each registry as group (group.category)}
-			{@const open = !collapsed[group.category]}
 			{@const filled = group.nutrients.filter((n) => parseAmount(values[n.id]) !== null).length}
-			<div class="ng">
-				<button type="button" class="ngh" class:open onclick={() => toggleGroup(group.category)}>
-					<span class="gt">{GROUP_LABEL[group.category] ?? group.category}</span>
-					<span class="gx">{filled}/{group.nutrients.length}</span>
-					<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-						<path d="M10 13.5l-4.5-5h9z" />
-					</svg>
-				</button>
-				{#if open}
-					{#each group.nutrients as n (n.id)}
-						{@const empty = parseAmount(values[n.id]) === null}
-						<div class="nr" class:na={empty}>
-							<span class="k">{n.namePl || n.nameEn}</span>
-							<span class="vfield">
-								<input
-									type="number"
-									inputmode="decimal"
-									min="0"
-									step="any"
-									bind:value={values[n.id]}
-									placeholder={t("add.noDataPlaceholder")}
-									aria-label={n.namePl || n.nameEn}
-								/>
-								<span class="vu">{n.unit}</span>
-							</span>
-						</div>
-					{/each}
-				{/if}
-			</div>
+			<NutrientGroupSection
+				label={GROUP_LABEL[group.category] ?? group.category}
+				count={`${filled}/${group.nutrients.length}`}
+				collapsible
+				open={!collapsed[group.category]}
+				onToggle={() => toggleGroup(group.category)}
+			>
+				{#each group.nutrients as n (n.id)}
+					{@const empty = parseAmount(values[n.id]) === null}
+					<div class="nr" class:na={empty}>
+						<span class="k">{n.namePl || n.nameEn}</span>
+						<span class="vfield">
+							<input
+								type="number"
+								inputmode="decimal"
+								min="0"
+								step="any"
+								bind:value={values[n.id]}
+								placeholder={t("add.noDataPlaceholder")}
+								aria-label={n.namePl || n.nameEn}
+							/>
+							<span class="vu">{n.unit}</span>
+						</span>
+					</div>
+				{/each}
+			</NutrientGroupSection>
 		{/each}
 	</div>
 
@@ -653,53 +634,6 @@
 		height: 13px;
 		flex-shrink: 0;
 		opacity: 0.6;
-	}
-
-	.ng {
-		margin-top: 6px;
-	}
-	.ngh {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		width: 100%;
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		font-family: inherit;
-		padding: 9px 2px;
-		border-bottom: 1px solid var(--hairline);
-	}
-	.ngh:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-		border-radius: var(--radius-sm);
-	}
-	.ngh .gt {
-		font-size: 0.8125rem;
-		font-weight: 600;
-		letter-spacing: -0.005em;
-		color: var(--foreground);
-	}
-	.ngh .gx {
-		margin-left: auto;
-		font-size: 0.8125rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--muted-foreground);
-	}
-	.ngh .chev {
-		width: 15px;
-		height: 15px;
-		color: var(--muted-foreground);
-		transition: transform 0.2s var(--ease);
-	}
-	.ngh.open .chev {
-		transform: rotate(180deg);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.ngh .chev {
-			transition: none;
-		}
 	}
 
 	.nr {

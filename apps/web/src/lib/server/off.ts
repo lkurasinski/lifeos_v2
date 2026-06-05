@@ -82,6 +82,12 @@ export function buildNutrimentRows(
 
 const OFF_HEADERS = { 'User-Agent': 'LifeOS - Web - Version 1.0' };
 
+/** Bound each OFF request so a hung CDN can't hold a server request open
+ *  indefinitely (compounded by the client-side retry loop). An abort here is
+ *  caught and mapped to OFFError → 502, the same graceful-degradation path as
+ *  a network failure. */
+const OFF_TIMEOUT_MS = 8000;
+
 export async function searchOFF(query: string, limit = 20): Promise<OFFProduct[]> {
 	// Full-text search lives on the v1 `cgi/search.pl` endpoint. The v2 `/api/v2/search`
 	// endpoint filters by tags only and *ignores* `search_terms`, so it returns the same
@@ -97,19 +103,21 @@ export async function searchOFF(query: string, limit = 20): Promise<OFFProduct[]
 		fields: OFF_FIELDS,
 		page_size: String(limit),
 	});
-	let res: Response;
+	let data: OFFSearchResponse;
 	try {
-		res = await fetch(`https://pl.openfoodfacts.org/cgi/search.pl?${params}`, {
+		const res = await fetch(`https://pl.openfoodfacts.org/cgi/search.pl?${params}`, {
 			headers: OFF_HEADERS,
+			signal: AbortSignal.timeout(OFF_TIMEOUT_MS),
 		});
+		if (!res.ok) {
+			throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
+		}
+		data = (await res.json()) as OFFSearchResponse;
 	} catch (err) {
-		// Network/timeout — no HTTP status to surface.
+		if (err instanceof OFFError) throw err;
+		// Network / timeout / non-JSON body — no HTTP status to surface.
 		throw new OFFError(`OFF API request failed: ${String(err)}`);
 	}
-	if (!res.ok) {
-		throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
-	}
-	const data = (await res.json()) as OFFSearchResponse;
 	return data.products ?? [];
 }
 
@@ -120,20 +128,22 @@ export async function searchOFF(query: string, limit = 20): Promise<OFFProduct[]
  */
 export async function getOFFProductByBarcode(barcode: string): Promise<OFFProduct | null> {
 	const params = new URLSearchParams({ fields: OFF_FIELDS });
-	let res: Response;
+	let data: OFFProductResponse;
 	try {
-		res = await fetch(
+		const res = await fetch(
 			`https://pl.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}?${params}`,
-			{ headers: OFF_HEADERS },
+			{ headers: OFF_HEADERS, signal: AbortSignal.timeout(OFF_TIMEOUT_MS) },
 		);
+		if (res.status === 404) return null;
+		if (!res.ok) {
+			throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
+		}
+		data = (await res.json()) as OFFProductResponse;
 	} catch (err) {
+		if (err instanceof OFFError) throw err;
+		// Network / timeout / non-JSON body — no HTTP status to surface.
 		throw new OFFError(`OFF API request failed: ${String(err)}`);
 	}
-	if (res.status === 404) return null;
-	if (!res.ok) {
-		throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
-	}
-	const data = (await res.json()) as OFFProductResponse;
 	// `status: 0` is OFF's "product not found" sentinel even on a 200 response.
 	if (data.status === 0 || !data.product) return null;
 	return data.product;

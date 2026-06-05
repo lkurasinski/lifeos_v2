@@ -19,7 +19,10 @@ import {
 	FOOD_INDEX_NAME,
 	FOOD_INDEX_SETTINGS,
 } from "./food-document";
+import { searchOFF, getOFFProductByBarcode, buildNutrimentRows } from "$lib/server/off";
+import { offToDraft } from "$lib/food/off-mapping";
 import {
+	isBarcodeQuery,
 	partitionNutrients,
 	resolveSourceId,
 	shouldFlagUserModified,
@@ -33,6 +36,7 @@ import {
 	type FoodCategoryMeta,
 	type NutrientRegistryEntry,
 	type NutrientRegistryGroup,
+	type PreviewResult,
 } from "$lib/food/schema";
 
 /** Thrown when a `(source, sourceId)` already exists — the dedup rule. */
@@ -41,6 +45,14 @@ export class FoodProductConflictError extends Error {
 		super("Food product already exists");
 		this.name = "FoodProductConflictError";
 	}
+}
+
+/** Prisma's "unique constraint failed" code, duck-typed so we needn't import the
+ *  Prisma error namespace from the generated client. */
+function isUniqueConstraintError(err: unknown): boolean {
+	return (
+		typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === "P2002"
+	);
 }
 
 /** Thrown when an update/delete targets a missing product. */
@@ -150,34 +162,49 @@ export async function saveFoodProduct(input: SavePayload) {
 		throw new FoodProductConflictError(existing.id);
 	}
 
-	const product = await prisma.$transaction(async (tx) => {
-		const created = await tx.foodProduct.create({
-			data: {
-				source: input.source,
-				sourceId,
-				nameEn: input.nameEn,
-				namePl: input.namePl ?? null,
-				brand: input.brand ?? null,
-				categoryId: input.categoryId ?? null,
-				servingSizeG: input.servingSizeG ?? null,
-				imageUrl: input.imageUrl ?? null,
-				imageThumbUrl: input.imageThumbUrl ?? null,
-				imageIngredientsUrl: input.imageIngredientsUrl ?? null,
-				imageNutritionUrl: input.imageNutritionUrl ?? null,
-			},
-		});
-		const rows = input.nutrients.filter((n) => n.amountPer100g !== null);
-		if (rows.length > 0) {
-			await tx.foodNutrient.createMany({
-				data: rows.map((n) => ({
-					foodId: created.id,
-					nutrientId: n.nutrientId,
-					amountPer100g: n.amountPer100g,
-				})),
+	let product;
+	try {
+		product = await prisma.$transaction(async (tx) => {
+			const created = await tx.foodProduct.create({
+				data: {
+					source: input.source,
+					sourceId,
+					nameEn: input.nameEn,
+					namePl: input.namePl ?? null,
+					brand: input.brand ?? null,
+					categoryId: input.categoryId ?? null,
+					servingSizeG: input.servingSizeG ?? null,
+					imageUrl: input.imageUrl ?? null,
+					imageThumbUrl: input.imageThumbUrl ?? null,
+					imageIngredientsUrl: input.imageIngredientsUrl ?? null,
+					imageNutritionUrl: input.imageNutritionUrl ?? null,
+				},
 			});
+			const rows = input.nutrients.filter((n) => n.amountPer100g !== null);
+			if (rows.length > 0) {
+				await tx.foodNutrient.createMany({
+					data: rows.map((n) => ({
+						foodId: created.id,
+						nutrientId: n.nutrientId,
+						amountPer100g: n.amountPer100g,
+					})),
+				});
+			}
+			return created;
+		});
+	} catch (err) {
+		// The findUnique pre-check above is not atomic with the create; a concurrent
+		// save of the same (source, sourceId) loses the race here on the DB unique
+		// constraint (P2002). Re-query and surface the same 409 as the pre-check.
+		if (isUniqueConstraintError(err)) {
+			const conflict = await prisma.foodProduct.findUnique({
+				where: { source_sourceId: { source: input.source, sourceId } },
+				select: { id: true },
+			});
+			throw new FoodProductConflictError(conflict?.id ?? sourceId);
 		}
-		return created;
-	});
+		throw err;
+	}
 
 	await syncAfterCommit(() => syncFoodDocument(product.id), product.id);
 	return product;
@@ -238,8 +265,8 @@ export async function updateFoodProduct(id: string, input: PatchPayload) {
 /**
  * Load a persisted product as an editable `DraftProduct` for the edit route. Reads
  * Postgres directly (NOT the Meili hit) so the draft carries `categoryId` and all four
- * image fields verbatim — the Meili doc only has `categorySlug`, so `meiliNutrientsToDraft`
- * would leave `categoryId` null. Nutrient rows map by `nutrientId` (present values only;
+ * image fields verbatim — the Meili doc only has `categorySlug` and would leave
+ * `categoryId` null. Nutrient rows map by `nutrientId` (present values only;
  * NULL = "no data" stays absent, never 0). Returns null when the id is unknown.
  */
 export async function getFoodProductDraft(id: string): Promise<DraftProduct | null> {
@@ -358,6 +385,47 @@ async function loadFoodCategories(): Promise<FoodCategoryMeta[]> {
 		select: { id: true, slug: true, namePl: true, nameEn: true },
 		orderBy: { namePl: "asc" },
 	});
+}
+
+// ─── OFF preview (no-write) ─────────────────────────────────────────────────────
+
+/**
+ * Build the OFF add-flow preview for a name or EAN barcode: fetch from Open Food Facts,
+ * map nutriments through the registry, and return an editable canonical `DraftProduct`
+ * per result, flagging any that already live in the catalog. Reads only — NOTHING is
+ * written here (the PRD accuracy guardrail: a product lands only on an explicit Save).
+ * Throws `OFFError` on an OFF transport failure (the endpoint maps 429/5xx); any other
+ * error (e.g. DB) propagates as a genuine 500.
+ */
+export async function buildOffPreview(query: string): Promise<PreviewResult[]> {
+	// Smart detection: 8–14 digits → barcode (single-product lookup); else free text.
+	const offProducts = isBarcodeQuery(query)
+		? await getOFFProductByBarcode(query.replace(/\s+/g, "")).then((p) => (p ? [p] : []))
+		: await searchOFF(query);
+	if (offProducts.length === 0) return [];
+
+	// Registry tag→id drives the nutriment mapping (factors applied in buildNutrimentRows);
+	// the category slug→id map lets OFF `categories_tags` pre-fill the form's category.
+	const [{ tagToId }, categories] = await Promise.all([getNutrientRegistry(), getFoodCategories()]);
+	const categorySlugToId = new Map(categories.map((c) => [c.slug, c.id]));
+
+	// Dedup metadata: which of these barcodes already exist as OFF products.
+	const codes = offProducts.map((p) => p.code).filter(Boolean);
+	const existing = await prisma.foodProduct.findMany({
+		where: { source: "OFF", sourceId: { in: codes } },
+		select: { id: true, sourceId: true },
+	});
+	const existingByCode = new Map(existing.map((e) => [e.sourceId, e.id]));
+
+	const results: PreviewResult[] = [];
+	for (const product of offProducts) {
+		if (!product.code) continue; // malformed entry → skip
+		const rows = product.nutriments ? buildNutrimentRows(product.nutriments, tagToId) : [];
+		const draft = offToDraft(product, rows, categorySlugToId);
+		const existingId = existingByCode.get(product.code);
+		results.push(existingId ? { draft, existing: { id: existingId } } : { draft });
+	}
+	return results;
 }
 
 // ─── Read path: index config + search ──────────────────────────────────────────

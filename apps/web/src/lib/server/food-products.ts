@@ -226,10 +226,23 @@ export async function deleteFoodProduct(id: string): Promise<void> {
  * (used by the manual form, the detail-view join, and tag→id resolution on save).
  * Returns the grouped registry plus the `infoodsTagname → id` map.
  */
-export async function getNutrientRegistry(): Promise<{
-	groups: NutrientRegistryGroup[];
-	tagToId: Map<string, string>;
-}> {
+type NutrientRegistry = { groups: NutrientRegistryGroup[]; tagToId: Map<string, string> };
+
+// Reference data that never changes during S-01 (the Nutrient registry is read-only;
+// categories have no mutation path in this slice). Memoize the in-flight promise so the
+// per-navigation catalog load doesn't re-query on every facet/sort/page change; reset on
+// rejection so a failed first load can retry. Treat the cached values as read-only.
+let registryCache: Promise<NutrientRegistry> | null = null;
+let categoriesCache: Promise<FoodCategoryMeta[]> | null = null;
+
+export function getNutrientRegistry(): Promise<NutrientRegistry> {
+	return (registryCache ??= loadNutrientRegistry().catch((err) => {
+		registryCache = null;
+		throw err;
+	}));
+}
+
+async function loadNutrientRegistry(): Promise<NutrientRegistry> {
 	const rows = await prisma.nutrient.findMany({
 		select: {
 			id: true,
@@ -275,7 +288,14 @@ export async function getNutrientRegistry(): Promise<{
  * from the current page of hits — the search facet distribution only carries
  * `slug → count`, so the names come from here.
  */
-export async function getFoodCategories(): Promise<FoodCategoryMeta[]> {
+export function getFoodCategories(): Promise<FoodCategoryMeta[]> {
+	return (categoriesCache ??= loadFoodCategories().catch((err) => {
+		categoriesCache = null;
+		throw err;
+	}));
+}
+
+async function loadFoodCategories(): Promise<FoodCategoryMeta[]> {
 	return prisma.foodCategory.findMany({
 		select: { slug: true, namePl: true, nameEn: true },
 		orderBy: { namePl: "asc" },

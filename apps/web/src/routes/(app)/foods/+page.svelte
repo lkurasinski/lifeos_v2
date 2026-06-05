@@ -80,6 +80,8 @@
 	}
 
 	let searchTimer: ReturnType<typeof setTimeout>;
+	// Cancel a pending debounced navigation if the page unmounts mid-window.
+	$effect(() => () => clearTimeout(searchTimer));
 	function onSearchInput() {
 		// Clear the category filter as the user types — a category + free-text query
 		// easily yields an empty set (e.g. "beef" category + "eggs"); dropping the

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { FoodDocument, SortKey } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
+	import { Badge } from "$lib/components/ui/badge";
 	import CategoryIcon from "./CategoryIcon.svelte";
 	import { formatAmount, sourceBadgeKey } from "./meta";
 
@@ -77,7 +78,7 @@
 			<span class="pcat c-cat" title={hit.categoryNamePl ?? ""}>
 				<CategoryIcon slug={hit.categorySlug} size={18} />
 			</span>
-			<span class="badge c-src">{SOURCE_BADGE[badge]}</span>
+			<span class="psrc c-src"><Badge>{SOURCE_BADGE[badge]}</Badge></span>
 			<span class="num kcal">{macro(hit.energyKcal)}</span>
 			<span class="num mac c-pro">{macro(hit.protein)}</span>
 			<span class="num mac c-carb">{macro(hit.carbs)}</span>
@@ -187,18 +188,12 @@
 		display: flex;
 		align-items: center;
 	}
-	.badge {
+	/* Grid-cell wrapper around the kit Badge: owns the cell's left-alignment and
+	   carries .c-src so the responsive column-hide rules (scoped to .prow) still match. */
+	.psrc {
 		display: inline-flex;
 		align-items: center;
 		justify-self: start;
-		font-size: 0.625rem;
-		font-weight: 600;
-		letter-spacing: 0.07em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-		background: var(--secondary);
-		padding: 4px 9px;
-		border-radius: var(--radius-pill);
 	}
 	.num {
 		text-align: right;

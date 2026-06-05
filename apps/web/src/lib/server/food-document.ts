@@ -7,7 +7,8 @@
  * The `FoodDocument` type comes from `$lib/food/schema` via a TYPE-ONLY import, so
  * esbuild erases it and the batch chain pulls in no extra runtime module.
  */
-import type { FoodDocument } from "../food/schema";
+import type { MultiSearchQuery, MultiSearchResult } from "meilisearch";
+import type { FoodDocument, FoodSearchResult, SearchParams, SortKey } from "../food/schema";
 
 export const FOOD_INDEX_NAME = "food_products";
 
@@ -84,4 +85,106 @@ export function buildFoodDocument(
 	}
 
 	return doc;
+}
+
+// ─── Search query construction (pure — no Meili client) ────────────────────────
+
+/** Catalog sort key → the top-level document attribute Meili sorts on. */
+const SORT_FIELD: Record<SortKey, "nameEn" | "energyKcal" | "protein" | "fat" | "carbs"> = {
+	name: "nameEn",
+	kcal: "energyKcal",
+	protein: "protein",
+	fat: "fat",
+	carbs: "carbs",
+};
+
+/**
+ * Positional layout of the `multiSearch` queries `buildFoodSearchQueries` emits.
+ * `shapeFoodSearchResults` reads results by these indices: hits come from HITS, and
+ * each facet's switchable counts come from ITS OWN distribution query (not HITS), so
+ * an active filter narrows the *other* facets without collapsing its own.
+ */
+export const FOOD_QUERY_INDEX = { HITS: 0, SOURCE: 1, CATEGORY: 2 } as const;
+
+/**
+ * A disjunctive (OR) clause within one facet dimension, expressed as Meili's
+ * nested-array filter form. `null` when the dimension has no active selection.
+ */
+function orClause(attribute: string, values: string[] | undefined): string[] | null {
+	if (!values || values.length === 0) return null;
+	return values.map((v) => `${attribute} = "${v}"`);
+}
+
+/**
+ * Build the three-query `multiSearch` payload that powers disjunctive faceting:
+ * - HITS: filtered by BOTH dimensions, sorted + paginated — supplies hits + total.
+ * - SOURCE: omits the source filter, requests the `source` facet — switchable source counts.
+ * - CATEGORY: omits the category filter, requests the `categorySlug` facet — switchable category counts.
+ *
+ * Each facet distribution is therefore computed over a result set that does NOT
+ * filter on that facet, keeping its chips switchable while the other narrows.
+ */
+export function buildFoodSearchQueries(params: SearchParams): MultiSearchQuery[] {
+	const q = params.q ?? "";
+	const sourceClause = orClause("source", params.sources);
+	const categoryClause = orClause("categorySlug", params.categories);
+
+	const hitsFilter = [sourceClause, categoryClause].filter((c): c is string[] => c !== null);
+	const sourceQueryFilter = [categoryClause].filter((c): c is string[] => c !== null);
+	const categoryQueryFilter = [sourceClause].filter((c): c is string[] => c !== null);
+
+	const page = params.page;
+	const limit = params.limit;
+
+	const hits: MultiSearchQuery = {
+		indexUid: FOOD_INDEX_NAME,
+		q,
+		sort: [`${SORT_FIELD[params.sort]}:${params.dir}`],
+		offset: (page - 1) * limit,
+		limit,
+	};
+	if (hitsFilter.length > 0) hits.filter = hitsFilter;
+
+	const sourceFacets: MultiSearchQuery = {
+		indexUid: FOOD_INDEX_NAME,
+		q,
+		facets: ["source"],
+		limit: 0,
+	};
+	if (sourceQueryFilter.length > 0) sourceFacets.filter = sourceQueryFilter;
+
+	const categoryFacets: MultiSearchQuery = {
+		indexUid: FOOD_INDEX_NAME,
+		q,
+		facets: ["categorySlug"],
+		limit: 0,
+	};
+	if (categoryQueryFilter.length > 0) categoryFacets.filter = categoryQueryFilter;
+
+	return [hits, sourceFacets, categoryFacets];
+}
+
+/**
+ * Shape the `multiSearch` results (in the `buildFoodSearchQueries` order) into the
+ * catalog read model. `total` is the hits query's estimate; each facet map is read
+ * from its OWN distribution query so it reflects the switchable (disjunctive) counts.
+ */
+export function shapeFoodSearchResults(
+	params: SearchParams,
+	results: MultiSearchResult<FoodDocument>[],
+): FoodSearchResult {
+	const hitsResult = results[FOOD_QUERY_INDEX.HITS];
+	const sourceResult = results[FOOD_QUERY_INDEX.SOURCE];
+	const categoryResult = results[FOOD_QUERY_INDEX.CATEGORY];
+
+	return {
+		hits: (hitsResult?.hits ?? []) as FoodDocument[],
+		total: hitsResult?.estimatedTotalHits ?? hitsResult?.totalHits ?? 0,
+		page: params.page,
+		limit: params.limit,
+		facets: {
+			source: sourceResult?.facetDistribution?.source ?? {},
+			categorySlug: categoryResult?.facetDistribution?.categorySlug ?? {},
+		},
+	};
 }

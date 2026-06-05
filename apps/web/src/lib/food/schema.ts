@@ -114,6 +114,59 @@ export const searchParamsSchema = z.object({
 });
 export type SearchParams = z.infer<typeof searchParamsSchema>;
 
+/**
+ * The catalog search result — what `searchFoodProducts` returns and the browse UI
+ * (page load + `GET /api/foods`) consumes. Each facet map carries the switchable
+ * counts from its OWN (disjunctive) query, so an active filter never collapses its
+ * own facet to a single value.
+ */
+export interface FoodSearchResult {
+	hits: FoodDocument[];
+	total: number;
+	page: number;
+	limit: number;
+	facets: {
+		source: Record<string, number>;
+		categorySlug: Record<string, number>;
+	};
+}
+
+/**
+ * Parse a `URLSearchParams` into validated `SearchParams` (shared by the SSR page
+ * load and the thin GET endpoint so both honor the same contract). `sources` and
+ * `categories` accept repeated keys and/or comma-separated values; blank `q` and
+ * unparseable `page`/`limit` fall back to the schema defaults rather than 400ing, so
+ * hand-edited/shared URLs stay resilient. An invalid `sort`/`dir`/`source` enum still
+ * throws (a real client error the endpoint surfaces as 400).
+ */
+export function parseSearchParams(searchParams: URLSearchParams): SearchParams {
+	const list = (key: string): string[] | undefined => {
+		const values = searchParams
+			.getAll(key)
+			.flatMap((v) => v.split(","))
+			.map((v) => v.trim())
+			.filter(Boolean);
+		return values.length > 0 ? values : undefined;
+	};
+	const num = (key: string): number | undefined => {
+		const raw = searchParams.get(key);
+		if (raw === null || raw.trim() === "") return undefined;
+		const n = Number(raw);
+		return Number.isFinite(n) ? n : undefined;
+	};
+	const q = searchParams.get("q")?.trim();
+
+	return searchParamsSchema.parse({
+		q: q ? q : undefined,
+		sources: list("sources"),
+		categories: list("categories"),
+		sort: searchParams.get("sort") ?? undefined,
+		dir: searchParams.get("dir") ?? undefined,
+		page: num("page"),
+		limit: num("limit"),
+	});
+}
+
 /** Create payload (manual CUSTOM or confirmed OFF). */
 export const savePayloadSchema = z.object({
 	source: z.enum(ADDABLE_SOURCES),

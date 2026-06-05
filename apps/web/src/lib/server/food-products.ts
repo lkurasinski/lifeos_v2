@@ -9,14 +9,24 @@
  * Meili sync stays OUTSIDE the DB transaction (matching the batch pattern): a failed
  * index task leaves a recoverable DB row that `--step index` will pick up.
  */
+import type { MultiSearchParams } from "meilisearch";
 import { prisma } from "$lib/server/db";
 import { meili } from "$lib/server/search";
-import { buildFoodDocument, FOOD_INDEX_NAME } from "./food-document";
+import {
+	buildFoodDocument,
+	buildFoodSearchQueries,
+	shapeFoodSearchResults,
+	FOOD_INDEX_NAME,
+	FOOD_INDEX_SETTINGS,
+} from "./food-document";
 import {
 	partitionNutrients,
 	shouldFlagUserModified,
 	type SavePayload,
 	type PatchPayload,
+	type SearchParams,
+	type FoodDocument,
+	type FoodSearchResult,
 	type NutrientRegistryEntry,
 	type NutrientRegistryGroup,
 } from "$lib/food/schema";
@@ -256,4 +266,32 @@ export async function getNutrientRegistry(): Promise<{
 	}));
 
 	return { groups, tagToId };
+}
+
+// ─── Read path: index config + search ──────────────────────────────────────────
+
+/**
+ * Apply the shared `FOOD_INDEX_SETTINGS` to the runtime singleton index. Mirrors the
+ * batch step's `updateSettings` (which applies the SAME constant to its own injected
+ * client) so search/facet/sort behavior is identical whether the index was last
+ * touched by a reseed or a live mutation. Idempotent.
+ */
+export async function configureFoodIndex(): Promise<void> {
+	const index = meili.index(FOOD_INDEX_NAME);
+	const task = await index.updateSettings(FOOD_INDEX_SETTINGS);
+	await waitForMeiliTask(task.taskUid);
+}
+
+/**
+ * The single typed catalog search, used by both the SSR page load and the thin GET
+ * endpoint. One `multiSearch` round-trip delivers disjunctive facets: a query per
+ * facet dimension (each omitting its own filter) alongside the hits query, so a
+ * selected filter narrows the OTHER facets without collapsing its own chips. The
+ * query construction + result shaping are pure (`food-document.ts`); this function
+ * only performs the I/O.
+ */
+export async function searchFoodProducts(params: SearchParams): Promise<FoodSearchResult> {
+	const queries = buildFoodSearchQueries(params);
+	const { results } = await meili.multiSearch<MultiSearchParams, FoodDocument>({ queries });
+	return shapeFoodSearchResults(params, results);
 }

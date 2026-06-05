@@ -23,6 +23,18 @@ import {
 
 const BATCH_SIZE = 1_000;
 
+/**
+ * Await a Meili task and throw on a `failed` terminal status. `waitForTask` resolves
+ * on success OR failure, so without this a rejected batch (bad doc, settings mismatch)
+ * would silently look indexed. During a reindex a failure should abort loudly.
+ */
+async function waitForMeiliTask(meili: Meilisearch, taskUid: number): Promise<void> {
+	const task = await meili.tasks.waitForTask(taskUid);
+	if (task.status === "failed") {
+		throw new Error(`Meili task ${taskUid} failed: ${task.error?.message ?? "unknown error"}`);
+	}
+}
+
 export async function indexMeilisearch(prisma: PrismaClient, meili: Meilisearch) {
 	// 1. Configure index settings (shared with the runtime helper)
 	console.log(`Configuring Meilisearch index "${FOOD_INDEX_NAME}"...`);
@@ -34,7 +46,7 @@ export async function indexMeilisearch(prisma: PrismaClient, meili: Meilisearch)
 	// so without this the index accumulates orphaned docs across runs.
 	console.log("Clearing existing documents...");
 	const clearTask = await index.deleteAllDocuments();
-	await meili.tasks.waitForTask(clearTask.taskUid);
+	await waitForMeiliTask(meili, clearTask.taskUid);
 
 	// 2. Load all products with category + nutrient amounts
 	console.log("Loading products from database...");
@@ -74,7 +86,7 @@ export async function indexMeilisearch(prisma: PrismaClient, meili: Meilisearch)
 		console.log(`  Batch ${batchNum}/${totalBatches} (${batch.length} documents)...`);
 
 		const task = await index.addDocuments(batch, { primaryKey: "id" });
-		await meili.tasks.waitForTask(task.taskUid);
+		await waitForMeiliTask(meili, task.taskUid);
 		indexed += batch.length;
 	}
 

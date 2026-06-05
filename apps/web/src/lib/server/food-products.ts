@@ -39,6 +39,18 @@ export class FoodProductNotFoundError extends Error {
 
 // ─── Meili single-doc sync helpers ────────────────────────────────────────────
 
+/**
+ * Await a Meili task and throw if it ended in a `failed` state. `waitForTask`
+ * resolves on ANY terminal status (succeeded OR failed), so without this check a
+ * task that Meili rejected (bad doc, settings mismatch) would look like success.
+ */
+async function waitForMeiliTask(taskUid: number): Promise<void> {
+	const task = await meili.tasks.waitForTask(taskUid);
+	if (task.status === "failed") {
+		throw new Error(`Meili task ${taskUid} failed: ${task.error?.message ?? "unknown error"}`);
+	}
+}
+
 /** Rebuild and push the single Meili document for a product (no-op if it vanished). */
 export async function syncFoodDocument(id: string): Promise<void> {
 	const product = await prisma.foodProduct.findUnique({
@@ -61,14 +73,32 @@ export async function syncFoodDocument(id: string): Promise<void> {
 
 	const index = meili.index(FOOD_INDEX_NAME);
 	const task = await index.addDocuments([doc], { primaryKey: "id" });
-	await meili.tasks.waitForTask(task.taskUid);
+	await waitForMeiliTask(task.taskUid);
 }
 
 /** Remove a product's Meili document. */
 export async function removeFoodDocument(id: string): Promise<void> {
 	const index = meili.index(FOOD_INDEX_NAME);
 	const task = await index.deleteDocument(id);
-	await meili.tasks.waitForTask(task.taskUid);
+	await waitForMeiliTask(task.taskUid);
+}
+
+/**
+ * Run a Meili sync side-effect AFTER a committed DB write. The DB row is the
+ * authoritative record, so an index failure must never mask a successful write:
+ * log it (the recoverable-drift signal) and swallow. The catalog index reconverges
+ * on the next mutation or a `search:reindex` (`--step index`) run.
+ */
+async function syncAfterCommit(op: () => Promise<void>, id: string): Promise<void> {
+	try {
+		await op();
+	} catch (err) {
+		console.error(
+			`[food-products] Meili sync failed for ${id} after a committed DB write — ` +
+				"the catalog index is stale for this product until the next mutation or `search:reindex`.",
+			err,
+		);
+	}
 }
 
 // ─── Write paths ──────────────────────────────────────────────────────────────
@@ -117,7 +147,7 @@ export async function saveFoodProduct(input: SavePayload) {
 		return created;
 	});
 
-	await syncFoodDocument(product.id);
+	await syncAfterCommit(() => syncFoodDocument(product.id), product.id);
 	return product;
 }
 
@@ -164,7 +194,7 @@ export async function updateFoodProduct(id: string, input: PatchPayload) {
 		}
 	});
 
-	await syncFoodDocument(id);
+	await syncAfterCommit(() => syncFoodDocument(id), id);
 	return prisma.foodProduct.findUnique({ where: { id } });
 }
 
@@ -175,7 +205,7 @@ export async function deleteFoodProduct(id: string): Promise<void> {
 		throw new FoodProductNotFoundError(id);
 	}
 	await prisma.foodProduct.delete({ where: { id } });
-	await removeFoodDocument(id);
+	await syncAfterCommit(() => removeFoodDocument(id), id);
 }
 
 // ─── Nutrient registry ────────────────────────────────────────────────────────

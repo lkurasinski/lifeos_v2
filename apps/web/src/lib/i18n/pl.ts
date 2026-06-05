@@ -57,6 +57,15 @@ export const pl = {
 		welcome: "Witaj",
 		title: "Panel główny",
 	},
+	nav: {
+		section: "Nawigacja",
+		brandSub: "Jadłospis",
+		products: "Produkty",
+		recipes: "Przepisy",
+		weeklyPlan: "Plan tygodnia",
+		shoppingList: "Lista zakupów",
+		settings: "Ustawienia",
+	},
 } as const;
 
 export type Translations = typeof pl;

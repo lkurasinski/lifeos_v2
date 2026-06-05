@@ -62,6 +62,22 @@ async function waitForMeiliTask(taskUid: number): Promise<void> {
 	}
 }
 
+/**
+ * Ensure the food index carries its settings before the FIRST live `addDocuments`.
+ * `addDocuments` auto-creates a bare index (no filterable/sortable/searchable
+ * attributes) on a fresh environment where the batch `--step index` reseed hasn't
+ * run; later faceted/sorted search would then throw. Memoize the in-flight promise so
+ * this costs one `updateSettings` per process; reset on failure so it can retry.
+ * (See lessons: "Runtime-created Meili indexes must have settings applied before first use".)
+ */
+let indexConfigured: Promise<void> | null = null;
+function ensureFoodIndexConfigured(): Promise<void> {
+	return (indexConfigured ??= configureFoodIndex().catch((err) => {
+		indexConfigured = null;
+		throw err;
+	}));
+}
+
 /** Rebuild and push the single Meili document for a product (no-op if it vanished). */
 export async function syncFoodDocument(id: string): Promise<void> {
 	const product = await prisma.foodProduct.findUnique({
@@ -82,6 +98,7 @@ export async function syncFoodDocument(id: string): Promise<void> {
 		product.category,
 	);
 
+	await ensureFoodIndexConfigured();
 	const index = meili.index(FOOD_INDEX_NAME);
 	const task = await index.addDocuments([doc], { primaryKey: "id" });
 	await waitForMeiliTask(task.taskUid);
@@ -141,8 +158,13 @@ export async function saveFoodProduct(input: SavePayload) {
 				sourceId,
 				nameEn: input.nameEn,
 				namePl: input.namePl ?? null,
+				brand: input.brand ?? null,
 				categoryId: input.categoryId ?? null,
 				servingSizeG: input.servingSizeG ?? null,
+				imageUrl: input.imageUrl ?? null,
+				imageThumbUrl: input.imageThumbUrl ?? null,
+				imageIngredientsUrl: input.imageIngredientsUrl ?? null,
+				imageNutritionUrl: input.imageNutritionUrl ?? null,
 			},
 		});
 		const rows = input.nutrients.filter((n) => n.amountPer100g !== null);
@@ -185,8 +207,13 @@ export async function updateFoodProduct(id: string, input: PatchPayload) {
 			data: {
 				nameEn: input.nameEn,
 				namePl: input.namePl ?? null,
+				brand: input.brand ?? null,
 				categoryId: input.categoryId ?? null,
 				servingSizeG: input.servingSizeG ?? null,
+				imageUrl: input.imageUrl ?? null,
+				imageThumbUrl: input.imageThumbUrl ?? null,
+				imageIngredientsUrl: input.imageIngredientsUrl ?? null,
+				imageNutritionUrl: input.imageNutritionUrl ?? null,
 				...(flagModified ? { userModified: true } : {}),
 			},
 		});
@@ -297,7 +324,7 @@ export function getFoodCategories(): Promise<FoodCategoryMeta[]> {
 
 async function loadFoodCategories(): Promise<FoodCategoryMeta[]> {
 	return prisma.foodCategory.findMany({
-		select: { slug: true, namePl: true, nameEn: true },
+		select: { id: true, slug: true, namePl: true, nameEn: true },
 		orderBy: { namePl: "asc" },
 	});
 }

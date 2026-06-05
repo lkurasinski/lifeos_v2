@@ -79,9 +79,28 @@
 			.filter((g) => g.rows.length > 0),
 	);
 	const totalCount = $derived(groups.reduce((sum, g) => sum + g.rows.length, 0));
+
+	// OFF product photos (CC-BY-SA). Hero = main display image; the ingredients/nutrition
+	// shots open full-size in a new tab. Credit shown whenever any photo is displayed.
+	const mainImage = $derived(hit.imageUrl ?? hit.imageThumbUrl ?? null);
+	const extraPhotos = $derived(
+		(
+			[
+				{ url: hit.imageIngredientsUrl, label: t("catalog.photoIngredients") },
+				{ url: hit.imageNutritionUrl, label: t("catalog.photoNutrition") },
+			] as { url: string | undefined; label: string }[]
+		).filter((p): p is { url: string; label: string } => !!p.url),
+	);
+	const hasAnyPhoto = $derived(!!mainImage || extraPhotos.length > 0);
 </script>
 
 {#snippet body()}
+	{#if mainImage}
+		<div class="dphoto">
+			<img src={mainImage} alt={hit.namePl ?? hit.nameEn ?? t("catalog.photoAlt")} loading="lazy" />
+		</div>
+	{/if}
+
 	<div class="dchips">
 		<Badge>
 			<CategoryIcon slug={hit.categorySlug} size={13} />
@@ -97,6 +116,9 @@
 		<div class="nm">{hit.namePl ?? hit.nameEn}</div>
 		{#if hit.namePl && hit.namePl !== hit.nameEn}
 			<div class="en">{hit.nameEn}</div>
+		{/if}
+		{#if hit.brand}
+			<div class="brand">{hit.brand}</div>
 		{/if}
 	</div>
 
@@ -142,6 +164,21 @@
 		{/if}
 	{/if}
 
+	{#if extraPhotos.length > 0}
+		<div class="divider"></div>
+		<div class="photos">
+			<div class="pht">{t("catalog.photos")}</div>
+			<div class="phgrid">
+				{#each extraPhotos as p (p.label)}
+					<div class="phitem">
+						<img src={p.url} alt={p.label} loading="lazy" />
+						<span>{p.label}</span>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<div class="origin">
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 			<path
@@ -157,6 +194,9 @@
 			<span class="sk">{SOURCE_ID_LABEL[badgeKey]}</span>
 			<span class="sv">{hit.sourceId}</span>
 		</div>
+	{/if}
+	{#if hasAnyPhoto}
+		<div class="phcredit">{t("catalog.photoCredit")}</div>
 	{/if}
 {/snippet}
 
@@ -183,6 +223,64 @@
 	.detail-body--embedded {
 		padding: 24px 22px 22px;
 	}
+	/* OFF hero photo — contained on a neutral tile so portrait/landscape shots don't crop.
+	   Fixed height reserves the space (the tile is the placeholder) so the layout doesn't
+	   jump when the image finishes loading. */
+	.dphoto {
+		display: grid;
+		place-items: center;
+		height: 220px;
+		background: var(--secondary);
+		border-radius: var(--radius);
+		padding: 12px;
+		margin-bottom: 14px;
+	}
+	.dphoto img {
+		max-width: 100%;
+		max-height: 100%;
+		object-fit: contain;
+		border-radius: var(--radius-sm);
+	}
+
+	/* Ingredients / nutrition shots — small thumbnails opening full-size in a new tab. */
+	.photos {
+		margin-top: 4px;
+	}
+	.photos .pht {
+		font-size: 0.625rem;
+		font-weight: 500;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--muted-foreground);
+		margin-bottom: 9px;
+	}
+	.phgrid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
+	}
+	.phitem {
+		display: flex;
+		flex-direction: column;
+		gap: 5px;
+		color: var(--muted-foreground);
+		font-size: 0.6875rem;
+	}
+	.phitem img {
+		width: 100%;
+		height: 96px;
+		object-fit: cover;
+		border-radius: var(--radius-sm);
+		background: var(--secondary);
+		box-shadow: var(--shadow-soft);
+	}
+	.phcredit {
+		font-size: 0.625rem;
+		color: var(--muted-foreground);
+		margin-top: 14px;
+		opacity: 0.8;
+	}
+
 	.dchips {
 		display: flex;
 		align-items: center;
@@ -200,6 +298,13 @@
 		font-size: 0.875rem;
 		color: var(--muted-foreground);
 		margin-top: 4px;
+	}
+	.dhead .brand {
+		font-size: 0.75rem;
+		font-weight: 500;
+		letter-spacing: 0.02em;
+		color: var(--muted-foreground);
+		margin-top: 6px;
 	}
 	.basis {
 		font-size: 0.625rem;

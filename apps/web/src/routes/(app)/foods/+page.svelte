@@ -5,6 +5,7 @@
 	import { MediaQuery } from "svelte/reactivity";
 	import type { FoodSource, SortKey } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
+	import { Button } from "$lib/components/ui/button";
 	import { Dialog } from "$lib/components/ui/dialog";
 	import CatalogSearchBar from "$lib/components/catalog/CatalogSearchBar.svelte";
 	import FacetChips from "$lib/components/catalog/FacetChips.svelte";
@@ -29,6 +30,9 @@
 	// drives off shallow-routing page state so the browser back button (and ESC, via
 	// the dialog) dismiss it. Nothing is shown until the user picks a row.
 	let selectedId = $state<string | null>(null);
+
+	// The add flow lives on its own route (/foods/new) so the browser back/forward
+	// buttons work; saving there navigates back here and a fresh load surfaces the product.
 	const modalDetailId = $derived(page.state.detailId ?? null);
 	const highlightId = $derived(modalMode.current ? modalDetailId : selectedId);
 	const inlineProduct = $derived(
@@ -149,6 +153,14 @@
 				oninput={onSearchInput}
 				onclear={onClearSearch}
 			/>
+			<Button class="addbtn" onclick={() => goto(resolve("/foods/new"))}>
+				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+					<path
+						d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
+					/>
+				</svg>
+				{t("add.openButton")}
+			</Button>
 		</div>
 	</div>
 
@@ -242,6 +254,9 @@
 		margin-inline: auto;
 	}
 	.brand {
+		flex-shrink: 0;
+	}
+	:global(.addbtn) {
 		flex-shrink: 0;
 	}
 	.brand h1 {

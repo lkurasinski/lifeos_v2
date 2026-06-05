@@ -12,7 +12,8 @@ const config = {
 			directives: {
 				"script-src": ["self"],
 				"style-src": ["self", "unsafe-inline"],
-				"img-src": ["self", "data:"],
+				// OFF product photos are served from the images.openfoodfacts.org CDN.
+				"img-src": ["self", "data:", "https://images.openfoodfacts.org"],
 				"font-src": ["self"],
 				"connect-src": ["self"],
 				"frame-ancestors": ["none"],

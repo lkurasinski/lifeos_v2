@@ -89,6 +89,7 @@ describe("shapeFoodSearchResults", () => {
 		id: "p1",
 		namePl: "Jogurt",
 		nameEn: "Yogurt",
+		brand: null,
 		source: "OFF",
 		sourceId: "590",
 		userModified: false,

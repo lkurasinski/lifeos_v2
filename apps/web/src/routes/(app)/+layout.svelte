@@ -5,6 +5,7 @@
 	import { authClient } from "$lib/auth-client";
 	import { Env } from "$lib/components/ui/env";
 	import { IconButton } from "$lib/components/ui/icon-button";
+	import { Toaster } from "$lib/components/ui/sonner";
 	import { t } from "$lib/i18n";
 
 	let { data, children } = $props();
@@ -133,6 +134,9 @@
 		{@render children()}
 	</main>
 </div>
+
+<!-- Persists across in-app navigation, so a toast fired before goto() survives the move. -->
+<Toaster />
 
 <style>
 	/* Glass app shell: a persistent left nav rail refracting the tinted .env field,

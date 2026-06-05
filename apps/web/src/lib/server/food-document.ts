@@ -18,7 +18,7 @@ export const FOOD_INDEX_NAME = "food_products";
  * them (it cannot sort nested fields).
  */
 export const FOOD_INDEX_SETTINGS = {
-	searchableAttributes: ["namePl", "nameEn", "categoryNamePl"],
+	searchableAttributes: ["namePl", "nameEn", "brand", "categoryNamePl"],
 	filterableAttributes: ["source", "categorySlug"],
 	sortableAttributes: ["nameEn", "energyKcal", "protein", "fat", "carbs"],
 	// Meili caps `estimatedTotalHits` at `maxTotalHits` (default 1000), which would
@@ -41,8 +41,13 @@ interface ProductInput {
 	sourceId: string;
 	nameEn: string;
 	namePl: string | null;
+	brand?: string | null;
 	servingSizeG: number | null;
 	userModified: boolean;
+	imageUrl?: string | null;
+	imageThumbUrl?: string | null;
+	imageIngredientsUrl?: string | null;
+	imageNutritionUrl?: string | null;
 }
 
 interface NutrientInput {
@@ -72,6 +77,7 @@ export function buildFoodDocument(
 		id: product.id,
 		namePl: product.namePl ?? null,
 		nameEn: product.nameEn,
+		brand: product.brand ?? null,
 		source: product.source,
 		sourceId: product.sourceId,
 		userModified: product.userModified,
@@ -87,6 +93,12 @@ export function buildFoodDocument(
 		const macro = MACRO_FIELDS[fn.infoodsTagname];
 		if (macro) doc[macro] = fn.amountPer100g;
 	}
+
+	// Image URLs are display metadata — included only when present (absent ⇒ omitted).
+	if (product.imageUrl) doc.imageUrl = product.imageUrl;
+	if (product.imageThumbUrl) doc.imageThumbUrl = product.imageThumbUrl;
+	if (product.imageIngredientsUrl) doc.imageIngredientsUrl = product.imageIngredientsUrl;
+	if (product.imageNutritionUrl) doc.imageNutritionUrl = product.imageNutritionUrl;
 
 	return doc;
 }

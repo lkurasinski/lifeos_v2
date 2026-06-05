@@ -8,11 +8,37 @@ export interface OFFProduct {
 	nutriments?: Record<string, number>;
 	categories_tags?: string[];
 	countries_tags?: string[];
+	// Product photos (CC-BY-SA). Flat URL fields — see `offToDraft` for the draft mapping.
+	image_url?: string;
+	image_thumb_url?: string;
+	image_ingredients_url?: string;
+	image_nutrition_url?: string;
 }
 
 interface OFFSearchResponse {
 	products?: OFFProduct[];
 }
+
+interface OFFProductResponse {
+	status?: number;
+	product?: OFFProduct;
+}
+
+/** A non-OK response from the OFF API, carrying the HTTP status so callers can map
+ *  429 (rate limit) and 5xx/timeout to distinct user-facing states. */
+export class OFFError extends Error {
+	constructor(
+		message: string,
+		public status?: number,
+	) {
+		super(message);
+		this.name = "OFFError";
+	}
+}
+
+/** Fields requested from OFF (shared by search + single-product lookup). */
+const OFF_FIELDS =
+	"code,product_name,product_name_pl,brands,nutriments,categories_tags,countries_tags,image_url,image_thumb_url,image_ingredients_url,image_nutrition_url";
 
 /** Maps OFF slug → { INFOODS tagname, conversion factor } derived from the Nutrient Registry. */
 export const OFF_NUTRIENT_MAP: Map<string, { tag: string; factor: number }> = (() => {
@@ -54,18 +80,61 @@ export function buildNutrimentRows(
 	return rows;
 }
 
+const OFF_HEADERS = { 'User-Agent': 'LifeOS - Web - Version 1.0' };
+
 export async function searchOFF(query: string, limit = 20): Promise<OFFProduct[]> {
+	// Full-text search lives on the v1 `cgi/search.pl` endpoint. The v2 `/api/v2/search`
+	// endpoint filters by tags only and *ignores* `search_terms`, so it returns the same
+	// default product set regardless of the query (per OFF API docs: full-text search is
+	// supported by the v1 API or the beta search-a-licious only). `search_simple=1` +
+	// `action=process` runs the simple text search; the response keeps the same
+	// `{ products: [...] }` shape, and `fields` trims it to what the mapper needs.
 	const params = new URLSearchParams({
 		search_terms: query,
-		fields: 'code,product_name,product_name_pl,brands,nutriments,categories_tags,countries_tags',
+		search_simple: "1",
+		action: "process",
+		json: "1",
+		fields: OFF_FIELDS,
 		page_size: String(limit),
 	});
-	const res = await fetch(`https://pl.openfoodfacts.org/api/v2/search?${params}`, {
-		headers: { 'User-Agent': 'LifeOS - Web - Version 1.0' },
-	});
+	let res: Response;
+	try {
+		res = await fetch(`https://pl.openfoodfacts.org/cgi/search.pl?${params}`, {
+			headers: OFF_HEADERS,
+		});
+	} catch (err) {
+		// Network/timeout — no HTTP status to surface.
+		throw new OFFError(`OFF API request failed: ${String(err)}`);
+	}
 	if (!res.ok) {
-		throw new Error(`OFF API error: ${res.status} ${res.statusText}`);
+		throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
 	}
 	const data = (await res.json()) as OFFSearchResponse;
 	return data.products ?? [];
+}
+
+/**
+ * Single-product lookup by EAN barcode (the smart-input EAN path). Returns `null`
+ * when OFF has no such product (HTTP 404 or `status: 0`), distinct from a transport
+ * failure — which throws `OFFError` (with a `status` for 429 rate-limit handling).
+ */
+export async function getOFFProductByBarcode(barcode: string): Promise<OFFProduct | null> {
+	const params = new URLSearchParams({ fields: OFF_FIELDS });
+	let res: Response;
+	try {
+		res = await fetch(
+			`https://pl.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}?${params}`,
+			{ headers: OFF_HEADERS },
+		);
+	} catch (err) {
+		throw new OFFError(`OFF API request failed: ${String(err)}`);
+	}
+	if (res.status === 404) return null;
+	if (!res.ok) {
+		throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
+	}
+	const data = (await res.json()) as OFFProductResponse;
+	// `status: 0` is OFF's "product not found" sentinel even on a 200 response.
+	if (data.status === 0 || !data.product) return null;
+	return data.product;
 }

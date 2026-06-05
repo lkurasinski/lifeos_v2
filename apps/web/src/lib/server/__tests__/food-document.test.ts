@@ -75,6 +75,20 @@ describe("buildFoodDocument", () => {
 		expect(doc.protein).toBeUndefined();
 	});
 
+	it("includes OFF image URLs when present, omits them when absent (lean doc)", () => {
+		const withImg = buildFoodDocument(
+			{ ...product, imageUrl: "https://img/a.jpg", imageThumbUrl: "https://img/a.100.jpg" },
+			[],
+			null,
+		);
+		expect(withImg.imageUrl).toBe("https://img/a.jpg");
+		expect(withImg.imageThumbUrl).toBe("https://img/a.100.jpg");
+
+		const without = buildFoodDocument(product, [], null);
+		expect("imageUrl" in without).toBe(false);
+		expect("imageThumbUrl" in without).toBe(false);
+	});
+
 	it("nulls category fields when no category is given", () => {
 		const doc = buildFoodDocument(product, [], null);
 		expect(doc.categorySlug).toBeNull();

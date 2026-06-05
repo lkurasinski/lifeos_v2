@@ -73,7 +73,15 @@
 			onclick={() => onSelect(hit.id)}
 		>
 			<div class="pname">
-				<div class="nm">{hit.namePl ?? hit.nameEn}</div>
+				{#if hit.imageThumbUrl ?? hit.imageUrl}
+					<img class="pthumb" src={hit.imageThumbUrl ?? hit.imageUrl} alt="" loading="lazy" />
+				{/if}
+				<div class="pntext">
+					<div class="nm">{hit.namePl ?? hit.nameEn}</div>
+					{#if hit.brand}
+						<div class="bd">{hit.brand}</div>
+					{/if}
+				</div>
 			</div>
 			<span class="pcat c-cat" title={hit.categoryNamePl ?? ""}>
 				<CategoryIcon slug={hit.categorySlug} size={18} />
@@ -173,6 +181,20 @@
 	}
 	.pname {
 		min-width: 0;
+		display: flex;
+		align-items: center;
+		gap: 11px;
+	}
+	.pname .pthumb {
+		width: 34px;
+		height: 34px;
+		flex-shrink: 0;
+		border-radius: 8px;
+		object-fit: cover;
+		background: var(--secondary);
+	}
+	.pname .pntext {
+		min-width: 0;
 	}
 	.pname .nm {
 		font-size: 0.9375rem;
@@ -183,6 +205,15 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		color: var(--foreground);
+	}
+	.pname .bd {
+		font-size: 0.75rem;
+		color: var(--muted-foreground);
+		line-height: 1.2;
+		margin-top: 1px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.pcat {
 		display: flex;

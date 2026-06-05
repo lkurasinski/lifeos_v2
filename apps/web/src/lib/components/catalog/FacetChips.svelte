@@ -54,7 +54,7 @@
 	}
 </script>
 
-<div class="facets">
+<div class="flex flex-col gap-[13px]">
 	<SegmentedToggle
 		items={sourceItems}
 		value={sourceSegment}
@@ -62,154 +62,67 @@
 		onValueChange={(v: string) => onSourceChange((v || "all") as SourceSegment)}
 	/>
 
-	<div class="catrow">
+	<div class="min-w-0">
+		<!-- Collapse toggle: hidden on wide screens (the chip row is always open there). -->
 		<button
 			type="button"
-			class="cat-toggle"
-			class:open={expanded}
+			class="hidden items-center gap-2 rounded-pill border-0 bg-secondary px-3 py-[7px] text-[0.8125rem] font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:shadow-[var(--focus)] focus-visible:outline-none max-xl:inline-flex"
 			aria-expanded={expanded}
 			onclick={() => (expanded = !expanded)}
 		>
 			<CategoryIcon slug={activeCategory} size={15} />
-			<span class="ct-label">{t("catalog.categoryLabel")}:</span>
-			<span class="ct-active">{activeName}</span>
-			<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em]">{t("catalog.categoryLabel")}:</span>
+			<span class="text-foreground">{activeName}</span>
+			<svg
+				class="h-[15px] w-[15px] transition-transform duration-200 ease-[var(--ease)] motion-reduce:transition-none {expanded
+					? 'rotate-180'
+					: ''}"
+				viewBox="0 0 20 20"
+				fill="currentColor"
+				aria-hidden="true"
+			>
 				<path d="M10 13.5l-4.5-5h9z" />
 			</svg>
 		</button>
 
-		<div class="chips" class:collapsed={!expanded}>
-			<span class="clab">{t("catalog.categoryLabel")}</span>
-			<button type="button" class="chip" class:on={activeCategory === null} onclick={() => pick(null)}>
+		<div
+			class={[
+				"flex flex-wrap items-center gap-[7px] max-xl:mt-[9px]",
+				!expanded && "max-xl:hidden",
+			]}
+		>
+			<span class="mr-1 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-xl:hidden">
+				{t("catalog.categoryLabel")}
+			</span>
+			<button
+				type="button"
+				class={[
+					"inline-flex items-center gap-1.5 rounded-pill border-0 py-1.5 pl-[9px] pr-3 text-[0.8125rem] font-medium transition-colors duration-[180ms] ease-[var(--ease)] focus-visible:shadow-[var(--focus)] focus-visible:outline-none motion-reduce:transition-none",
+					activeCategory === null
+						? "bg-primary text-primary-foreground"
+						: "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground",
+				]}
+				onclick={() => pick(null)}
+			>
 				<CategoryIcon slug={null} size={15} />
 				{t("catalog.allCategories")}
 			</button>
 			{#each visibleCategories as cat (cat.slug)}
-				<button type="button" class="chip" class:on={activeCategory === cat.slug} onclick={() => pick(cat.slug)}>
+				<button
+					type="button"
+					class={[
+						"inline-flex items-center gap-1.5 rounded-pill border-0 py-1.5 pl-[9px] pr-3 text-[0.8125rem] font-medium transition-colors duration-[180ms] ease-[var(--ease)] focus-visible:shadow-[var(--focus)] focus-visible:outline-none motion-reduce:transition-none",
+						activeCategory === cat.slug
+							? "bg-primary text-primary-foreground"
+							: "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground",
+					]}
+					onclick={() => pick(cat.slug)}
+				>
 					<CategoryIcon slug={cat.slug} size={15} />
 					{cat.namePl}
-					<span class="n">{counts[cat.slug]}</span>
+					<span class="ml-1 tabular-nums opacity-60">{counts[cat.slug]}</span>
 				</button>
 			{/each}
 		</div>
 	</div>
 </div>
-
-<style>
-	.facets {
-		display: flex;
-		flex-direction: column;
-		gap: 13px;
-	}
-	.catrow {
-		min-width: 0;
-	}
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 7px;
-		align-items: center;
-	}
-	.clab {
-		font-size: 0.625rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-		margin-right: 4px;
-	}
-	.chip {
-		border: 0;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		background: var(--secondary);
-		padding: 6px 12px 6px 9px;
-		border-radius: var(--radius-pill);
-		cursor: pointer;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		transition: background-color 180ms var(--ease), color 180ms var(--ease);
-	}
-	.chip:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.chip:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-	}
-	.chip.on {
-		background: var(--primary);
-		color: var(--primary-foreground);
-	}
-	.chip .n {
-		font-variant-numeric: tabular-nums;
-		opacity: 0.6;
-		margin-left: 4px;
-	}
-
-	/* Collapse toggle: hidden on wide screens; the chip row is always open there. */
-	.cat-toggle {
-		display: none;
-		align-items: center;
-		gap: 8px;
-		border: 0;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		background: var(--secondary);
-		padding: 7px 12px;
-		border-radius: var(--radius-pill);
-		cursor: pointer;
-	}
-	.cat-toggle:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.cat-toggle:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-	}
-	.cat-toggle .ct-label {
-		font-size: 0.625rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-	}
-	.cat-toggle .ct-active {
-		color: var(--foreground);
-	}
-	.cat-toggle .chev {
-		width: 15px;
-		height: 15px;
-		transition: transform 0.2s var(--ease);
-	}
-	.cat-toggle.open .chev {
-		transform: rotate(180deg);
-	}
-
-	@media (max-width: 1280px) {
-		.cat-toggle {
-			display: inline-flex;
-		}
-		.chips {
-			margin-top: 9px;
-		}
-		.chips.collapsed {
-			display: none;
-		}
-		.chips .clab {
-			display: none;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.chip,
-		.cat-toggle .chev {
-			transition: none;
-		}
-	}
-</style>

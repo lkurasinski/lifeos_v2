@@ -22,76 +22,33 @@
 	let { label, count, collapsible = false, open = true, onToggle, children }: Props = $props();
 </script>
 
-<div class="ng">
+<div class="mt-2">
 	{#if collapsible}
-		<button type="button" class="ngh" class:open onclick={() => onToggle?.()}>
-			<span class="gt">{label}</span>
-			<span class="gx">{count}</span>
-			<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+		<button
+			type="button"
+			class="flex w-full items-center gap-2 border-x-0 border-t-0 border-b border-[color:var(--hairline)] bg-transparent px-0.5 py-[9px] focus-visible:rounded-sm focus-visible:shadow-[var(--focus)] focus-visible:outline-none"
+			onclick={() => onToggle?.()}
+		>
+			<span class="text-[0.8125rem] font-semibold tracking-[-0.005em] text-foreground">{label}</span>
+			<span class="ml-auto text-[0.8125rem] tabular-nums text-muted-foreground">{count}</span>
+			<svg
+				class="h-[15px] w-[15px] text-muted-foreground transition-transform duration-200 ease-[var(--ease)] motion-reduce:transition-none {open
+					? 'rotate-180'
+					: ''}"
+				viewBox="0 0 20 20"
+				fill="currentColor"
+				aria-hidden="true"
+			>
 				<path d="M10 13.5l-4.5-5h9z" />
 			</svg>
 		</button>
 	{:else}
-		<div class="ngh">
-			<span class="gt">{label}</span>
-			<span class="gx">{count}</span>
+		<div class="flex w-full items-center gap-2 border-b border-[color:var(--hairline)] px-0.5 py-[9px]">
+			<span class="text-[0.8125rem] font-semibold tracking-[-0.005em] text-foreground">{label}</span>
+			<span class="ml-auto text-[0.8125rem] tabular-nums text-muted-foreground">{count}</span>
 		</div>
 	{/if}
 	{#if open}
 		{@render children()}
 	{/if}
 </div>
-
-<style>
-	.ng {
-		margin-top: 8px;
-	}
-	.ngh {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		width: 100%;
-		padding: 9px 2px;
-		border-bottom: 1px solid var(--hairline);
-	}
-	/* Interactive (collapsible) header resets button chrome. */
-	button.ngh {
-		border-top: 0;
-		border-left: 0;
-		border-right: 0;
-		background: transparent;
-		cursor: pointer;
-		font-family: inherit;
-	}
-	button.ngh:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-		border-radius: var(--radius-sm);
-	}
-	.gt {
-		font-size: 0.8125rem;
-		font-weight: 600;
-		letter-spacing: -0.005em;
-		color: var(--foreground);
-	}
-	.gx {
-		margin-left: auto;
-		font-size: 0.8125rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--muted-foreground);
-	}
-	.chev {
-		width: 15px;
-		height: 15px;
-		color: var(--muted-foreground);
-		transition: transform 0.2s var(--ease);
-	}
-	.ngh.open .chev {
-		transform: rotate(180deg);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.chev {
-			transition: none;
-		}
-	}
-</style>

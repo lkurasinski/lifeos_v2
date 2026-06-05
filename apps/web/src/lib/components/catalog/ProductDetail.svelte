@@ -93,12 +93,20 @@
 
 {#snippet body()}
 	{#if mainImage}
-		<div class="dphoto">
-			<img src={mainImage} alt={hit.namePl ?? hit.nameEn ?? t("catalog.photoAlt")} loading="lazy" />
+		<!-- OFF hero photo — contained on a neutral tile so portrait/landscape shots don't
+		     crop. Fixed height reserves the space (tile = placeholder) so the layout doesn't
+		     jump when the image finishes loading. -->
+		<div class="mb-[14px] grid h-[220px] place-items-center rounded-lg bg-secondary p-3">
+			<img
+				class="max-h-full max-w-full rounded-sm object-contain"
+				src={mainImage}
+				alt={hit.namePl ?? hit.nameEn ?? t("catalog.photoAlt")}
+				loading="lazy"
+			/>
 		</div>
 	{/if}
 
-	<div class="dchips">
+	<div class="mb-[11px] flex items-center gap-2">
 		<Badge>
 			<CategoryIcon slug={hit.categorySlug} size={13} />
 			{hit.categoryNamePl ?? t("catalog.uncategorized")}
@@ -109,18 +117,22 @@
 		{/if}
 	</div>
 
-	<div class="dhead">
-		<div class="nm">{hit.namePl ?? hit.nameEn}</div>
+	<div>
+		<div class="text-[1.625rem] font-semibold leading-[1.15] tracking-[-0.02em] text-foreground max-md:text-[1.375rem]">
+			{hit.namePl ?? hit.nameEn}
+		</div>
 		{#if hit.namePl && hit.namePl !== hit.nameEn}
-			<div class="en">{hit.nameEn}</div>
+			<div class="mt-1 text-[0.875rem] text-muted-foreground">{hit.nameEn}</div>
 		{/if}
 		{#if hit.brand}
-			<div class="brand">{hit.brand}</div>
+			<div class="mt-1.5 text-xs font-medium tracking-[0.02em] text-muted-foreground">{hit.brand}</div>
 		{/if}
 	</div>
 
-	<div class="basis">{t("catalog.profileBasis")}</div>
-	<div class="gauges">
+	<div class="mb-2.5 mt-5 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-md:mb-2 max-md:mt-4">
+		{t("catalog.profileBasis")}
+	</div>
+	<div class="mt-[2px] grid grid-cols-4 gap-2.5 max-md:gap-1.5 max-[380px]:grid-cols-2 max-[380px]:gap-3">
 		{#each gauges as g (g.macro)}
 			<Gauge
 				macro={g.macro}
@@ -133,12 +145,23 @@
 	</div>
 
 	{#if totalCount > 0}
-		<div class="divider"></div>
+		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>
 
-		<button type="button" class="expand" class:open onclick={() => (open = !open)}>
-			<span class="et">{t("catalog.fullProfile")}</span>
-			<span class="ec">{totalCount} {t("catalog.nutrientsCount")}</span>
-			<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+		<button
+			type="button"
+			class="flex w-full items-center gap-2 border-0 bg-transparent p-0.5 focus-visible:rounded-sm focus-visible:shadow-[var(--focus)] focus-visible:outline-none"
+			onclick={() => (open = !open)}
+		>
+			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("catalog.fullProfile")}</span>
+			<span class="text-[0.6875rem] tabular-nums text-muted-foreground">{totalCount} {t("catalog.nutrientsCount")}</span>
+			<svg
+				class="ml-auto h-[17px] w-[17px] text-muted-foreground transition-transform duration-200 ease-[var(--ease)] motion-reduce:transition-none {open
+					? 'rotate-180'
+					: ''}"
+				viewBox="0 0 20 20"
+				fill="currentColor"
+				aria-hidden="true"
+			>
 				<path d="M10 13.5l-4.5-5h9z" />
 			</svg>
 		</button>
@@ -147,9 +170,9 @@
 			{#each groups as group (group.label)}
 				<NutrientGroupSection label={group.label} count={`${group.rows.length} ${t("catalog.itemsCount")}`}>
 					{#each group.rows as row (row.id)}
-						<div class="nr">
-							<span class="k">{row.name}</span>
-							<span class="v">{formatAmount(row.value)} {row.unit}</span>
+						<div class="flex items-baseline justify-between py-1.5 pl-4 pr-0.5">
+							<span class="text-[0.8125rem] text-muted-foreground">{row.name}</span>
+							<span class="text-[0.875rem] tabular-nums tracking-[-0.01em] text-foreground">{formatAmount(row.value)} {row.unit}</span>
 						</div>
 					{/each}
 				</NutrientGroupSection>
@@ -158,14 +181,15 @@
 	{/if}
 
 	{#if onEdit || onDelete}
-		<div class="dactions">
+		<!-- Edit / delete actions — glass "Usuń" shrinks, primary "Edytuj" fills (probe). -->
+		<div class="mt-[22px] flex gap-2.5">
 			{#if onDelete}
 				<Button variant="secondary" onclick={() => onDelete?.(hit)}>
 					{t("common.delete")}
 				</Button>
 			{/if}
 			{#if onEdit}
-				<Button class="dedit" onclick={() => onEdit?.(hit)}>
+				<Button class="flex-1" onclick={() => onEdit?.(hit)}>
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 						<path
 							d="M13.94 3.31a1.75 1.75 0 0 1 2.475 2.475l-8.3 8.3a2 2 0 0 1-.86.503l-2.74.76a.75.75 0 0 1-.922-.923l.76-2.74a2 2 0 0 1 .503-.86l8.3-8.3Z"
@@ -178,13 +202,14 @@
 	{/if}
 
 	{#if extraPhotos.length > 0}
-		<div class="divider"></div>
-		<div class="photos">
-			<div class="pht">{t("catalog.photos")}</div>
-			<div class="phgrid">
+		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>
+		<!-- Ingredients / nutrition shots — small thumbnails opening full-size in a new tab. -->
+		<div class="mt-1">
+			<div class="mb-[9px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("catalog.photos")}</div>
+			<div class="grid grid-cols-2 gap-2.5">
 				{#each extraPhotos as p (p.label)}
-					<div class="phitem">
-						<img src={p.url} alt={p.label} loading="lazy" />
+					<div class="flex flex-col gap-[5px] text-[0.6875rem] text-muted-foreground">
+						<img class="h-24 w-full rounded-sm bg-secondary object-cover shadow-soft" src={p.url} alt={p.label} loading="lazy" />
 						<span>{p.label}</span>
 					</div>
 				{/each}
@@ -192,8 +217,8 @@
 		</div>
 	{/if}
 
-	<div class="origin">
-		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+	<div class="mt-[18px] flex items-center gap-[7px] text-xs text-muted-foreground">
+		<svg class="h-[14px] w-[14px] shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 			<path
 				fill-rule="evenodd"
 				d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z"
@@ -203,258 +228,19 @@
 		{ORIGIN[badgeKey]}
 	</div>
 	{#if SOURCE_ID_LABEL[badgeKey] && hit.sourceId}
-		<div class="srcid">
-			<span class="sk">{SOURCE_ID_LABEL[badgeKey]}</span>
-			<span class="sv">{hit.sourceId}</span>
+		<div class="mt-1.5 flex items-baseline gap-[7px] pl-[21px] text-xs">
+			<span class="text-muted-foreground">{SOURCE_ID_LABEL[badgeKey]}</span>
+			<span class="break-all tabular-nums text-foreground">{hit.sourceId}</span>
 		</div>
 	{/if}
 	{#if hasAnyPhoto}
-		<div class="phcredit">{t("catalog.photoCredit")}</div>
+		<div class="mt-[14px] text-[0.625rem] text-muted-foreground opacity-80">{t("catalog.photoCredit")}</div>
 	{/if}
 {/snippet}
 
 {#if embedded}
-	<div class="detail-body detail-body--embedded">{@render body()}</div>
+	<!-- Embedded (inside the Dialog): no glass chrome, no sticky — the dialog is the surface. -->
+	<div class="flex flex-col px-[22px] pb-[22px] pt-6 max-md:px-4 max-md:pb-4 max-md:pt-5">{@render body()}</div>
 {:else}
-	<Panel variant="thick" class="detail-panel">{@render body()}</Panel>
+	<Panel variant="thick" class="sticky top-[18px] flex flex-col px-6 pb-[22px] pt-6">{@render body()}</Panel>
 {/if}
-
-<style>
-	:global(.detail-panel) {
-		position: sticky;
-		top: 18px;
-		display: flex;
-		flex-direction: column;
-		padding: 24px 24px 22px;
-		border-radius: var(--radius);
-	}
-	/* Embedded (inside the Dialog): no glass chrome, no sticky — the dialog is the surface. */
-	.detail-body {
-		display: flex;
-		flex-direction: column;
-	}
-	.detail-body--embedded {
-		padding: 24px 22px 22px;
-	}
-	/* OFF hero photo — contained on a neutral tile so portrait/landscape shots don't crop.
-	   Fixed height reserves the space (the tile is the placeholder) so the layout doesn't
-	   jump when the image finishes loading. */
-	.dphoto {
-		display: grid;
-		place-items: center;
-		height: 220px;
-		background: var(--secondary);
-		border-radius: var(--radius);
-		padding: 12px;
-		margin-bottom: 14px;
-	}
-	.dphoto img {
-		max-width: 100%;
-		max-height: 100%;
-		object-fit: contain;
-		border-radius: var(--radius-sm);
-	}
-
-	/* Ingredients / nutrition shots — small thumbnails opening full-size in a new tab. */
-	.photos {
-		margin-top: 4px;
-	}
-	.photos .pht {
-		font-size: 0.625rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-		margin-bottom: 9px;
-	}
-	.phgrid {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 10px;
-	}
-	.phitem {
-		display: flex;
-		flex-direction: column;
-		gap: 5px;
-		color: var(--muted-foreground);
-		font-size: 0.6875rem;
-	}
-	.phitem img {
-		width: 100%;
-		height: 96px;
-		object-fit: cover;
-		border-radius: var(--radius-sm);
-		background: var(--secondary);
-		box-shadow: var(--shadow-soft);
-	}
-	.phcredit {
-		font-size: 0.625rem;
-		color: var(--muted-foreground);
-		margin-top: 14px;
-		opacity: 0.8;
-	}
-
-	.dchips {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 11px;
-	}
-	.dhead .nm {
-		font-size: 1.625rem;
-		font-weight: 600;
-		letter-spacing: -0.02em;
-		line-height: 1.15;
-		color: var(--foreground);
-	}
-	.dhead .en {
-		font-size: 0.875rem;
-		color: var(--muted-foreground);
-		margin-top: 4px;
-	}
-	.dhead .brand {
-		font-size: 0.75rem;
-		font-weight: 500;
-		letter-spacing: 0.02em;
-		color: var(--muted-foreground);
-		margin-top: 6px;
-	}
-	.basis {
-		font-size: 0.625rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-		margin: 20px 0 10px;
-	}
-	.gauges {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 10px;
-		margin-top: 2px;
-	}
-	.divider {
-		height: 1px;
-		background: var(--hairline);
-		margin: 18px 0;
-	}
-	.expand {
-		width: 100%;
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		font-family: inherit;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 2px;
-	}
-	.expand:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-		border-radius: var(--radius-sm);
-	}
-	.expand .et {
-		font-size: 0.625rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-	}
-	.expand .ec {
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		font-variant-numeric: tabular-nums;
-	}
-	.expand .chev {
-		margin-left: auto;
-		width: 17px;
-		height: 17px;
-		color: var(--muted-foreground);
-		transition: transform 0.2s var(--ease);
-	}
-	.expand.open .chev {
-		transform: rotate(180deg);
-	}
-	.nr {
-		display: flex;
-		align-items: baseline;
-		justify-content: space-between;
-		padding: 6px 2px 6px 16px;
-	}
-	.nr .k {
-		font-size: 0.8125rem;
-		color: var(--muted-foreground);
-	}
-	.nr .v {
-		font-size: 0.875rem;
-		font-variant-numeric: tabular-nums;
-		letter-spacing: -0.01em;
-		color: var(--foreground);
-	}
-	/* Edit / delete actions — glass "Usuń" shrinks, primary "Edytuj" fills (probe). */
-	.dactions {
-		display: flex;
-		gap: 10px;
-		margin-top: 22px;
-	}
-	.dactions :global(.dedit) {
-		flex: 1;
-	}
-	.origin {
-		font-size: 0.75rem;
-		color: var(--muted-foreground);
-		margin-top: 18px;
-		display: flex;
-		align-items: center;
-		gap: 7px;
-	}
-	.origin svg {
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
-	}
-	.srcid {
-		display: flex;
-		align-items: baseline;
-		gap: 7px;
-		margin-top: 6px;
-		padding-left: 21px;
-		font-size: 0.75rem;
-	}
-	.srcid .sk {
-		color: var(--muted-foreground);
-	}
-	.srcid .sv {
-		color: var(--foreground);
-		font-variant-numeric: tabular-nums;
-		word-break: break-all;
-	}
-	/* Compact panel on tablet / phone (the modal context below 1200px). */
-	@media (max-width: 768px) {
-		.detail-body--embedded {
-			padding: 20px 16px 16px;
-		}
-		.dhead .nm {
-			font-size: 1.375rem;
-		}
-		.basis {
-			margin: 16px 0 8px;
-		}
-		.gauges {
-			gap: 6px;
-		}
-	}
-	@media (max-width: 380px) {
-		.gauges {
-			grid-template-columns: repeat(2, 1fr);
-			gap: 12px;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.expand .chev {
-			transition: none;
-		}
-	}
-</style>

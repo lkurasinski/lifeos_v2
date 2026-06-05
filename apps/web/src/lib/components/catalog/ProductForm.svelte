@@ -165,56 +165,79 @@
 	}
 </script>
 
-<Panel variant="thick" class="pf">
-	<div class="pf-top">
-		<div class="pf-eyebrow">
-			<div class="et">{eyebrow.title}</div>
-			<div class="es">{eyebrow.sub}</div>
+<Panel variant="thick" class="pf flex flex-col overflow-hidden rounded-lg p-0">
+	<div class="flex items-start gap-[14px] px-[22px] pt-[18px] max-md:px-4">
+		<div class="min-w-0 flex-1">
+			<div class="text-[0.5625rem] font-semibold uppercase tracking-[0.09em] text-muted-foreground">{eyebrow.title}</div>
+			<div class="mt-[3px] text-[0.8125rem] leading-[1.4] text-muted-foreground">{eyebrow.sub}</div>
 		</div>
 		{#if mode === "create"}
-			<span class="pf-draft"><span class="pulse"></span>{t("add.draftUnsaved")}</span>
+			<!-- Neutral "unsaved" pill — never a semantic hue (colour is reserved for scored data). -->
+			<span
+				class="inline-flex shrink-0 items-center gap-[7px] whitespace-nowrap rounded-pill bg-card py-1.5 pl-[9px] pr-[11px] text-[0.6875rem] font-semibold tracking-[0.04em] text-foreground shadow-soft"
+			>
+				<span class="pulse"></span>{t("add.draftUnsaved")}
+			</span>
 		{/if}
 	</div>
 
-	<div class="pf-body">
+	<div class="px-[22px] pb-1 pt-[14px] max-md:px-4">
 		{#if draft.imageThumbUrl ?? draft.imageUrl}
-			<div class="pf-photo">
-				<img src={draft.imageThumbUrl ?? draft.imageUrl} alt={t("catalog.photoAlt")} loading="lazy" />
+			<!-- OFF preview photo — contained on a neutral tile; fixed height reserves space so the form doesn't jump on load. -->
+			<div class="mb-[14px] grid h-[200px] place-items-center rounded-lg bg-secondary p-3">
+				<img class="max-h-full max-w-full rounded-sm object-contain" src={draft.imageThumbUrl ?? draft.imageUrl} alt={t("catalog.photoAlt")} loading="lazy" />
 			</div>
 		{/if}
 
-		<div class="dchips">
+		<div class="mb-[13px] flex flex-wrap items-center gap-2">
 			<Badge>{SOURCE_BADGE[badgeKey]}</Badge>
 			{#if draft.source === "OFF" && draft.sourceId}
 				<Badge>{t("catalog.sourceId.off")} {draft.sourceId}</Badge>
 			{/if}
-			<span class="catsel">
-				<CategoryIcon slug={selectedCategorySlug} size={13} class="catsel-ic" />
-				<select aria-label={t("add.categoryLabel")} bind:value={categoryId}>
+			<!-- Editable category select styled as a chip with a leading glyph + chevron. -->
+			<span class="relative inline-flex items-center">
+				<CategoryIcon slug={selectedCategorySlug} size={13} class="pointer-events-none absolute left-[9px]" />
+				<select
+					class="cursor-pointer appearance-none rounded-pill border-0 bg-card px-[26px] py-[5px] text-[0.625rem] font-semibold uppercase tracking-[0.07em] text-foreground shadow-soft outline-none focus:shadow-[var(--shadow-soft),var(--focus)]"
+					aria-label={t("add.categoryLabel")}
+					bind:value={categoryId}
+				>
 					<option value="">{t("add.noCategory")}</option>
 					{#each categories as c (c.id)}
 						<option value={c.id}>{c.namePl}</option>
 					{/each}
 				</select>
-				<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+				<svg class="pointer-events-none absolute right-2 h-[13px] w-[13px] text-muted-foreground" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 					<path d="M10 13.5l-4.5-5h9z" />
 				</svg>
 			</span>
 		</div>
 
-		<div class="names">
-			<div class="namefield pl">
-				<input type="text" bind:value={namePl} aria-label={t("add.namePlLabel")} placeholder={t("add.namePlLabel")} />
-				<span class="nameflag">PL</span>
+		<div class="flex flex-col gap-1.5">
+			<div class="relative">
+				<input
+					class="w-full rounded-sm border border-transparent bg-transparent py-[5px] pl-[9px] pr-8 text-2xl font-semibold leading-[1.15] tracking-[-0.02em] text-foreground outline-none hover:border-[color:var(--border)] focus:border-transparent focus:bg-card focus:shadow-[var(--focus)] max-md:text-[1.375rem]"
+					type="text"
+					bind:value={namePl}
+					aria-label={t("add.namePlLabel")}
+					placeholder={t("add.namePlLabel")}
+				/>
+				<span class="pointer-events-none absolute right-[9px] top-1/2 -translate-y-1/2 text-[0.5625rem] font-semibold tracking-[0.08em] text-muted-foreground">PL</span>
 			</div>
-			<div class="namefield en">
-				<input type="text" bind:value={nameEn} aria-label={t("add.nameEnLabel")} placeholder={t("add.nameEnLabel")} />
-				<span class="nameflag">EN</span>
+			<div class="relative">
+				<input
+					class="w-full rounded-sm border border-transparent bg-transparent py-[5px] pl-[9px] pr-8 text-[0.875rem] text-muted-foreground outline-none hover:border-[color:var(--border)] focus:border-transparent focus:bg-card focus:shadow-[var(--focus)]"
+					type="text"
+					bind:value={nameEn}
+					aria-label={t("add.nameEnLabel")}
+					placeholder={t("add.nameEnLabel")}
+				/>
+				<span class="pointer-events-none absolute right-[9px] top-1/2 -translate-y-1/2 text-[0.5625rem] font-semibold tracking-[0.08em] text-muted-foreground">EN</span>
 			</div>
 		</div>
 
-		<div class="basis">{t("add.profileBasis")}</div>
-		<div class="gauges">
+		<div class="mb-[11px] mt-[18px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("add.profileBasis")}</div>
+		<div class="grid grid-cols-4 gap-2.5">
 			{#each gauges as g (g.macro)}
 				<Gauge
 					macro={g.macro}
@@ -226,32 +249,39 @@
 			{/each}
 		</div>
 
-		<div class="meta">
-			<label class="srv brand">
-				<span class="srvl">{t("add.brandLabel")}</span>
+		<div class="mt-4 flex flex-col gap-2.5">
+			<label class="flex items-center justify-between gap-3">
+				<span class="text-[0.8125rem] text-muted-foreground">{t("add.brandLabel")}</span>
 				<input
-					class="brandin"
+					class="min-w-0 max-w-[260px] flex-1 rounded-sm border bg-card px-[9px] py-[7px] text-right text-[0.8125rem] text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:shadow-[var(--focus)]"
 					type="text"
 					bind:value={brand}
 					placeholder={t("add.brandPlaceholder")}
 					aria-label={t("add.brandLabel")}
 				/>
 			</label>
-			<label class="srv">
-				<span class="srvl">{t("add.servingSize")}</span>
-				<span class="srvin">
-					<input type="number" inputmode="decimal" min="0" bind:value={servingSizeG} aria-label={t("add.servingSize")} />
-					<span class="srvu">g</span>
+			<label class="flex items-center justify-between gap-3">
+				<span class="text-[0.8125rem] text-muted-foreground">{t("add.servingSize")}</span>
+				<span class="relative flex items-center">
+					<input
+						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[26px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
+						type="number"
+						inputmode="decimal"
+						min="0"
+						bind:value={servingSizeG}
+						aria-label={t("add.servingSize")}
+					/>
+					<span class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground">g</span>
 				</span>
 			</label>
 		</div>
 
-		<div class="divider"></div>
+		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>
 
-		<div class="legend">
-			<span class="lt">{t("add.fullProfile")}</span>
-			<span class="lh">
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+		<div class="mb-1 flex items-center justify-between gap-2.5 text-[0.6875rem] text-muted-foreground">
+			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em]">{t("add.fullProfile")}</span>
+			<span class="inline-flex items-center gap-1.5 text-right">
+				<svg class="h-[13px] w-[13px] shrink-0 opacity-60" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 					<path
 						fill-rule="evenodd"
 						d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z"
@@ -273,10 +303,14 @@
 			>
 				{#each group.nutrients as n (n.id)}
 					{@const empty = parseAmount(values[n.id]) === null}
-					<div class="nr" class:na={empty}>
-						<span class="k">{n.namePl || n.nameEn}</span>
-						<span class="vfield">
+					<div class="flex items-center justify-between gap-3 py-1.5 pl-4 pr-0.5">
+						<span class="text-[0.8125rem] text-muted-foreground">{n.namePl || n.nameEn}</span>
+						<span class="flex shrink-0 items-center gap-1.5">
 							<input
+								class={[
+									"numin w-[84px] rounded-sm border bg-card px-[9px] py-[5px] text-right text-[0.8125rem] tabular-nums tracking-[-0.01em] text-foreground outline-none placeholder:italic placeholder:text-muted-foreground placeholder:[font-variant-numeric:normal] focus:border-transparent focus:shadow-[var(--focus)]",
+									empty && "border-dashed",
+								]}
 								type="number"
 								inputmode="decimal"
 								min="0"
@@ -285,7 +319,7 @@
 								placeholder={t("add.noDataPlaceholder")}
 								aria-label={n.namePl || n.nameEn}
 							/>
-							<span class="vu">{n.unit}</span>
+							<span class={["w-6 text-left text-[0.6875rem] text-muted-foreground", empty && "opacity-40"]}>{n.unit}</span>
 						</span>
 					</div>
 				{/each}
@@ -293,11 +327,16 @@
 		{/each}
 	</div>
 
+	<!-- Sticky glass action bar — the weightier action (Save) sits on the right. -->
 	<div class="pf-bar">
-		<button type="button" class="ghost" onclick={() => onCancel?.()}>
+		<button
+			type="button"
+			class="rounded-sm border-0 bg-transparent p-2.5 text-[0.875rem] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+			onclick={() => onCancel?.()}
+		>
 			{cancelLabel ?? t("common.cancel")}
 		</button>
-		<span class="barnote" class:err={!!errorMessage}>{errorMessage ?? ""}</span>
+		<span class={["flex-1 text-center text-[0.6875rem] leading-[1.4]", errorMessage ? "text-destructive" : "text-muted-foreground"]}>{errorMessage ?? ""}</span>
 		<Button onclick={submit} disabled={!canSave}>
 			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 				<path
@@ -310,13 +349,7 @@
 </Panel>
 
 <style>
-	:global(.pf) {
-		padding: 0;
-		border-radius: var(--radius);
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-	}
+	/* Entrance animation — keyframe kept scoped (applied to the Panel root via the `pf` class). */
 	@media (prefers-reduced-motion: no-preference) {
 		:global(.pf) {
 			animation: pf-materialize 0.5s var(--ease-expo) both;
@@ -329,53 +362,15 @@
 		}
 	}
 
-	.pf-top {
-		display: flex;
-		align-items: flex-start;
-		gap: 14px;
-		padding: 18px 22px 0;
-	}
-	.pf-eyebrow {
-		flex: 1;
-		min-width: 0;
-	}
-	.pf-eyebrow .et {
-		font-size: 0.5625rem;
-		font-weight: 600;
-		letter-spacing: 0.09em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-	}
-	.pf-eyebrow .es {
-		font-size: 0.8125rem;
-		color: var(--muted-foreground);
-		line-height: 1.4;
-		margin-top: 3px;
-	}
-	/* Neutral "unsaved" pill — never a semantic hue (colour is reserved for scored data). */
-	.pf-draft {
-		display: inline-flex;
-		align-items: center;
-		gap: 7px;
-		font-size: 0.6875rem;
-		font-weight: 600;
-		letter-spacing: 0.04em;
-		color: var(--foreground);
-		background: var(--card);
-		box-shadow: var(--shadow-soft);
-		padding: 6px 11px 6px 9px;
-		border-radius: var(--pill);
-		flex-shrink: 0;
-		white-space: nowrap;
-	}
-	.pf-draft .pulse {
+	/* "Unsaved" pulse dot — animated ring via ::after (no utility equivalent). */
+	.pulse {
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
 		background: var(--muted-foreground);
 		position: relative;
 	}
-	.pf-draft .pulse::after {
+	.pulse::after {
 		content: "";
 		position: absolute;
 		inset: -4px;
@@ -395,309 +390,23 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.pf-draft .pulse::after {
+		.pulse::after {
 			animation: none;
 		}
 	}
 
-	.pf-body {
-		padding: 14px 22px 4px;
-	}
-	/* OFF preview photo — contained on a neutral tile (read-only; not an editable field).
-	   Fixed height reserves space (tile = placeholder) so the form doesn't jump on load. */
-	.pf-photo {
-		display: grid;
-		place-items: center;
-		height: 200px;
-		background: var(--secondary);
-		border-radius: var(--radius);
-		padding: 12px;
-		margin-bottom: 14px;
-	}
-	.pf-photo img {
-		max-width: 100%;
-		max-height: 100%;
-		object-fit: contain;
-		border-radius: var(--radius-sm);
-	}
-	.dchips {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		flex-wrap: wrap;
-		margin-bottom: 13px;
-	}
-	/* Editable category select styled as a chip with a leading glyph + chevron. */
-	.catsel {
-		position: relative;
-		display: inline-flex;
-		align-items: center;
-	}
-	.catsel :global(.catsel-ic) {
-		position: absolute;
-		left: 9px;
-		pointer-events: none;
-	}
-	.catsel select {
-		appearance: none;
-		-webkit-appearance: none;
-		font-family: inherit;
-		font-size: 0.625rem;
-		font-weight: 600;
-		letter-spacing: 0.07em;
-		text-transform: uppercase;
-		color: var(--foreground);
-		background: var(--card);
-		box-shadow: var(--shadow-soft);
-		border: 0;
-		border-radius: var(--pill);
-		padding: 5px 26px 5px 26px;
-		cursor: pointer;
-		outline: none;
-	}
-	.catsel:focus-within select {
-		box-shadow: var(--shadow-soft), var(--focus);
-	}
-	.catsel .chev {
-		position: absolute;
-		right: 8px;
-		width: 13px;
-		height: 13px;
-		color: var(--muted-foreground);
-		pointer-events: none;
-	}
-
-	.names {
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-	.namefield {
-		position: relative;
-	}
-	.namefield input {
-		width: 100%;
-		font-family: inherit;
-		border: 1px solid transparent;
-		background: transparent;
-		border-radius: var(--radius-sm);
-		outline: none;
-		color: var(--foreground);
-		padding: 5px 32px 5px 9px;
-	}
-	.namefield.pl input {
-		font-size: 1.5rem;
-		font-weight: 600;
-		letter-spacing: -0.02em;
-		line-height: 1.15;
-	}
-	.namefield.en input {
-		font-size: 0.875rem;
-		color: var(--muted-foreground);
-	}
-	.namefield input:hover {
-		border-color: var(--border);
-	}
-	.namefield input:focus {
-		border-color: transparent;
-		background: var(--card);
-		box-shadow: var(--focus);
-	}
-	.nameflag {
-		position: absolute;
-		right: 9px;
-		top: 50%;
-		transform: translateY(-50%);
-		font-size: 0.5625rem;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		color: var(--muted-foreground);
-		pointer-events: none;
-	}
-
-	.basis {
-		font-size: 0.625rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-		margin: 18px 0 11px;
-	}
-	.gauges {
-		display: grid;
-		grid-template-columns: repeat(4, 1fr);
-		gap: 10px;
-	}
-
-	.meta {
-		margin-top: 16px;
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-	}
-	.srv {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-	.brandin {
-		flex: 1;
-		min-width: 0;
-		max-width: 260px;
-		text-align: right;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 7px 9px;
-		outline: none;
-	}
-	.brandin::placeholder {
-		color: var(--muted-foreground);
-	}
-	.brandin:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.srvl {
-		font-size: 0.8125rem;
-		color: var(--muted-foreground);
-	}
-	.srvin {
-		position: relative;
-		display: flex;
-		align-items: center;
-	}
-	.srvin input {
-		width: 96px;
-		text-align: right;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 7px 26px 7px 9px;
-		outline: none;
+	/* Number inputs: suppress the native spinners (no utility for the webkit pseudo-elements). */
+	.numin {
 		-moz-appearance: textfield;
 		appearance: textfield;
 	}
-	.srvin input::-webkit-outer-spin-button,
-	.srvin input::-webkit-inner-spin-button {
+	.numin::-webkit-outer-spin-button,
+	.numin::-webkit-inner-spin-button {
 		-webkit-appearance: none;
 		margin: 0;
 	}
-	.srvin input:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.srvu {
-		position: absolute;
-		right: 9px;
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		pointer-events: none;
-	}
 
-	.divider {
-		height: 1px;
-		background: var(--hairline);
-		margin: 18px 0;
-	}
-	.legend {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 10px;
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		margin: 0 0 4px;
-	}
-	.legend .lt {
-		font-size: 0.625rem;
-		font-weight: 500;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-	}
-	.legend .lh {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		text-align: right;
-	}
-	.legend .lh svg {
-		width: 13px;
-		height: 13px;
-		flex-shrink: 0;
-		opacity: 0.6;
-	}
-
-	.nr {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 6px 2px 6px 16px;
-	}
-	.nr .k {
-		font-size: 0.8125rem;
-		color: var(--muted-foreground);
-	}
-	.vfield {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		flex-shrink: 0;
-	}
-	.vfield input {
-		width: 84px;
-		text-align: right;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-variant-numeric: tabular-nums;
-		letter-spacing: -0.01em;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 5px 9px;
-		outline: none;
-		-moz-appearance: textfield;
-		appearance: textfield;
-	}
-	.vfield input::-webkit-outer-spin-button,
-	.vfield input::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-	.vfield input:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.vfield input::placeholder {
-		color: var(--muted-foreground);
-		font-style: italic;
-		font-variant-numeric: normal;
-	}
-	.vfield .vu {
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		width: 24px;
-		text-align: left;
-	}
-	/* "No data" (empty) state: dashed input border + dimmed unit — NULL, not 0. */
-	.nr.na .vfield input {
-		border-style: dashed;
-	}
-	.nr.na .vu {
-		opacity: 0.4;
-	}
-
-	/* Sticky action bar — the weightier action (Save) sits on the right. */
+	/* Sticky glass action bar — frosted material with a solid fallback. */
 	.pf-bar {
 		position: sticky;
 		bottom: 0;
@@ -711,32 +420,6 @@
 		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
 		border-top: 1px solid var(--hairline);
 	}
-	.pf-bar .ghost {
-		border: 0;
-		background: transparent;
-		font-family: inherit;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		cursor: pointer;
-		padding: 10px;
-		border-radius: var(--radius-sm);
-	}
-	.pf-bar .ghost:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.barnote {
-		flex: 1;
-		text-align: center;
-		font-size: 0.6875rem;
-		line-height: 1.4;
-		color: var(--muted-foreground);
-	}
-	.barnote.err {
-		color: var(--destructive);
-	}
-
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 		.pf-bar {
 			background: var(--card);
@@ -749,16 +432,10 @@
 			background: var(--card);
 		}
 	}
-
 	@media (max-width: 768px) {
-		.pf-top,
-		.pf-body,
 		.pf-bar {
 			padding-left: 16px;
 			padding-right: 16px;
-		}
-		.namefield.pl input {
-			font-size: 1.375rem;
 		}
 	}
 </style>

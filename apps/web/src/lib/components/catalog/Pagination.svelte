@@ -19,7 +19,7 @@
 </script>
 
 {#if pageCount > 1}
-	<div class="pager">
+	<div class="flex items-center justify-center gap-3 pb-1 pt-[18px]">
 		<IconButton
 			size="sm"
 			disabled={!canPrev}
@@ -30,7 +30,7 @@
 				<path d="M12.5 5.5 8 10l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
 			</svg>
 		</IconButton>
-		<span class="ind">{page} / {pageCount}</span>
+		<span class="min-w-[4ch] text-center text-[0.8125rem] tabular-nums text-muted-foreground">{page} / {pageCount}</span>
 		<IconButton
 			size="sm"
 			disabled={!canNext}
@@ -43,20 +43,3 @@
 		</IconButton>
 	</div>
 {/if}
-
-<style>
-	.pager {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 12px;
-		padding: 18px 0 4px;
-	}
-	.ind {
-		font-size: 0.8125rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--muted-foreground);
-		min-width: 4ch;
-		text-align: center;
-	}
-</style>

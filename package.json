@@ -8,7 +8,10 @@
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
     "format": "pnpm -r format",
-    "format:check": "pnpm -r format:check"
+    "format:check": "pnpm -r format:check",
+    "db:push": "bash scripts/db-sync.sh push",
+    "db:pull": "bash scripts/db-sync.sh pull",
+    "db:status": "bash scripts/db-sync.sh status"
   },
   "engines": {
     "node": ">=20",

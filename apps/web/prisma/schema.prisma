@@ -127,10 +127,17 @@ model FoodProduct {
   sourceId       String
   nameEn         String
   namePl         String?
+  brand          String?
   categoryId     String?       @db.Uuid
   category       FoodCategory? @relation(fields: [categoryId], references: [id])
   sourceCategory String?
   servingSizeG   Float?
+  userModified   Boolean       @default(false)
+  // OFF product photos (CC-BY-SA, attribution required). Nullable; CUSTOM rows leave these null.
+  imageUrl            String? // main/display image, full resolution (OFF image_url)
+  imageThumbUrl       String? // main/display image, 100px (OFF image_thumb_url) — row thumbnail
+  imageIngredientsUrl String? // ingredients photo, full (OFF image_ingredients_url)
+  imageNutritionUrl   String? // nutrition-table photo, full (OFF image_nutrition_url)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   foodNutrients  FoodNutrient[]

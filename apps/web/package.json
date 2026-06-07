@@ -15,7 +15,11 @@
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
 		"test": "vitest run",
-		"test:watch": "vitest"
+		"test:watch": "vitest",
+		"db:studio": "prisma studio",
+		"db:migrate": "prisma migrate dev",
+		"db:generate": "prisma generate",
+		"search:reindex": "tsx scripts/seed-food-data.ts --step index"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -61,6 +65,7 @@
 		"meilisearch": "^0.58.0",
 		"pg": "^8.21.0",
 		"resend": "^6.12.3",
+		"svelte-sonner": "^1.1.1",
 		"zod": "^4.4.3"
 	}
 }

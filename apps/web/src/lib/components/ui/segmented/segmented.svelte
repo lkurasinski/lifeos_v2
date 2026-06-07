@@ -11,6 +11,8 @@
 		items: Item[];
 		/** The selected value (two-way bindable). */
 		value?: string;
+		/** Fired on user selection — forwarded to the underlying ToggleGroup. */
+		onValueChange?: (value: string) => void;
 		class?: string;
 		"aria-label"?: string;
 	};

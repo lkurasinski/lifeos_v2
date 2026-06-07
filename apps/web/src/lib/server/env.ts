@@ -10,6 +10,9 @@ const envSchema = z.object({
 	ANTHROPIC_API_KEY: z.string().optional().default(""),
 	MEILISEARCH_HOST: z.string().nonempty(),
 	MEILISEARCH_API_KEY: z.string().nonempty(),
+	// Shared secret guarding POST /api/admin/reindex. Optional: when empty the endpoint is
+	// disabled (503). Set it on Railway to allow triggering a reindex from the sync script.
+	REINDEX_TOKEN: z.string().optional().default(""),
 });
 
 export function validateEnv() {

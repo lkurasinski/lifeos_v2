@@ -1,10 +1,11 @@
-import { json, error } from "@sveltejs/kit";
+import { error } from "@sveltejs/kit";
 import { patchPayloadSchema } from "$lib/food/schema";
 import {
 	updateFoodProduct,
 	deleteFoodProduct,
 	FoodProductNotFoundError,
 } from "$lib/server/food-products";
+import { logRequestBody, jsonLogged } from "$lib/server/http-logging";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -25,10 +26,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	} catch {
 		error(400, "Nieprawidłowe dane produktu");
 	}
+	logRequestBody(payload);
 
 	try {
 		const product = await updateFoodProduct(params.id, payload);
-		return json({ id: product?.id ?? params.id });
+		return jsonLogged({ id: product?.id ?? params.id });
 	} catch (err) {
 		if (err instanceof FoodProductNotFoundError) {
 			error(404, "Nie znaleziono produktu");

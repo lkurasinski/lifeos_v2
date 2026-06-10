@@ -1,32 +1,16 @@
 import { parseSearchParams } from "$lib/food/schema";
-import {
-	getFoodCategories,
-	getNutrientRegistry,
-	searchFoodProducts,
-} from "$lib/server/food-products";
+import { searchFoodProducts } from "$lib/server/food-products";
 import type { PageServerLoad } from "./$types";
 
 /**
  * Server-render the initial (and shareable) catalog state from the URL search params.
- * The `(app)` layout already gates auth (anonymous → /login), so this load assumes a
- * session. Facet/sort/page/search changes re-run this load via URL navigation, so the
- * rendered state always matches the address bar.
- *
- * The nutrient registry (for detail grouping) and the category list (for facet-chip
- * names) are loaded alongside the search result; all three feed the page in one trip.
+ * The `(app)` layout gates auth (anonymous → /login); the foods `+layout.server.ts`
+ * supplies the nutrient registry + category list (loaded once, reused across param-only
+ * navigations). This load returns only the search result, so a facet/sort/page/search
+ * change re-runs and re-serializes just the hits — not the reference data.
  */
 export const load: PageServerLoad = async ({ url }) => {
 	const params = parseSearchParams(url.searchParams);
-	const [result, registry, categories] = await Promise.all([
-		searchFoodProducts(params),
-		getNutrientRegistry(),
-		getFoodCategories(),
-	]);
-
-	return {
-		result,
-		registry: registry.groups,
-		categories,
-		params,
-	};
+	const result = await searchFoodProducts(params);
+	return { result, params };
 };

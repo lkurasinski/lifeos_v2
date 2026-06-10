@@ -1,11 +1,10 @@
-import { error } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 import { parseSearchParams, savePayloadSchema } from "$lib/food/schema";
 import {
 	searchFoodProducts,
 	saveFoodProduct,
 	FoodProductConflictError,
 } from "$lib/server/food-products";
-import { logRequestBody, jsonLogged } from "$lib/server/http-logging";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -26,7 +25,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	}
 
 	const result = await searchFoodProducts(params);
-	return jsonLogged(result);
+	return json(result);
 };
 
 /**
@@ -46,14 +45,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch {
 		error(400, "Nieprawidłowe dane produktu");
 	}
-	logRequestBody(payload);
 
 	try {
 		const product = await saveFoodProduct(payload);
-		return jsonLogged({ id: product.id }, { status: 201 });
+		return json({ id: product.id }, { status: 201 });
 	} catch (err) {
 		if (err instanceof FoodProductConflictError) {
-			return jsonLogged({ error: "conflict", existingId: err.existingId }, { status: 409 });
+			return json({ error: "conflict", existingId: err.existingId }, { status: 409 });
 		}
 		throw err;
 	}

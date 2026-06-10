@@ -1,4 +1,5 @@
 import { NUTRIENT_REGISTRY } from '../../../scripts/data/nutrient-registry.js';
+import { loggedFetch } from './http-logging';
 
 export interface OFFProduct {
 	code: string;
@@ -105,10 +106,11 @@ export async function searchOFF(query: string, limit = 20): Promise<OFFProduct[]
 	});
 	let data: OFFSearchResponse;
 	try {
-		const res = await fetch(`https://pl.openfoodfacts.org/cgi/search.pl?${params}`, {
-			headers: OFF_HEADERS,
-			signal: AbortSignal.timeout(OFF_TIMEOUT_MS),
-		});
+		const res = await loggedFetch(
+			`https://pl.openfoodfacts.org/cgi/search.pl?${params}`,
+			{ headers: OFF_HEADERS, signal: AbortSignal.timeout(OFF_TIMEOUT_MS) },
+			{ name: "off" },
+		);
 		if (!res.ok) {
 			throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
 		}
@@ -130,9 +132,10 @@ export async function getOFFProductByBarcode(barcode: string): Promise<OFFProduc
 	const params = new URLSearchParams({ fields: OFF_FIELDS });
 	let data: OFFProductResponse;
 	try {
-		const res = await fetch(
+		const res = await loggedFetch(
 			`https://pl.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}?${params}`,
 			{ headers: OFF_HEADERS, signal: AbortSignal.timeout(OFF_TIMEOUT_MS) },
+			{ name: "off" },
 		);
 		if (res.status === 404) return null;
 		if (!res.ok) {

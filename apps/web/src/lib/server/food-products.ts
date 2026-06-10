@@ -12,6 +12,7 @@
 import type { MultiSearchParams } from "meilisearch";
 import { prisma } from "$lib/server/db";
 import { meili } from "$lib/server/search";
+import { logger } from "$lib/server/logger";
 import {
 	buildFoodDocument,
 	buildFoodSearchQueries,
@@ -136,10 +137,9 @@ async function syncAfterCommit(op: () => Promise<void>, id: string): Promise<voi
 	try {
 		await op();
 	} catch (err) {
-		console.error(
-			`[food-products] Meili sync failed for ${id} after a committed DB write — ` +
-				"the catalog index is stale for this product until the next mutation or `search:reindex`.",
-			err,
+		logger.error(
+			{ err, id },
+			"Meili sync failed after committed DB write — catalog index stale; recover via search:reindex",
 		);
 	}
 }
@@ -197,6 +197,7 @@ export async function saveFoodProduct(input: SavePayload) {
 		// save of the same (source, sourceId) loses the race here on the DB unique
 		// constraint (P2002). Re-query and surface the same 409 as the pre-check.
 		if (isUniqueConstraintError(err)) {
+			logger.warn({ err }, "concurrent save race — re-querying");
 			const conflict = await prisma.foodProduct.findUnique({
 				where: { source_sourceId: { source: input.source, sourceId } },
 				select: { id: true },

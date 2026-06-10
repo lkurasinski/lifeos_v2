@@ -4,6 +4,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 export interface RequestContext {
 	reqId: string;
 	userId?: string;
+	/** HTTP method + path of the active request, so body logs can self-describe their endpoint. */
+	method?: string;
+	path?: string;
 }
 
 const als = new AsyncLocalStorage<RequestContext>();

@@ -1,8 +1,7 @@
-import { error } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 import { z } from "zod";
 import { OFFError } from "$lib/server/off";
 import { buildOffPreview } from "$lib/server/food-products";
-import { logRequestBody, jsonLogged } from "$lib/server/http-logging";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -27,10 +26,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch {
 		error(400, "Nieprawidłowe zapytanie");
 	}
-	logRequestBody(body);
 
 	try {
-		return jsonLogged({ results: await buildOffPreview(body.query) });
+		return json({ results: await buildOffPreview(body.query) });
 	} catch (err) {
 		// Distinct per-state codes the UI maps to its own messages; non-OFF errors
 		// (e.g. DB) propagate as a genuine 500.

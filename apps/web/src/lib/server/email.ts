@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { RESEND_API_KEY } from "$env/static/private";
+import { logger } from "$lib/server/logger";
 
 const resend = new Resend(RESEND_API_KEY);
 
@@ -13,7 +14,7 @@ export async function sendEmail(opts: { to: string; subject: string; html: strin
 		html: opts.html,
 	});
 	if (error) {
-		console.error(`Failed to send email to ${opts.to}: ${error.message}`);
+		logger.error({ err: error, to: opts.to }, "Failed to send email");
 		throw new Error(`Email delivery failed: ${error.message}`);
 	}
 }

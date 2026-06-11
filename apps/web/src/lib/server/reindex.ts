@@ -59,7 +59,7 @@ export async function reindexFoodProducts(
 	const products = await prisma.foodProduct.findMany({
 		include: {
 			category: true,
-			foodNutrients: { include: { nutrient: { select: { infoodsTagname: true } } } },
+			foodNutrients: true,
 		},
 	});
 	log(`  Loaded ${products.length} products`);
@@ -74,7 +74,7 @@ export async function reindexFoodProducts(
 		buildFoodDocument(
 			p,
 			p.foodNutrients.map((fn) => ({
-				infoodsTagname: fn.nutrient.infoodsTagname,
+				nutrientId: fn.nutrientId,
 				amountPer100g: fn.amountPer100g === null ? null : Number(fn.amountPer100g),
 			})),
 			p.category,

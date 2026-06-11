@@ -89,8 +89,8 @@ export interface PreviewResult {
 // ─── Nutrient registry (read-only metadata for grouping/display) ──────────────
 
 export interface NutrientRegistryEntry {
+	/** The Nutrient PK — the INFOODS tagname (e.g. ENERC_KCAL). */
 	id: string;
-	infoodsTagname: string;
 	nameEn: string;
 	namePl: string;
 	unit: string;
@@ -116,7 +116,8 @@ export interface FoodCategoryMeta {
 
 /** A nutrient amount accepts `number | null` and keeps "absent" distinct from `0`. */
 const nutrientAmountSchema = z.object({
-	nutrientId: z.uuid(),
+	// The Nutrient PK is the INFOODS tagname (a string, e.g. ENERC_KCAL), not a UUID.
+	nutrientId: z.string().min(1),
 	amountPer100g: z.number().min(0).nullable(),
 });
 

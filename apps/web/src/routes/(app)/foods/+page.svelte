@@ -22,10 +22,24 @@
 	const modalMode = new MediaQuery("(max-width: 1199px)", false);
 
 	// Search box is a controlled field; debounce keystrokes into URL navigation. The
-	// URL is the single source of truth (SSR + shareable). A writable $derived fills
-	// the box from the committed query (SSR + back/forward/facet changes) yet still
-	// accepts local edits while the user types, until the next navigation recomputes it.
-	let searchValue = $derived(data.params.q ?? "");
+	// URL is the single source of truth (SSR + shareable), but the box is local $state
+	// so an in-flight navigation landing can't overwrite keystrokes typed while it was
+	// running. We reconcile FROM the URL only on EXTERNAL changes (back/forward, facet
+	// nav, clear) — never on the navigation our own typing triggered — guarded by the
+	// `lastNavigated` value below.
+	// Initial-value capture is intentional — the $effect below owns all later syncing.
+	// svelte-ignore state_referenced_locally
+	let searchValue = $state(data.params.q ?? "");
+	// svelte-ignore state_referenced_locally
+	let lastNavigated = data.params.q ?? "";
+
+	$effect(() => {
+		const committed = data.params.q ?? "";
+		if (committed !== lastNavigated) {
+			searchValue = committed;
+			lastNavigated = committed;
+		}
+	});
 
 	// Selection: desktop keeps it in component state for the inline panel; the modal
 	// drives off shallow-routing page state so the browser back button (and ESC, via
@@ -80,7 +94,11 @@
 			dir: data.params.dir,
 			page: data.params.page,
 		};
-		const qs = buildQuery({ ...current, ...overrides });
+		const next = { ...current, ...overrides };
+		// Record the query we're navigating with so the reconcile $effect skips this
+		// navigation when it lands (and only re-syncs the box on external URL changes).
+		lastNavigated = next.q ?? "";
+		const qs = buildQuery(next);
 		goto(resolve(qs ? `/foods?${qs}` : "/foods"), { keepFocus: true, noScroll: true });
 	}
 

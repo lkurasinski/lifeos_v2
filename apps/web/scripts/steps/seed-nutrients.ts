@@ -17,9 +17,9 @@ export async function seedNutrients(prisma: PrismaClient, options?: { reset?: bo
 		const offSlug = entry.off ? String(entry.off.id) : null;
 
 		await prisma.nutrient.upsert({
-			where: { infoodsTagname: entry.tag },
+			where: { id: entry.tag },
 			create: {
-				infoodsTagname: entry.tag,
+				id: entry.tag,
 				nameEn: entry.nameEn,
 				namePl: entry.namePl,
 				unit: entry.unit,

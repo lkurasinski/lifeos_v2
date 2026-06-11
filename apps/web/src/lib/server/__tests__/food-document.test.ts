@@ -17,8 +17,8 @@ describe("buildFoodDocument", () => {
 		const doc = buildFoodDocument(
 			product,
 			[
-				{ infoodsTagname: "PROCNT", amountPer100g: 9 },
-				{ infoodsTagname: "NA", amountPer100g: 36 },
+				{ nutrientId: "PROCNT", amountPer100g: 9 },
+				{ nutrientId: "NA", amountPer100g: 36 },
 			],
 			{ slug: "nabial", namePl: "Nabiał" },
 		);
@@ -33,10 +33,10 @@ describe("buildFoodDocument", () => {
 		const doc = buildFoodDocument(
 			product,
 			[
-				{ infoodsTagname: "ENERC_KCAL", amountPer100g: 59 },
-				{ infoodsTagname: "PROCNT", amountPer100g: 10 },
-				{ infoodsTagname: "FAT", amountPer100g: 0.4 },
-				{ infoodsTagname: "CHOCDF", amountPer100g: 3.6 },
+				{ nutrientId: "ENERC_KCAL", amountPer100g: 59 },
+				{ nutrientId: "PROCNT", amountPer100g: 10 },
+				{ nutrientId: "FAT", amountPer100g: 0.4 },
+				{ nutrientId: "CHOCDF", amountPer100g: 3.6 },
 			],
 			null,
 		);
@@ -50,8 +50,8 @@ describe("buildFoodDocument", () => {
 		const doc = buildFoodDocument(
 			product,
 			[
-				{ infoodsTagname: "ENERC_KCAL", amountPer100g: null },
-				{ infoodsTagname: "PROCNT", amountPer100g: 10 },
+				{ nutrientId: "ENERC_KCAL", amountPer100g: null },
+				{ nutrientId: "PROCNT", amountPer100g: 10 },
 			],
 			null,
 		);
@@ -64,8 +64,8 @@ describe("buildFoodDocument", () => {
 		const doc = buildFoodDocument(
 			product,
 			[
-				{ infoodsTagname: "FAT", amountPer100g: 0 },
-				{ infoodsTagname: "PROCNT", amountPer100g: null },
+				{ nutrientId: "FAT", amountPer100g: 0 },
+				{ nutrientId: "PROCNT", amountPer100g: null },
 			],
 			null,
 		);

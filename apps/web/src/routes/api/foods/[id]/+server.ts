@@ -1,4 +1,4 @@
-import { json, error } from "@sveltejs/kit";
+import { error, json } from "@sveltejs/kit";
 import { patchPayloadSchema } from "$lib/food/schema";
 import {
 	updateFoodProduct,

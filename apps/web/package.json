@@ -39,6 +39,7 @@
 		"eslint-plugin-svelte": "^3.17.1",
 		"globals": "^17.6.0",
 		"jsdom": "^29.1.1",
+		"pino-princess": "^1.6.1",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.0.1",
 		"prisma": "^7.8.0",
@@ -64,6 +65,7 @@
 		"csv-parse": "^6.2.1",
 		"meilisearch": "^0.58.0",
 		"pg": "^8.21.0",
+		"pino": "^10.3.1",
 		"resend": "^6.12.3",
 		"svelte-sonner": "^1.1.1",
 		"zod": "^4.4.3"

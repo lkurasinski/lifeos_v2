@@ -96,11 +96,6 @@
 		return Number.isFinite(n) ? n : null;
 	}
 
-	// INFOODS macro tag → its registry nutrientId, for the presentational gauges.
-	const tagToId = $derived(
-		new Map(registry.flatMap((g) => g.nutrients.map((n) => [n.infoodsTagname, n.id]))),
-	);
-
 	const GROUP_LABEL = nutrientGroupLabels();
 
 	const badgeKey = $derived(sourceBadgeKey(draft.source));
@@ -119,11 +114,12 @@
 				: { title: t("add.manualEyebrow"), sub: t("add.manualSubtitle") },
 	);
 
-	// Four presentational macro rings, driven live by the matching field values.
+	// Four presentational macro rings, driven live by the matching field values. The
+	// form's `values` are keyed by nutrientId, which IS the INFOODS tagname — so the
+	// macro gauge tag indexes `values` directly.
 	const gauges = $derived(
 		macroGauges().map((g) => {
-			const id = tagToId.get(g.tag);
-			const value = id ? parseAmount(values[id]) : null;
+			const value = parseAmount(values[g.tag]);
 			const pct = value === null ? 0 : macroPct(value, g.max);
 			return { ...g, value, pct };
 		}),

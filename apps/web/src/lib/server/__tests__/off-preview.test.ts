@@ -28,13 +28,6 @@ describe("isBarcodeQuery (smart-input detection)", () => {
 });
 
 describe("preview mapping (buildNutrimentRows → offToDraft)", () => {
-	const nutrientIdMap = new Map([
-		["ENERC_KCAL", "id-kcal"],
-		["PROCNT", "id-protein"],
-		["NA", "id-sodium"],
-		["NACL", "id-salt"],
-	]);
-
 	it("produces a canonical-unit OFF draft (salt/sodium ×1000 applied internally)", () => {
 		const off = {
 			code: "5901234567890",
@@ -43,7 +36,7 @@ describe("preview mapping (buildNutrimentRows → offToDraft)", () => {
 			brands: "Graal",
 			nutriments: { "energy-kcal_100g": 108, proteins_100g: 24, salt_100g: 0.9 },
 		};
-		const rows = buildNutrimentRows(off.nutriments, nutrientIdMap);
+		const rows = buildNutrimentRows(off.nutriments);
 		const draft = offToDraft(off, rows);
 
 		expect(draft.source).toBe("OFF");
@@ -51,11 +44,11 @@ describe("preview mapping (buildNutrimentRows → offToDraft)", () => {
 		expect(draft.nameEn).toBe("Tuna in brine");
 		expect(draft.namePl).toBe("Tuńczyk w sosie własnym");
 		expect(draft.brand).toBe("Graal");
-		// salt 0.9 g → 900 mg (canonical), no raw value leaks through.
-		const salt = draft.nutrients.find((n) => n.nutrientId === "id-salt");
+		// nutrientId IS the INFOODS tag; salt 0.9 g → 900 mg (canonical), no raw value leaks.
+		const salt = draft.nutrients.find((n) => n.nutrientId === "NACL");
 		expect(salt?.amountPer100g).toBeCloseTo(900);
 		// sodium absent from OFF → absent from the draft (NULL, never 0).
-		expect(draft.nutrients.some((n) => n.nutrientId === "id-sodium")).toBe(false);
+		expect(draft.nutrients.some((n) => n.nutrientId === "NA")).toBe(false);
 	});
 
 	it("yields an all-null (empty) draft when the OFF product reports no nutriments", () => {

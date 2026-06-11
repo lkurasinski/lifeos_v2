@@ -46,13 +46,18 @@ usage() {
   cat <<'USAGE'
 db-sync.sh — mirror the food catalog between the local docker stack and Railway.
 
-  ./scripts/db-sync.sh push      # local  -> Railway   (overwrite remote DB, reindex on Railway)
-  ./scripts/db-sync.sh pull      # Railway -> local    (overwrite local DB, reindex locally)
-  ./scripts/db-sync.sh status    # resolved config + connectivity for both ends
+  ./scripts/db-sync.sh push                # local  -> Railway  (overwrite remote DB, reindex on Railway)
+  ./scripts/db-sync.sh push --no-reindex   # mirror only; skip reindex (run it after deploying new code)
+  ./scripts/db-sync.sh reindex             # reindex Railway only (no DB mirror)
+  ./scripts/db-sync.sh pull                # Railway -> local   (overwrite local DB, reindex locally)
+  ./scripts/db-sync.sh status              # resolved config + connectivity for both ends
 
 Full-override mirror via pg_dump | pg_restore (run inside the compose `postgres`
 container so the client matches the v16 server). After a push, the deployed app
 reindexes itself over Railway's private network via POST /api/admin/reindex.
+
+Use `push --no-reindex` then `reindex` when the deployed schema changes shape: mirror
+first, deploy the new code, then reindex (old code can't index the new schema).
 
 Remote config: scripts/railway-remote.env  (copy the .example; gitignored)
 USAGE
@@ -101,6 +106,8 @@ confirm() { read -r -p "$1 [y/N] " a; [[ "$a" =~ ^[Yy]$ ]] || die "aborted"; }
 count_products() { psql_url "$1" "select count(*) from food_product" 2>/dev/null || echo "?"; }
 
 cmd_push() {
+  local no_reindex=0
+  [ "${1:-}" = "--no-reindex" ] && no_reindex=1
   load_remote; compose_pg_up
   echo "${c_ylw}PUSH${c_rst}  local  ->  Railway   ${c_dim}(overwrites the remote database + search index)${c_rst}"
   info "local  food_product rows: $(count_products "$LOCAL_DB")"
@@ -109,9 +116,24 @@ cmd_push() {
   info "dumping local → restoring remote …"
   pg_dump_url "$LOCAL_DB" | pg_restore_url "$REMOTE_DATABASE_URL"
   ok "database mirrored to Railway ($(count_products "$REMOTE_DATABASE_URL") products)"
+  if [ "$no_reindex" = 1 ]; then
+    info "skipping reindex (--no-reindex)."
+    echo "${c_ylw}!${c_rst} Deploy the new code, then reindex: ${c_dim}./scripts/db-sync.sh reindex${c_rst}"
+    echo "${c_dim}  (the currently-deployed app may not be able to reindex the mirrored schema)${c_rst}"
+    return
+  fi
   info "triggering reindex on Railway (private network) …"
   remote_reindex
   ok "Railway is in sync with local."
+}
+
+# Reindex Railway only (no DB mirror) — for the mirror → deploy → reindex order, where
+# the reindex must run AFTER the new code deploys (old code can't index the new schema).
+cmd_reindex() {
+  load_remote
+  info "triggering reindex on Railway (private network) …"
+  remote_reindex
+  ok "Railway reindex complete."
 }
 
 cmd_pull() {
@@ -139,9 +161,10 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  push)   cmd_push ;;
-  pull)   cmd_pull ;;
-  status) cmd_status ;;
+  push)    shift; cmd_push "$@" ;;
+  pull)    cmd_pull ;;
+  reindex) cmd_reindex ;;
+  status)  cmd_status ;;
   ""|-h|--help|help) usage 0 ;;
-  *) die "unknown command '$1' (use push | pull | status)" ;;
+  *) die "unknown command '$1' (use push | pull | reindex | status)" ;;
 esac

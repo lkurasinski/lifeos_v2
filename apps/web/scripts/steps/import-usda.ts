@@ -180,14 +180,16 @@ export interface UsdaMaps {
 	energyEntry: NutrientEntry | undefined;
 	energyDbId: string | undefined;
 	computeEntries: Array<{ entry: NutrientEntry; dbId: string }>;
-	macroTagToDbId: Map<string, string>;
 }
 
 export function buildUsdaMap(
-	nutrients: Array<{ id: string; infoodsTagname: string }>,
+	nutrients: Array<{ id: string }>,
 	registry: NutrientEntry[] = NUTRIENT_REGISTRY
 ): UsdaMaps {
-	const tagToDbId = new Map(nutrients.map((n) => [n.infoodsTagname, n.id]));
+	// The Nutrient PK (`id`) IS the INFOODS tagname, so the row id and the registry
+	// tag are the same string — no tag→id projection needed. We only need the set of
+	// seeded tags to skip registry entries that aren't present in the DB.
+	const seededTags = new Set(nutrients.map((n) => n.id));
 	const standardMap = new Map<number, UsdaNutrientMapping>();
 
 	let energyEntry: NutrientEntry | undefined;
@@ -195,8 +197,8 @@ export function buildUsdaMap(
 	const computeEntries: Array<{ entry: NutrientEntry; dbId: string }> = [];
 
 	for (const entry of registry) {
-		const dbId = tagToDbId.get(entry.tag);
-		if (!dbId) continue;
+		if (!seededTags.has(entry.tag)) continue;
+		const dbId = entry.tag;
 
 		if (entry.energyFallback) {
 			energyEntry = entry;
@@ -218,7 +220,7 @@ export function buildUsdaMap(
 		}
 	}
 
-	return { standardMap, energyEntry, energyDbId, computeEntries, macroTagToDbId: tagToDbId };
+	return { standardMap, energyEntry, energyDbId, computeEntries };
 }
 
 // ── Dataset resolution ─────────────────────────────────────────────
@@ -458,7 +460,7 @@ export async function importUsda(prisma: PrismaClient) {
 	// 3. Build registry-driven lookup maps
 	console.log('Loading nutrient registry...');
 	const allNutrients = await prisma.nutrient.findMany({
-		select: { id: true, infoodsTagname: true },
+		select: { id: true },
 	});
 	const maps = buildUsdaMap(allNutrients);
 	const { standardMap, energyEntry, computeEntries } = maps;

@@ -1,4 +1,5 @@
 import { NUTRIENT_REGISTRY } from '../../../scripts/data/nutrient-registry.js';
+import { loggedFetch } from './http-logging';
 
 export interface OFFProduct {
 	code: string;
@@ -60,11 +61,12 @@ export const OFF_NUTRIENT_MAP: Map<string, { tag: string; factor: number }> = ((
 /**
  * Maps OFF nutriments object to DB-ready nutrient rows.
  * Only processes *_100g keys; applies unit conversion factors from the registry.
- * Silently skips unknown slugs and tags not present in nutrientIdMap.
+ * Silently skips unknown slugs. `nutrientId` is the INFOODS tagname (the Nutrient PK),
+ * taken straight from `OFF_NUTRIENT_MAP` — which is itself derived from the registry,
+ * so every emitted tag corresponds to a seeded Nutrient row.
  */
 export function buildNutrimentRows(
-	nutriments: Record<string, number>,
-	nutrientIdMap: Map<string, string>
+	nutriments: Record<string, number>
 ): Array<{ nutrientId: string; amountPer100g: number }> {
 	const rows: Array<{ nutrientId: string; amountPer100g: number }> = [];
 	for (const [key, raw] of Object.entries(nutriments)) {
@@ -72,10 +74,8 @@ export function buildNutrimentRows(
 		const slug = key.slice(0, -5);
 		const mapping = OFF_NUTRIENT_MAP.get(slug);
 		if (!mapping) continue;
-		const nutrientId = nutrientIdMap.get(mapping.tag);
-		if (!nutrientId) continue;
 		if (typeof raw !== 'number' || isNaN(raw)) continue;
-		rows.push({ nutrientId, amountPer100g: raw * mapping.factor });
+		rows.push({ nutrientId: mapping.tag, amountPer100g: raw * mapping.factor });
 	}
 	return rows;
 }
@@ -105,10 +105,11 @@ export async function searchOFF(query: string, limit = 20): Promise<OFFProduct[]
 	});
 	let data: OFFSearchResponse;
 	try {
-		const res = await fetch(`https://pl.openfoodfacts.org/cgi/search.pl?${params}`, {
-			headers: OFF_HEADERS,
-			signal: AbortSignal.timeout(OFF_TIMEOUT_MS),
-		});
+		const res = await loggedFetch(
+			`https://pl.openfoodfacts.org/cgi/search.pl?${params}`,
+			{ headers: OFF_HEADERS, signal: AbortSignal.timeout(OFF_TIMEOUT_MS) },
+			{ name: "off" },
+		);
 		if (!res.ok) {
 			throw new OFFError(`OFF API error: ${res.status} ${res.statusText}`, res.status);
 		}
@@ -130,9 +131,10 @@ export async function getOFFProductByBarcode(barcode: string): Promise<OFFProduc
 	const params = new URLSearchParams({ fields: OFF_FIELDS });
 	let data: OFFProductResponse;
 	try {
-		const res = await fetch(
+		const res = await loggedFetch(
 			`https://pl.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}?${params}`,
 			{ headers: OFF_HEADERS, signal: AbortSignal.timeout(OFF_TIMEOUT_MS) },
+			{ name: "off" },
 		);
 		if (res.status === 404) return null;
 		if (!res.ok) {

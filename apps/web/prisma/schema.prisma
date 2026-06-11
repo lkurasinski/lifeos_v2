@@ -92,8 +92,7 @@ enum NutrientCategory {
 }
 
 model Nutrient {
-  id             String           @id @default(uuid()) @db.Uuid
-  infoodsTagname String           @unique
+  id             String           @id // INFOODS tagname (e.g. ENERC_KCAL) — natural key
   usdaNutrientId Int?
   usdaNutrientNbr String?
   offSlug        String?
@@ -149,7 +148,7 @@ model FoodProduct {
 
 model FoodNutrient {
   foodId        String      @db.Uuid
-  nutrientId    String      @db.Uuid
+  nutrientId    String
   amountPer100g Decimal?    @db.Decimal(10, 4)
   food          FoodProduct @relation(fields: [foodId], references: [id], onDelete: Cascade)
   nutrient      Nutrient    @relation(fields: [nutrientId], references: [id])

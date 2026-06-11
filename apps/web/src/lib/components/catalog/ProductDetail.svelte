@@ -65,11 +65,11 @@
 			.map((g) => ({
 				label: GROUP_LABEL[g.category] ?? g.category,
 				rows: g.nutrients
-					.filter((n) => hit.nutrients[n.infoodsTagname] !== undefined)
+					.filter((n) => hit.nutrients[n.id] !== undefined)
 					.map((n) => ({
 						id: n.id,
 						name: n.namePl || n.nameEn,
-						value: hit.nutrients[n.infoodsTagname],
+						value: hit.nutrients[n.id],
 						unit: n.unit,
 					})),
 			}))

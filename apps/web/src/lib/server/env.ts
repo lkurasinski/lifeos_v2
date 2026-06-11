@@ -13,6 +13,10 @@ const envSchema = z.object({
 	// Shared secret guarding POST /api/admin/reindex. Optional: when empty the endpoint is
 	// disabled (503). Set it on Railway to allow triggering a reindex from the sync script.
 	REINDEX_TOKEN: z.string().optional().default(""),
+	// Optional log-level override. Validated here for fail-fast + documentation, but the logger
+	// reads it from process.env at runtime (not this build-time-inlined static import) so it can
+	// be toggled on Railway without a rebuild. Defaults: prod → info, otherwise debug.
+	LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
 
 export function validateEnv() {

@@ -79,85 +79,53 @@ describe('OFF_NUTRIENT_MAP', () => {
 });
 
 describe('buildNutrimentRows', () => {
-	const mockNutrientIdMap = new Map([
-		['ENERC_KCAL', 'uuid-kcal'],
-		['PROCNT', 'uuid-protein'],
-		['FAT', 'uuid-fat'],
-		['NA', 'uuid-sodium'],
-		['NACL', 'uuid-salt'],
-		['VITC', 'uuid-vitc'],
-		['FASAT', 'uuid-fasat'],
-		['CHOCDF', 'uuid-carbs'],
-		['SUGAR', 'uuid-sugar'],
-	]);
-
+	// nutrientId IS the INFOODS tagname (the Nutrient PK) — buildNutrimentRows emits
+	// it straight from OFF_NUTRIENT_MAP, so no tag→id map is passed.
 	it('processes _100g suffix keys and maps to canonical values', () => {
-		const rows = buildNutrimentRows(
-			{ 'energy-kcal_100g': 200, proteins_100g: 10 },
-			mockNutrientIdMap
-		);
+		const rows = buildNutrimentRows({ 'energy-kcal_100g': 200, proteins_100g: 10 });
 		expect(rows).toHaveLength(2);
-		const kcal = rows.find((r) => r.nutrientId === 'uuid-kcal');
+		const kcal = rows.find((r) => r.nutrientId === 'ENERC_KCAL');
 		expect(kcal!.amountPer100g).toBe(200);
-		const protein = rows.find((r) => r.nutrientId === 'uuid-protein');
+		const protein = rows.find((r) => r.nutrientId === 'PROCNT');
 		expect(protein!.amountPer100g).toBe(10);
 	});
 
 	it('applies factor 1000 for sodium (g→mg)', () => {
-		const rows = buildNutrimentRows({ sodium_100g: 0.05 }, mockNutrientIdMap);
-		const sodium = rows.find((r) => r.nutrientId === 'uuid-sodium');
+		const rows = buildNutrimentRows({ sodium_100g: 0.05 });
+		const sodium = rows.find((r) => r.nutrientId === 'NA');
 		expect(sodium!.amountPer100g).toBeCloseTo(50);
 	});
 
 	it('applies factor 1000 for salt (g→mg)', () => {
-		const rows = buildNutrimentRows({ salt_100g: 0.12 }, mockNutrientIdMap);
-		const salt = rows.find((r) => r.nutrientId === 'uuid-salt');
+		const rows = buildNutrimentRows({ salt_100g: 0.12 });
+		const salt = rows.find((r) => r.nutrientId === 'NACL');
 		expect(salt!.amountPer100g).toBeCloseTo(120);
 	});
 
 	it('silently skips unknown OFF keys', () => {
-		const rows = buildNutrimentRows(
-			{ unknown_nutrient_100g: 5, proteins_100g: 20 },
-			mockNutrientIdMap
-		);
+		const rows = buildNutrimentRows({ unknown_nutrient_100g: 5, proteins_100g: 20 });
 		expect(rows).toHaveLength(1);
-		expect(rows[0].nutrientId).toBe('uuid-protein');
+		expect(rows[0].nutrientId).toBe('PROCNT');
 	});
 
 	it('silently skips keys without _100g suffix', () => {
-		const rows = buildNutrimentRows(
-			{ proteins: 10, proteins_100g: 20 },
-			mockNutrientIdMap
-		);
+		const rows = buildNutrimentRows({ proteins: 10, proteins_100g: 20 });
 		expect(rows).toHaveLength(1);
 		expect(rows[0].amountPer100g).toBe(20);
 	});
 
-	it('silently skips tags not present in nutrientIdMap', () => {
-		const limitedMap = new Map([['PROCNT', 'uuid-protein']]);
-		const rows = buildNutrimentRows(
-			{ proteins_100g: 15, fat_100g: 8 },
-			limitedMap
-		);
-		expect(rows).toHaveLength(1);
-		expect(rows[0].nutrientId).toBe('uuid-protein');
-	});
-
 	it('produces correct subset for EU-7 mandatory nutrients', () => {
-		const rows = buildNutrimentRows(
-			{
-				'energy-kcal_100g': 250,
-				fat_100g: 10,
-				'saturated-fat_100g': 4,
-				carbohydrates_100g: 30,
-				sugars_100g: 8,
-				proteins_100g: 15,
-				salt_100g: 0.5,
-			},
-			mockNutrientIdMap
-		);
+		const rows = buildNutrimentRows({
+			'energy-kcal_100g': 250,
+			fat_100g: 10,
+			'saturated-fat_100g': 4,
+			carbohydrates_100g: 30,
+			sugars_100g: 8,
+			proteins_100g: 15,
+			salt_100g: 0.5,
+		});
 		expect(rows).toHaveLength(7);
-		const salt = rows.find((r) => r.nutrientId === 'uuid-salt');
+		const salt = rows.find((r) => r.nutrientId === 'NACL');
 		expect(salt!.amountPer100g).toBeCloseTo(500);
 	});
 });

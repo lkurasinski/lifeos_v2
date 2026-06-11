@@ -266,27 +266,25 @@ describe('import unit conversion (raw × factor)', () => {
 			off: null,
 		},
 	];
-	const dbNutrients = [
-		{ id: 'db-na', infoodsTagname: 'NA' },
-		{ id: 'db-procnt', infoodsTagname: 'PROCNT' },
-	];
+	// The Nutrient PK (`id`) IS the INFOODS tagname — buildUsdaMap takes { id } only.
+	const dbNutrients = [{ id: 'NA' }, { id: 'PROCNT' }];
 	const maps = buildUsdaMap(dbNutrients, syntheticRegistry);
 
 	it('applies factor 1000: raw 0.5 g → stored 500 mg', () => {
 		const { rows } = buildFoodNutrientRows([{ nutrient_id: '1093', amount: '0.5' }], maps);
-		const na = rows.find((r) => r.nutrientId === 'db-na');
+		const na = rows.find((r) => r.nutrientId === 'NA');
 		expect(na!.amountPer100g).toBe(500);
 	});
 
 	it('defaults to factor 1 when no factor specified', () => {
 		const { rows } = buildFoodNutrientRows([{ nutrient_id: '1003', amount: '21.5' }], maps);
-		const procnt = rows.find((r) => r.nutrientId === 'db-procnt');
+		const procnt = rows.find((r) => r.nutrientId === 'PROCNT');
 		expect(procnt!.amountPer100g).toBe(21.5);
 	});
 
 	it('keeps null amounts null (no conversion of missing data)', () => {
 		const { rows } = buildFoodNutrientRows([{ nutrient_id: '1093', amount: '' }], maps);
-		const na = rows.find((r) => r.nutrientId === 'db-na');
+		const na = rows.find((r) => r.nutrientId === 'NA');
 		expect(na!.amountPer100g).toBeNull();
 	});
 
@@ -301,15 +299,13 @@ describe('import unit conversion (raw × factor)', () => {
 describe('energy kcal fallback chain', () => {
 	// Real registry + synthetic DB ids for every tag → exercises the real
 	// ENERC_KCAL fallback config (usdaIds: [2048, 2047, 1008] → compute)
-	const dbNutrients = NUTRIENT_REGISTRY.map((e) => ({
-		id: `db-${e.tag}`,
-		infoodsTagname: e.tag,
-	}));
+	// id IS the tag (natural key), so seed the synthetic DB id set straight from the tags.
+	const dbNutrients = NUTRIENT_REGISTRY.map((e) => ({ id: e.tag }));
 	const maps = buildUsdaMap(dbNutrients);
 
 	function energyRow(fnRows: Array<{ nutrient_id: string; amount: string }>) {
 		const { rows, energySource } = buildFoodNutrientRows(fnRows, maps);
-		const energy = rows.find((r) => r.nutrientId === 'db-ENERC_KCAL');
+		const energy = rows.find((r) => r.nutrientId === 'ENERC_KCAL');
 		return { energy, energySource };
 	}
 

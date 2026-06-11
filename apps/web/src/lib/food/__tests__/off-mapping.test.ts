@@ -12,8 +12,8 @@ describe("offToDraft", () => {
 				brands: "Pilos, Lidl",
 			},
 			[
-				{ nutrientId: "id-protein", amountPer100g: 9 },
-				{ nutrientId: "id-sodium", amountPer100g: 50 },
+				{ nutrientId: "PROCNT", amountPer100g: 9 },
+				{ nutrientId: "NA", amountPer100g: 50 },
 			],
 		);
 		expect(d.source).toBe("OFF");
@@ -23,8 +23,8 @@ describe("offToDraft", () => {
 		// `brands` is comma-separated → keep the first (primary) brand.
 		expect(d.brand).toBe("Pilos");
 		expect(d.nutrients).toEqual([
-			{ nutrientId: "id-protein", amountPer100g: 9 },
-			{ nutrientId: "id-sodium", amountPer100g: 50 },
+			{ nutrientId: "PROCNT", amountPer100g: 9 },
+			{ nutrientId: "NA", amountPer100g: 50 },
 		]);
 	});
 

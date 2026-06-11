@@ -51,7 +51,8 @@ interface ProductInput {
 }
 
 interface NutrientInput {
-	infoodsTagname: string;
+	/** The Nutrient PK — the INFOODS tagname (e.g. ENERC_KCAL). */
+	nutrientId: string;
 	amountPer100g: number | null;
 }
 
@@ -89,8 +90,8 @@ export function buildFoodDocument(
 
 	for (const fn of foodNutrients) {
 		if (fn.amountPer100g === null || fn.amountPer100g === undefined) continue;
-		nutrients[fn.infoodsTagname] = fn.amountPer100g;
-		const macro = MACRO_FIELDS[fn.infoodsTagname];
+		nutrients[fn.nutrientId] = fn.amountPer100g;
+		const macro = MACRO_FIELDS[fn.nutrientId];
 		if (macro) doc[macro] = fn.amountPer100g;
 	}
 

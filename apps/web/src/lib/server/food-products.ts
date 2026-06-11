@@ -100,7 +100,7 @@ export async function syncFoodDocument(id: string): Promise<void> {
 		where: { id },
 		include: {
 			category: true,
-			foodNutrients: { include: { nutrient: { select: { infoodsTagname: true } } } },
+			foodNutrients: true,
 		},
 	});
 	if (!product) return;
@@ -108,7 +108,7 @@ export async function syncFoodDocument(id: string): Promise<void> {
 	const doc = buildFoodDocument(
 		product,
 		product.foodNutrients.map((fn) => ({
-			infoodsTagname: fn.nutrient.infoodsTagname,
+			nutrientId: fn.nutrientId,
 			amountPer100g: fn.amountPer100g === null ? null : Number(fn.amountPer100g),
 		})),
 		product.category,
@@ -309,10 +309,10 @@ export async function deleteFoodProduct(id: string): Promise<void> {
 
 /**
  * Load the 74-row nutrient registry grouped by category and ordered by displayRank
- * (used by the manual form, the detail-view join, and tag→id resolution on save).
- * Returns the grouped registry plus the `infoodsTagname → id` map.
+ * (used by the manual form and the detail-view join). The Nutrient PK (`id`) is the
+ * INFOODS tagname, so no tag→id projection is needed.
  */
-type NutrientRegistry = { groups: NutrientRegistryGroup[]; tagToId: Map<string, string> };
+type NutrientRegistry = { groups: NutrientRegistryGroup[] };
 
 // Reference data that never changes during S-01 (the Nutrient registry is read-only;
 // categories have no mutation path in this slice). Memoize the in-flight promise so the
@@ -332,7 +332,6 @@ async function loadNutrientRegistry(): Promise<NutrientRegistry> {
 	const rows = await prisma.nutrient.findMany({
 		select: {
 			id: true,
-			infoodsTagname: true,
 			nameEn: true,
 			namePl: true,
 			unit: true,
@@ -342,13 +341,10 @@ async function loadNutrientRegistry(): Promise<NutrientRegistry> {
 		orderBy: [{ displayRank: { sort: "asc", nulls: "last" } }],
 	});
 
-	const tagToId = new Map<string, string>(rows.map((r) => [r.infoodsTagname, r.id]));
-
 	const groupsMap = new Map<string, NutrientRegistryEntry[]>();
 	for (const r of rows) {
 		const entry: NutrientRegistryEntry = {
 			id: r.id,
-			infoodsTagname: r.infoodsTagname,
 			nameEn: r.nameEn,
 			namePl: r.namePl,
 			unit: r.unit,
@@ -365,7 +361,7 @@ async function loadNutrientRegistry(): Promise<NutrientRegistry> {
 		nutrients,
 	}));
 
-	return { groups, tagToId };
+	return { groups };
 }
 
 /**
@@ -405,9 +401,10 @@ export async function buildOffPreview(query: string): Promise<PreviewResult[]> {
 		: await searchOFF(query);
 	if (offProducts.length === 0) return [];
 
-	// Registry tag→id drives the nutriment mapping (factors applied in buildNutrimentRows);
-	// the category slug→id map lets OFF `categories_tags` pre-fill the form's category.
-	const [{ tagToId }, categories] = await Promise.all([getNutrientRegistry(), getFoodCategories()]);
+	// The category slug→id map lets OFF `categories_tags` pre-fill the form's category.
+	// (Nutriment mapping no longer needs the registry — buildNutrimentRows emits the
+	// INFOODS tagname directly, which IS the Nutrient PK.)
+	const categories = await getFoodCategories();
 	const categorySlugToId = new Map(categories.map((c) => [c.slug, c.id]));
 
 	// Dedup metadata: which of these barcodes already exist as OFF products.
@@ -421,7 +418,7 @@ export async function buildOffPreview(query: string): Promise<PreviewResult[]> {
 	const results: PreviewResult[] = [];
 	for (const product of offProducts) {
 		if (!product.code) continue; // malformed entry → skip
-		const rows = product.nutriments ? buildNutrimentRows(product.nutriments, tagToId) : [];
+		const rows = product.nutriments ? buildNutrimentRows(product.nutriments) : [];
 		const draft = offToDraft(product, rows, categorySlugToId);
 		const existingId = existingByCode.get(product.code);
 		results.push(existingId ? { draft, existing: { id: existingId } } : { draft });

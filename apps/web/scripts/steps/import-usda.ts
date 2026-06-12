@@ -170,7 +170,6 @@ export function parseAmount(raw: string): number | null {
 // ── Registry-derived lookup maps ───────────────────────────────────
 
 interface UsdaNutrientMapping {
-	nutrientDbId: string;
 	factor: number;
 	tag: string;
 }
@@ -178,8 +177,7 @@ interface UsdaNutrientMapping {
 export interface UsdaMaps {
 	standardMap: Map<number, UsdaNutrientMapping>;
 	energyEntry: NutrientEntry | undefined;
-	energyDbId: string | undefined;
-	computeEntries: Array<{ entry: NutrientEntry; dbId: string }>;
+	computeEntries: NutrientEntry[];
 }
 
 export function buildUsdaMap(
@@ -193,34 +191,30 @@ export function buildUsdaMap(
 	const standardMap = new Map<number, UsdaNutrientMapping>();
 
 	let energyEntry: NutrientEntry | undefined;
-	let energyDbId: string | undefined;
-	const computeEntries: Array<{ entry: NutrientEntry; dbId: string }> = [];
+	const computeEntries: NutrientEntry[] = [];
 
 	for (const entry of registry) {
 		if (!seededTags.has(entry.tag)) continue;
-		const dbId = entry.tag;
 
 		if (entry.energyFallback) {
 			energyEntry = entry;
-			energyDbId = dbId;
 			continue;
 		}
 
 		if (entry.computeFromSum) {
-			computeEntries.push({ entry, dbId });
+			computeEntries.push(entry);
 			continue;
 		}
 
 		if (entry.usda && typeof entry.usda.id === 'number') {
 			standardMap.set(entry.usda.id, {
-				nutrientDbId: dbId,
 				factor: entry.usda.factor ?? 1,
 				tag: entry.tag,
 			});
 		}
 	}
 
-	return { standardMap, energyEntry, energyDbId, computeEntries };
+	return { standardMap, energyEntry, computeEntries };
 }
 
 // ── Dataset resolution ─────────────────────────────────────────────
@@ -383,7 +377,7 @@ export function buildFoodNutrientRows(
 	fnRows: Array<Pick<FoodNutrientRow, 'nutrient_id' | 'amount'>>,
 	maps: UsdaMaps
 ): { rows: BuiltNutrientRow[]; energySource: string | null } {
-	const { standardMap, energyEntry, energyDbId, computeEntries } = maps;
+	const { standardMap, energyEntry, computeEntries } = maps;
 
 	// Raw USDA nutrient ID → amount map for energy fallback
 	const rawByUsdaId = new Map<number, number | null>();
@@ -405,20 +399,20 @@ export function buildFoodNutrientRows(
 
 		const raw = parseAmount(row.amount);
 		const converted = raw !== null ? raw * mapping.factor : null;
-		rows.push({ nutrientId: mapping.nutrientDbId, amountPer100g: converted });
+		rows.push({ nutrientId: mapping.tag, amountPer100g: converted });
 		importedValues.set(mapping.tag, converted);
 	}
 
 	// Energy kcal via fallback chain
 	let energySource: string | null = null;
-	if (energyEntry && energyDbId) {
+	if (energyEntry) {
 		const { value, source } = resolveEnergyKcal(rawByUsdaId, importedValues, energyEntry);
-		rows.push({ nutrientId: energyDbId, amountPer100g: value });
+		rows.push({ nutrientId: energyEntry.tag, amountPer100g: value });
 		energySource = source;
 	}
 
 	// Computed-from-sum nutrients (FAPUN3 = ALA + EPA + DPA + DHA)
-	for (const { entry, dbId } of computeEntries) {
+	for (const entry of computeEntries) {
 		let sum: number | null = null;
 
 		for (const componentTag of entry.computeFromSum!) {
@@ -434,7 +428,7 @@ export function buildFoodNutrientRows(
 			}
 		}
 
-		rows.push({ nutrientId: dbId, amountPer100g: sum });
+		rows.push({ nutrientId: entry.tag, amountPer100g: sum });
 	}
 
 	return { rows, energySource };

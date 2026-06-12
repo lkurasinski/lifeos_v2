@@ -107,7 +107,11 @@ count_products() { psql_url "$1" "select count(*) from food_product" 2>/dev/null
 
 cmd_push() {
   local no_reindex=0
-  [ "${1:-}" = "--no-reindex" ] && no_reindex=1
+  case "${1:-}" in
+    --no-reindex) no_reindex=1 ;;
+    "") ;;
+    *) die "unknown option '$1' for push (only --no-reindex is supported)" ;;
+  esac
   load_remote; compose_pg_up
   echo "${c_ylw}PUSH${c_rst}  local  ->  Railway   ${c_dim}(overwrites the remote database + search index)${c_rst}"
   info "local  food_product rows: $(count_products "$LOCAL_DB")"

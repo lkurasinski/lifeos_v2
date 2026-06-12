@@ -4,6 +4,7 @@ import {
 	searchFoodProducts,
 	saveFoodProduct,
 	FoodProductConflictError,
+	UnknownNutrientError,
 } from "$lib/server/food-products";
 import type { RequestHandler } from "./$types";
 
@@ -52,6 +53,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	} catch (err) {
 		if (err instanceof FoodProductConflictError) {
 			return json({ error: "conflict", existingId: err.existingId }, { status: 409 });
+		}
+		if (err instanceof UnknownNutrientError) {
+			error(400, "Nieprawidłowy składnik odżywczy");
 		}
 		throw err;
 	}

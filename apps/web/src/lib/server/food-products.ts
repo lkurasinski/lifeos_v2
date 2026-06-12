@@ -56,11 +56,29 @@ function isUniqueConstraintError(err: unknown): boolean {
 	);
 }
 
+/** Prisma's "foreign key constraint failed" code (P2003), duck-typed like P2002 above.
+ *  On the write paths this means a `nutrientId` that isn't a seeded Nutrient tag. */
+function isForeignKeyConstraintError(err: unknown): boolean {
+	return (
+		typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === "P2003"
+	);
+}
+
 /** Thrown when an update/delete targets a missing product. */
 export class FoodProductNotFoundError extends Error {
 	constructor(public id: string) {
 		super("Food product not found");
 		this.name = "FoodProductNotFoundError";
+	}
+}
+
+/** Thrown when a payload references a `nutrientId` that is not a known Nutrient tag.
+ *  `nutrientId` is a natural key (INFOODS tagname) the client sends, so an unknown
+ *  value trips the FK (P2003) on insert — surface it as a 400, not a 500. */
+export class UnknownNutrientError extends Error {
+	constructor() {
+		super("Unknown nutrient id");
+		this.name = "UnknownNutrientError";
 	}
 }
 
@@ -204,6 +222,10 @@ export async function saveFoodProduct(input: SavePayload) {
 			});
 			throw new FoodProductConflictError(conflict?.id ?? sourceId);
 		}
+		// A nutrientId that isn't a seeded Nutrient tag trips the FK (P2003).
+		if (isForeignKeyConstraintError(err)) {
+			throw new UnknownNutrientError();
+		}
 		throw err;
 	}
 
@@ -228,36 +250,44 @@ export async function updateFoodProduct(id: string, input: PatchPayload) {
 	const { present, removed } = partitionNutrients(input.nutrients);
 	const flagModified = shouldFlagUserModified(existing.source);
 
-	await prisma.$transaction(async (tx) => {
-		await tx.foodProduct.update({
-			where: { id },
-			data: {
-				nameEn: input.nameEn,
-				namePl: input.namePl ?? null,
-				brand: input.brand ?? null,
-				categoryId: input.categoryId ?? null,
-				servingSizeG: input.servingSizeG ?? null,
-				imageUrl: input.imageUrl ?? null,
-				imageThumbUrl: input.imageThumbUrl ?? null,
-				imageIngredientsUrl: input.imageIngredientsUrl ?? null,
-				imageNutritionUrl: input.imageNutritionUrl ?? null,
-				...(flagModified ? { userModified: true } : {}),
-			},
-		});
+	try {
+		await prisma.$transaction(async (tx) => {
+			await tx.foodProduct.update({
+				where: { id },
+				data: {
+					nameEn: input.nameEn,
+					namePl: input.namePl ?? null,
+					brand: input.brand ?? null,
+					categoryId: input.categoryId ?? null,
+					servingSizeG: input.servingSizeG ?? null,
+					imageUrl: input.imageUrl ?? null,
+					imageThumbUrl: input.imageThumbUrl ?? null,
+					imageIngredientsUrl: input.imageIngredientsUrl ?? null,
+					imageNutritionUrl: input.imageNutritionUrl ?? null,
+					...(flagModified ? { userModified: true } : {}),
+				},
+			});
 
-		if (removed.length > 0) {
-			await tx.foodNutrient.deleteMany({
-				where: { foodId: id, nutrientId: { in: removed } },
-			});
+			if (removed.length > 0) {
+				await tx.foodNutrient.deleteMany({
+					where: { foodId: id, nutrientId: { in: removed } },
+				});
+			}
+			for (const n of present) {
+				await tx.foodNutrient.upsert({
+					where: { foodId_nutrientId: { foodId: id, nutrientId: n.nutrientId } },
+					create: { foodId: id, nutrientId: n.nutrientId, amountPer100g: n.amountPer100g },
+					update: { amountPer100g: n.amountPer100g },
+				});
+			}
+		});
+	} catch (err) {
+		// A nutrientId that isn't a seeded Nutrient tag trips the FK (P2003).
+		if (isForeignKeyConstraintError(err)) {
+			throw new UnknownNutrientError();
 		}
-		for (const n of present) {
-			await tx.foodNutrient.upsert({
-				where: { foodId_nutrientId: { foodId: id, nutrientId: n.nutrientId } },
-				create: { foodId: id, nutrientId: n.nutrientId, amountPer100g: n.amountPer100g },
-				update: { amountPer100g: n.amountPer100g },
-			});
-		}
-	});
+		throw err;
+	}
 
 	await syncAfterCommit(() => syncFoodDocument(id), id);
 	return prisma.foodProduct.findUnique({ where: { id } });

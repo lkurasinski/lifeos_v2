@@ -4,6 +4,7 @@ import {
 	updateFoodProduct,
 	deleteFoodProduct,
 	FoodProductNotFoundError,
+	UnknownNutrientError,
 } from "$lib/server/food-products";
 import type { RequestHandler } from "./$types";
 
@@ -32,6 +33,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	} catch (err) {
 		if (err instanceof FoodProductNotFoundError) {
 			error(404, "Nie znaleziono produktu");
+		}
+		if (err instanceof UnknownNutrientError) {
+			error(400, "Nieprawidłowy składnik odżywczy");
 		}
 		throw err;
 	}

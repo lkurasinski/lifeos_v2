@@ -7,7 +7,7 @@
 	import { t } from "$lib/i18n";
 	import CategoryIcon from "./CategoryIcon.svelte";
 	import NutrientGroupSection from "./NutrientGroupSection.svelte";
-	import { formatAmount, macroGauges, macroPct, nutrientGroupLabels, sourceBadgeKey } from "./meta";
+	import { formatAmount, groupRegistryRows, macroGauges, macroPct, sourceBadgeKey } from "./meta";
 
 	// Detail panel for the selected product — four identity-hued macro rings (graphite
 	// figure) over the full nutrient profile, grouped by registry category and
@@ -44,7 +44,6 @@
 		usda: t("catalog.sourceId.usda"),
 		off: t("catalog.sourceId.off"),
 	};
-	const GROUP_LABEL = nutrientGroupLabels();
 
 	const badgeKey = $derived(sourceBadgeKey(hit.source));
 
@@ -58,23 +57,9 @@
 	});
 	const gauges = $derived(macroGauges().map((g) => ({ ...g, value: macroValue[g.macro] })));
 
-	// Present nutrients grouped by registry category (absent ones already omitted from
-	// the hit's `nutrients` map). Empty groups are dropped.
-	const groups = $derived(
-		registry
-			.map((g) => ({
-				label: GROUP_LABEL[g.category] ?? g.category,
-				rows: g.nutrients
-					.filter((n) => hit.nutrients[n.id] !== undefined)
-					.map((n) => ({
-						id: n.id,
-						name: n.namePl || n.nameEn,
-						value: hit.nutrients[n.id],
-						unit: n.unit,
-					})),
-			}))
-			.filter((g) => g.rows.length > 0),
-	);
+	// Present nutrients grouped by registry category via the shared `groupRegistryRows` (absent
+	// ones already omitted from the hit's `nutrients` map — NULL≠0). Empty groups are dropped.
+	const groups = $derived(groupRegistryRows(registry, hit.nutrients));
 	const totalCount = $derived(groups.reduce((sum, g) => sum + g.rows.length, 0));
 
 	// OFF product photos (CC-BY-SA). Hero = main display image; the ingredients/nutrition

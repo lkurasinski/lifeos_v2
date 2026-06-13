@@ -57,7 +57,15 @@ import {
 	type RecipeDocument,
 	type RecipeSearchParams,
 	type RecipeSearchResult,
+	type RecipeDetailView,
+	type RecipeComponentView,
+	type SubComponentView,
+	type TaxonomyView,
+	type RecipeTaxonomies,
+	type UnitView,
 } from "$lib/recipe/schema";
+import type { RecipeStep } from "$lib/recipe/schema";
+import type { IncompleteComponent } from "$lib/recipe/nutrition";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -573,18 +581,29 @@ export async function deleteRecipe(userId: string, id: string): Promise<void> {
 }
 
 /**
- * Throw `RecipeInUseError` (listing the referencing recipe ids) when `id` is used as a
- * sub-recipe by any other recipe. The reusable in-use seam S-06 (meal-plan delete-block)
- * plugs into — extend this with a meal-plan check when that model lands.
+ * The DISTINCT ids of other recipes that use `id` as a sub-recipe. The ONE source for both
+ * the DELETE in-use guard (`assertRecipeNotInUse`) and the detail "used in N recipes" badge
+ * (`getRecipeForView`), so the two can never disagree. The reusable in-use seam S-06
+ * (meal-plan delete-block) plugs in HERE — extend this with a meal-plan check when that model
+ * lands and both the guard and the badge pick it up together.
  */
-export async function assertRecipeNotInUse(id: string): Promise<void> {
+async function distinctReferrers(id: string): Promise<string[]> {
 	const refs = await prisma.recipeComponent.findMany({
 		where: { subRecipeId: id },
 		select: { recipeId: true },
 		distinct: ["recipeId"],
 	});
-	if (refs.length > 0) {
-		throw new RecipeInUseError(refs.map((r) => r.recipeId));
+	return refs.map((r) => r.recipeId);
+}
+
+/**
+ * Throw `RecipeInUseError` (listing the referencing recipe ids) when `id` is used as a
+ * sub-recipe by any other recipe.
+ */
+export async function assertRecipeNotInUse(id: string): Promise<void> {
+	const referrers = await distinctReferrers(id);
+	if (referrers.length > 0) {
+		throw new RecipeInUseError(referrers);
 	}
 }
 
@@ -641,56 +660,189 @@ export async function recomputeDependents(
 
 // ─── Read paths ───────────────────────────────────────────────────────────────────
 
-/** Drop `userId` from a row (privacy: the product is non-social — owner ids never ship). */
-function omitUserId<T extends { userId: unknown }>(row: T): Omit<T, "userId"> {
-	const rest = { ...row };
-	delete (rest as { userId?: unknown }).userId;
-	return rest;
+/**
+ * The richer include the DETAIL view needs (Phase 5): on top of the rollup relations it
+ * loads ONE level of sub-recipe breakdown — each sub-recipe's own ordered components (with
+ * unit + product display name) and its steps — so the detail panel can render the indented
+ * sub-recipe ingredient list + derived step stages (`browse-detail-complex.html`). Kept
+ * SEPARATE from `ROLLUP_INCLUDE` so the recompute fan-out (which loads many recipes) stays
+ * lean and doesn't pull a second relation level it never reads.
+ */
+const RECIPE_VIEW_INCLUDE = {
+	components: {
+		orderBy: { orderIndex: "asc" },
+		include: {
+			unit: true,
+			product: { select: { id: true, namePl: true, nameEn: true } },
+			subRecipe: {
+				include: {
+					components: {
+						orderBy: { orderIndex: "asc" },
+						include: {
+							unit: true,
+							product: { select: { id: true, namePl: true, nameEn: true } },
+							// `steps` (server-only) lets the view flag a grandchild whose method
+							// the one-level-deep stage rendering can't show — so the omission is
+							// named, not silent. The steps JSON itself never ships to the client.
+							subRecipe: { select: { name: true, steps: true } },
+						},
+					},
+				},
+			},
+		},
+	},
+	mealTypes: true,
+	diets: true,
+	allergens: true,
+	techniques: true,
+	cuisine: true,
+} satisfies Prisma.RecipeInclude;
+
+type ViewLoadedRecipe = Prisma.RecipeGetPayload<{ include: typeof RECIPE_VIEW_INCLUDE }>;
+
+/** Reduce a loaded `Unit` row to the conversion-irrelevant display slice the view ships. */
+function toUnitView(unit: ViewLoadedRecipe["components"][number]["unit"]): UnitView {
+	return { slug: unit.slug, namePl: unit.namePl, nameEn: unit.nameEn, kind: unit.kind };
+}
+
+/** Reduce a taxonomy join row to the id + slug + localized-name slice the view ships. */
+function toTaxonomyView(row: { id: string; slug: string; namePl: string; nameEn: string }): TaxonomyView {
+	return { id: row.id, slug: row.slug, namePl: row.namePl, nameEn: row.nameEn };
 }
 
 /**
- * Project a loaded recipe into the serializable detail-view DTO: replace `userId` with an
- * `isOwner` flag (so the owner gets the Usuń/Edytuj affordances without leaking the owner id
- * — same for a nested sub-recipe), and `Number()`-normalize the product nutrient `Decimal`s
- * so the read model matches the rest of the codebase (no `Decimal`-as-string over the wire).
+ * Project a loaded recipe into the serializable `RecipeDetailView`: replace `userId` with an
+ * `isOwner` flag (owner gets Usuń/Edytuj without leaking the id), cast the cached JSON columns
+ * (`steps`/`nutrients`/`incompleteComponents`) to their typed shapes, and flatten one level of
+ * sub-recipe breakdown. `usedInCount` is supplied by the caller (a separate distinct query).
  */
-function toRecipeView(recipe: LoadedRecipe, viewerId: string) {
-	const base = omitUserId(recipe);
+function toRecipeView(recipe: ViewLoadedRecipe, viewerId: string, usedInCount: number): RecipeDetailView {
+	const components: RecipeComponentView[] = recipe.components.map((c) => ({
+		id: c.id,
+		orderIndex: c.orderIndex,
+		amount: c.amount,
+		note: c.note,
+		gramsResolved: c.gramsResolved,
+		unit: toUnitView(c.unit),
+		product: c.product ? { id: c.product.id, namePl: c.product.namePl, nameEn: c.product.nameEn } : null,
+		subRecipe: c.subRecipe
+			? {
+					id: c.subRecipe.id,
+					name: c.subRecipe.name,
+					nutritionComplete: c.subRecipe.nutritionComplete,
+					prepTimeMin: c.subRecipe.prepTimeMin,
+					cookTimeMin: c.subRecipe.cookTimeMin,
+					steps: (c.subRecipe.steps ?? []) as RecipeStep[],
+					components: c.subRecipe.components.map(
+						(sc): SubComponentView => ({
+							id: sc.id,
+							amount: sc.amount,
+							gramsResolved: sc.gramsResolved,
+							note: sc.note,
+							unit: toUnitView(sc.unit),
+							product: sc.product
+								? { id: sc.product.id, namePl: sc.product.namePl, nameEn: sc.product.nameEn }
+								: null,
+							subRecipeName: sc.subRecipe?.name ?? null,
+							subRecipeHasSteps: ((sc.subRecipe?.steps ?? []) as RecipeStep[]).length > 0,
+						}),
+					),
+				}
+			: null,
+	}));
+
+	// Per-serving projection of the cached totals, using the SAME divisor as the nutrition
+	// engine (`servings > 0 ? servings : 1`). Computed once here so the detail UI never
+	// re-divides totals itself (single source of truth for per-serving figures).
+	const totals = (recipe.nutrients ?? {}) as Record<string, number>;
+	const divisor = recipe.servings > 0 ? recipe.servings : 1;
+	const perServing: Record<string, number> = {};
+	for (const tag of Object.keys(totals)) perServing[tag] = totals[tag] / divisor;
+
 	return {
-		...base,
+		id: recipe.id,
+		name: recipe.name,
+		description: recipe.description,
+		servings: recipe.servings,
+		prepTimeMin: recipe.prepTimeMin,
+		cookTimeMin: recipe.cookTimeMin,
+		difficulty: recipe.difficulty,
+		status: recipe.status,
+		visibility: recipe.visibility,
 		isOwner: recipe.userId === viewerId,
-		components: recipe.components.map((c) => ({
-			...c,
-			product: c.product
-				? {
-						...c.product,
-						foodNutrients: c.product.foodNutrients.map((fn) => ({
-							nutrientId: fn.nutrientId,
-							amountPer100g: fn.amountPer100g === null ? null : Number(fn.amountPer100g),
-						})),
-					}
-				: null,
-			subRecipe: c.subRecipe ? omitUserId(c.subRecipe) : null,
-		})),
+		tips: recipe.tips,
+		steps: (recipe.steps ?? []) as RecipeStep[],
+		imageUrl: recipe.imageUrl,
+		nutrients: totals,
+		perServing,
+		incompleteComponents: (recipe.incompleteComponents ?? []) as unknown as IncompleteComponent[],
+		nutritionComplete: recipe.nutritionComplete,
+		energyKcalPerServing: recipe.energyKcalPerServing,
+		proteinPerServing: recipe.proteinPerServing,
+		fatPerServing: recipe.fatPerServing,
+		carbsPerServing: recipe.carbsPerServing,
+		mealTypes: recipe.mealTypes.map(toTaxonomyView),
+		diets: recipe.diets.map(toTaxonomyView),
+		allergens: recipe.allergens.map(toTaxonomyView),
+		techniques: recipe.techniques.map(toTaxonomyView),
+		cuisine: recipe.cuisine ? toTaxonomyView(recipe.cuisine) : null,
+		components,
+		usedInCount,
 	};
 }
 
-/** The detail-view read model — owner id replaced by `isOwner`, nutrient amounts numeric. */
-export type RecipeView = ReturnType<typeof toRecipeView>;
+/**
+ * The single recipe-visibility predicate: the owner sees any of their own recipes (incl.
+ * drafts); every other viewer sees only PUBLISHED + PUBLIC rows. This is the authoritative
+ * gate for the detail read path. Search enforces the same rule at a different altitude — the
+ * `PUBLISHED` half via index membership (drafts are never indexed) and the PUBLIC/owner half
+ * via `scopeClause` — so any future "index drafts for the owner" change MUST re-gate search
+ * to keep the two paths aligned. Kept as one named predicate so the rule has a single home.
+ */
+function isRecipeVisibleToViewer(
+	recipe: { userId: string; status: string; visibility: string },
+	viewerId: string,
+): boolean {
+	return (
+		recipe.userId === viewerId ||
+		(recipe.status === "PUBLISHED" && recipe.visibility === "PUBLIC")
+	);
+}
 
 /**
- * Load a recipe for the detail view, enforcing visibility: the owner sees any of their
- * recipes (incl. drafts); other viewers see only PUBLISHED + PUBLIC. Returns the projected
- * DTO (cached nutrients map + components + taxonomies) — the detail UI reads the cache from
- * Postgres, never Meili. `null` when missing or not visible to the viewer.
+ * Load a recipe for the detail view, enforcing visibility via `isRecipeVisibleToViewer`.
+ * Returns the projected DTO (cached nutrients map + components + taxonomies) — the detail UI
+ * reads the cache from Postgres, never Meili. `null` when missing or not visible to the viewer.
+ * The row load and the distinct-referrers count are independent, so they run concurrently.
  */
-export async function getRecipeForView(viewerId: string, id: string): Promise<RecipeView | null> {
-	const recipe = await prisma.recipe.findUnique({ where: { id }, include: ROLLUP_INCLUDE });
-	if (!recipe) return null;
-	const visible =
-		recipe.userId === viewerId ||
-		(recipe.status === "PUBLISHED" && recipe.visibility === "PUBLIC");
-	return visible ? toRecipeView(recipe, viewerId) : null;
+export async function getRecipeForView(
+	viewerId: string,
+	id: string,
+): Promise<RecipeDetailView | null> {
+	const [recipe, referrers] = await Promise.all([
+		prisma.recipe.findUnique({ where: { id }, include: RECIPE_VIEW_INCLUDE }),
+		distinctReferrers(id),
+	]);
+	if (!recipe || !isRecipeVisibleToViewer(recipe, viewerId)) return null;
+	return toRecipeView(recipe, viewerId, referrers.length);
+}
+
+/** Load the five recipe taxonomy vocabularies (facet labels + detail chips; Phase 5/6). */
+export async function getRecipeTaxonomies(): Promise<RecipeTaxonomies> {
+	const select = { id: true, slug: true, namePl: true, nameEn: true } as const;
+	const [mealTypes, diets, allergens, techniques, cuisines] = await Promise.all([
+		prisma.mealType.findMany({ select, orderBy: { namePl: "asc" } }),
+		prisma.diet.findMany({ select, orderBy: { namePl: "asc" } }),
+		prisma.allergen.findMany({ select, orderBy: { namePl: "asc" } }),
+		prisma.technique.findMany({ select, orderBy: { namePl: "asc" } }),
+		prisma.cuisine.findMany({ select, orderBy: { namePl: "asc" } }),
+	]);
+	return { mealTypes, diets, allergens, techniques, cuisines };
+}
+
+/** Count the viewer's own DRAFT recipes — the live `Szkice N` scope-segment badge. */
+export function countOwnDrafts(userId: string): Promise<number> {
+	return prisma.recipe.count({ where: { userId, status: "DRAFT" } });
 }
 
 /**
@@ -710,14 +862,18 @@ export async function getRecipeForEdit(userId: string, id: string): Promise<Load
 }
 
 /**
- * List the viewer's own DRAFT recipes (the `Szkice N` scope segment). Drafts are never
- * indexed in Meili, so this scope is served straight from Postgres (plan: Phase 4).
+ * List ONE page of the viewer's own DRAFT recipes (the `Szkice N` scope segment). Drafts are
+ * never indexed in Meili, so this scope is served straight from Postgres (plan: Phase 4).
+ * Paginated in the DB (`skip`/`take`) so a viewer with many drafts loads only the visible
+ * page rather than the whole set on every page view.
  */
-export function listOwnDrafts(userId: string): Promise<LoadedRecipe[]> {
+export function listOwnDrafts(userId: string, skip: number, take: number): Promise<LoadedRecipe[]> {
 	return prisma.recipe.findMany({
 		where: { userId, status: "DRAFT" },
 		include: ROLLUP_INCLUDE,
 		orderBy: { updatedAt: "desc" },
+		skip,
+		take,
 	});
 }
 
@@ -750,12 +906,13 @@ export async function searchRecipes(
 	viewerId: string,
 ): Promise<RecipeSearchResult> {
 	if (params.scope === "szkice") {
-		const drafts = await listOwnDrafts(viewerId);
-		const start = (params.page - 1) * params.limit;
-		const hits: RecipeDocument[] = drafts
-			.slice(start, start + params.limit)
-			.map((r) => buildRecipeDocument(toDocInput(r)));
-		return { hits, total: drafts.length, page: params.page, limit: params.limit, facets: EMPTY_RECIPE_FACETS };
+		const skip = (params.page - 1) * params.limit;
+		const [drafts, total] = await Promise.all([
+			listOwnDrafts(viewerId, skip, params.limit),
+			countOwnDrafts(viewerId),
+		]);
+		const hits: RecipeDocument[] = drafts.map((r) => buildRecipeDocument(toDocInput(r)));
+		return { hits, total, page: params.page, limit: params.limit, facets: EMPTY_RECIPE_FACETS };
 	}
 
 	const queries = buildRecipeSearchQueries(params, viewerId);

@@ -14,6 +14,7 @@
 import type { MultiSearchQuery, MultiSearchResult } from "meilisearch";
 import type {
 	RecipeDocument,
+	RecipeStatus,
 	RecipeVisibility,
 	RecipeDifficulty,
 	RecipeSearchParams,
@@ -67,6 +68,7 @@ export interface RecipeDocInput {
 	userId: string;
 	name: string;
 	description: string | null;
+	status: RecipeStatus;
 	visibility: RecipeVisibility;
 	difficulty: RecipeDifficulty | null;
 	servings: number;
@@ -101,6 +103,7 @@ export interface RecipeRowForDoc {
 	userId: string;
 	name: string;
 	description: string | null;
+	status: RecipeStatus;
 	visibility: RecipeVisibility;
 	difficulty: RecipeDifficulty | null;
 	servings: number;
@@ -137,6 +140,7 @@ export function projectRecipeToDocInput(recipe: RecipeRowForDoc): RecipeDocInput
 		userId: recipe.userId,
 		name: recipe.name,
 		description: recipe.description,
+		status: recipe.status,
 		visibility: recipe.visibility,
 		difficulty: recipe.difficulty,
 		servings: recipe.servings,
@@ -170,6 +174,7 @@ export function buildRecipeDocument(recipe: RecipeDocInput): RecipeDocument {
 		name: recipe.name,
 		description: recipe.description,
 		ownerId: recipe.userId,
+		status: recipe.status,
 		visibility: recipe.visibility,
 		difficulty: recipe.difficulty,
 		mealTypeSlugs: recipe.mealTypes.map((t) => t.slug),

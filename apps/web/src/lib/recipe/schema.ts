@@ -13,6 +13,8 @@
  * `getRecipeForView`, never round-tripped through Meili.
  */
 import { z } from "zod";
+import type { UnitKind } from "./units";
+import type { IncompleteComponent } from "./nutrition";
 
 // ─── Enums (mirror the Prisma enums; kept local so this stays Prisma-free) ──────
 
@@ -39,6 +41,12 @@ export interface RecipeDocument {
 	name: string;
 	description: string | null;
 	ownerId: string;
+	/**
+	 * Lifecycle status, carried per-row so the card badges drafts authoritatively (not by the
+	 * active scope). Indexed docs are always PUBLISHED (drafts are never indexed); the `szkice`
+	 * scope builds its docs fresh from Postgres, so those carry DRAFT.
+	 */
+	status: RecipeStatus;
 	visibility: RecipeVisibility;
 	difficulty: RecipeDifficulty | null;
 	mealTypeSlugs: string[];
@@ -289,4 +297,127 @@ export function normalizeTaxonomySlug(name: string): string {
 		.replace(/ł/g, "l") // ł has no combining form — handle explicitly
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/^-+|-+$/g, "");
+}
+
+// ─── Detail view (the `getRecipeForView` read model) ─────────────────────────────
+
+/**
+ * The detail-view DTO the browse/detail UI consumes (Phase 5). Produced by
+ * `getRecipeForView` from Postgres — the cached `(totals, yieldWeightG)` pair, the clean
+ * `nutrients` map, `incompleteComponents` provenance, ordered components (products + ONE
+ * level of sub-recipe breakdown), taxonomies, and steps/tips. Never round-tripped through
+ * Meili (the lean `RecipeDocument` carries only card-level fields). Defined here — the
+ * client↔server contract module — so the detail components type the fetched JSON without
+ * importing from `$lib/server/*`. The owner id is replaced by an `isOwner` flag (privacy).
+ */
+export interface UnitView {
+	slug: string;
+	namePl: string;
+	nameEn: string;
+	kind: UnitKind;
+}
+
+/** A mapped product reduced to its display identity (the component's nutrition is cached). */
+export interface ComponentProductView {
+	id: string;
+	namePl: string | null;
+	nameEn: string;
+}
+
+/** A sub-recipe's own line (one level deep) — for the indented breakdown under the parent. */
+export interface SubComponentView {
+	id: string;
+	amount: number;
+	gramsResolved: number | null;
+	note: string | null;
+	unit: UnitView;
+	product: ComponentProductView | null;
+	/** Name of a (deeper) nested sub-recipe; `null` when this line is a plain product. */
+	subRecipeName: string | null;
+	/**
+	 * True when this nested sub-recipe carries its own steps. The detail view flattens only ONE
+	 * level of sub-recipe into method stages, so a grandchild's steps aren't rendered — this flag
+	 * lets the UI name that honest omission instead of silently dropping the method.
+	 */
+	subRecipeHasSteps: boolean;
+}
+
+/** The expandable sub-recipe view nested under a parent component. */
+export interface SubRecipeView {
+	id: string;
+	name: string;
+	nutritionComplete: boolean;
+	prepTimeMin: number | null;
+	cookTimeMin: number | null;
+	steps: RecipeStep[];
+	components: SubComponentView[];
+}
+
+/** One ordered parent component — EXACTLY one of `product` / `subRecipe` is set. */
+export interface RecipeComponentView {
+	id: string;
+	orderIndex: number;
+	amount: number;
+	note: string | null;
+	gramsResolved: number | null;
+	unit: UnitView;
+	product: ComponentProductView | null;
+	subRecipe: SubRecipeView | null;
+}
+
+/** A taxonomy row reduced to id + slug + localized names (facet labels, detail chips). */
+export interface TaxonomyView {
+	id: string;
+	slug: string;
+	namePl: string;
+	nameEn: string;
+}
+
+/** The full recipe detail read model. */
+export interface RecipeDetailView {
+	id: string;
+	name: string;
+	description: string | null;
+	servings: number;
+	prepTimeMin: number | null;
+	cookTimeMin: number | null;
+	difficulty: RecipeDifficulty | null;
+	status: RecipeStatus;
+	visibility: RecipeVisibility;
+	isOwner: boolean;
+	tips: string[];
+	steps: RecipeStep[];
+	imageUrl: string | null;
+	/** Clean `infoodsTagname → number` map (full nutrient profile, whole-recipe totals). */
+	nutrients: Record<string, number>;
+	/**
+	 * Per-serving projection of `nutrients` (totals ÷ servings), computed server-side with the
+	 * SAME divisor the nutrition engine uses. The single source of truth for per-serving figures —
+	 * the full-profile expander reads this rather than re-dividing totals in the UI.
+	 */
+	perServing: Record<string, number>;
+	/** Provenance for the honest partial-data banner (empty when complete). */
+	incompleteComponents: IncompleteComponent[];
+	nutritionComplete: boolean;
+	energyKcalPerServing: number | null;
+	proteinPerServing: number | null;
+	fatPerServing: number | null;
+	carbsPerServing: number | null;
+	mealTypes: TaxonomyView[];
+	diets: TaxonomyView[];
+	allergens: TaxonomyView[];
+	techniques: TaxonomyView[];
+	cuisine: TaxonomyView | null;
+	components: RecipeComponentView[];
+	/** Count of OTHER recipes using this as a sub-recipe — drives the delete-block note. */
+	usedInCount: number;
+}
+
+/** The five recipe taxonomy vocabularies — facet labels + detail chips (Phase 5/6 loads). */
+export interface RecipeTaxonomies {
+	mealTypes: TaxonomyView[];
+	diets: TaxonomyView[];
+	allergens: TaxonomyView[];
+	techniques: TaxonomyView[];
+	cuisines: TaxonomyView[];
 }

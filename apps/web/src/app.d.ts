@@ -14,6 +14,8 @@ declare global {
 		interface PageState {
 			/** Shallow-routing flag for the catalog detail modal: the shown product id. */
 			detailId?: string;
+			/** Shallow-routing flag for the recipe detail modal: the shown recipe id. */
+			recipeDetailId?: string;
 		}
 	}
 }

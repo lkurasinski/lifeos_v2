@@ -8,7 +8,7 @@
  * score against a target.
  */
 import type { Macro } from "$lib/components/ui/gauge";
-import type { FoodSource } from "$lib/food/schema";
+import type { FoodSource, NutrientRegistryGroup } from "$lib/food/schema";
 import { t } from "$lib/i18n";
 
 // ─── Number formatting (Polish: comma decimal, tabular) ───────────────────────
@@ -104,6 +104,32 @@ export function nutrientGroupLabels(): Record<string, string> {
 		CAROTENOID: t("catalog.nutrientGroup.carotenoid"),
 		OTHER: t("catalog.nutrientGroup.other"),
 	};
+}
+
+export type RegistryRow = { id: string; name: string; value: number; unit: string };
+export type RegistryGroup = { label: string; rows: RegistryRow[] };
+
+/**
+ * Project a nutrient registry + a `tag → value` map into display rows grouped by registry
+ * category, honoring NULL≠0 (a tag absent from `values` is HIDDEN; a stored `0` renders). The
+ * single home for the loop the product detail + recipe detail both render — pass `exclude` to
+ * drop tags shown elsewhere (the recipe macros live in the gauges, not the full-profile list).
+ * Empty groups are dropped. Pure (labels via `t()`), so it stays client-safe and testable.
+ */
+export function groupRegistryRows(
+	registry: NutrientRegistryGroup[],
+	values: Record<string, number>,
+	exclude?: ReadonlySet<string>,
+): RegistryGroup[] {
+	const labels = nutrientGroupLabels();
+	return registry
+		.map((g) => ({
+			label: labels[g.category] ?? g.category,
+			rows: g.nutrients
+				.filter((n) => values[n.id] !== undefined && !exclude?.has(n.id))
+				.map((n) => ({ id: n.id, name: n.namePl || n.nameEn, value: values[n.id], unit: n.unit })),
+		}))
+		.filter((g) => g.rows.length > 0);
 }
 
 // ─── Category icons (identity colour; `cc` feeds the glyph's currentColor) ─────

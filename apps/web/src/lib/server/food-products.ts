@@ -21,6 +21,7 @@ import {
 	FOOD_INDEX_SETTINGS,
 } from "./food-document";
 import { searchOFF, getOFFProductByBarcode, buildNutrimentRows } from "$lib/server/off";
+import { recomputeDependents } from "$lib/server/recipes";
 import { offToDraft } from "$lib/food/off-mapping";
 import {
 	isBarcodeQuery,
@@ -69,6 +70,14 @@ export class FoodProductNotFoundError extends Error {
 	constructor(public id: string) {
 		super("Food product not found");
 		this.name = "FoodProductNotFoundError";
+	}
+}
+
+/** Thrown when a product can't be deleted because recipes map ingredients to it. */
+export class FoodProductInUseError extends Error {
+	constructor(public referencingRecipeIds: string[]) {
+		super("Food product is used by recipes");
+		this.name = "FoodProductInUseError";
 	}
 }
 
@@ -294,6 +303,9 @@ export async function updateFoodProduct(id: string, input: PatchPayload) {
 	}
 
 	await syncAfterCommit(() => syncFoodDocument(id), id);
+	// A product's macros changed → recompute every recipe that maps an ingredient to it,
+	// up the sub-recipe graph. CORRECTNESS (cached recipe nutrition): surfaced, not swallowed.
+	await recomputeDependents({ productId: id });
 	return prisma.foodProduct.findUnique({ where: { id } });
 }
 
@@ -331,11 +343,23 @@ export async function getFoodProductDraft(id: string): Promise<DraftProduct | nu
 	};
 }
 
-/** Delete a product (FoodNutrient cascades) and remove its Meili document. */
+/**
+ * Delete a product (FoodNutrient cascades) and remove its Meili document. Blocked
+ * (throws `FoodProductInUseError`) when any recipe maps an ingredient to it — the
+ * live-FK integrity rule that keeps recipe nutrition from referencing a deleted product.
+ */
 export async function deleteFoodProduct(id: string): Promise<void> {
 	const existing = await prisma.foodProduct.findUnique({ where: { id }, select: { id: true } });
 	if (!existing) {
 		throw new FoodProductNotFoundError(id);
+	}
+	const refs = await prisma.recipeComponent.findMany({
+		where: { productId: id },
+		select: { recipeId: true },
+		distinct: ["recipeId"],
+	});
+	if (refs.length > 0) {
+		throw new FoodProductInUseError(refs.map((r) => r.recipeId));
 	}
 	await prisma.foodProduct.delete({ where: { id } });
 	await syncAfterCommit(() => removeFoodDocument(id), id);

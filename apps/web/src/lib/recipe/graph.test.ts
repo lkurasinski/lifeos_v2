@@ -1,6 +1,13 @@
 // @vitest-environment node
 import { describe, it, expect } from "vitest";
-import { wouldCreateCycle, exceedsMaxDepth, type SubRecipeEdges } from "./graph.js";
+import {
+	wouldCreateCycle,
+	exceedsMaxDepth,
+	collectTransitiveParents,
+	orderLeavesFirst,
+	type SubRecipeEdges,
+	type ParentEdges,
+} from "./graph.js";
 
 describe("wouldCreateCycle", () => {
 	it("rejects a self-link", () => {
@@ -80,5 +87,54 @@ describe("exceedsMaxDepth", () => {
 		const edges: SubRecipeEdges = { a: ["b", "c"], b: ["d"], c: ["d"], d: ["e"] };
 		expect(exceedsMaxDepth("a", edges, 5)).toBe(false);
 		expect(exceedsMaxDepth("a", edges, 2)).toBe(true);
+	});
+});
+
+describe("collectTransitiveParents", () => {
+	// childId → recipes that use it as a sub-recipe.
+	// sauce ← ragu ← lasagne; sauce ← pizza. (lasagne uses ragu, ragu+pizza use sauce.)
+	const parentsOf: ParentEdges = { sauce: ["ragu", "pizza"], ragu: ["lasagne"] };
+
+	it("collects direct + transitive parents, excluding the seed itself", () => {
+		const result = collectTransitiveParents(["sauce"], parentsOf);
+		expect(result).toEqual(new Set(["ragu", "pizza", "lasagne"]));
+		expect(result.has("sauce")).toBe(false);
+	});
+
+	it("returns an empty set for a top-level recipe with no parents", () => {
+		expect(collectTransitiveParents(["lasagne"], parentsOf)).toEqual(new Set());
+	});
+
+	it("merges ancestors across multiple seeds without duplication", () => {
+		const result = collectTransitiveParents(["sauce", "ragu"], parentsOf);
+		expect(result).toEqual(new Set(["ragu", "pizza", "lasagne"]));
+	});
+
+	it("terminates on a pre-existing cycle in the parent graph", () => {
+		const cyclic: ParentEdges = { x: ["y"], y: ["x"] };
+		expect(collectTransitiveParents(["x"], cyclic)).toEqual(new Set(["x", "y"]));
+	});
+});
+
+describe("orderLeavesFirst", () => {
+	it("orders each recipe after its in-set sub-recipe children", () => {
+		// lasagne → ragu → sauce (children-of edges).
+		const childrenOf: SubRecipeEdges = { lasagne: ["ragu"], ragu: ["sauce"] };
+		const order = orderLeavesFirst(["lasagne", "ragu", "sauce"], childrenOf);
+		expect(order.indexOf("sauce")).toBeLessThan(order.indexOf("ragu"));
+		expect(order.indexOf("ragu")).toBeLessThan(order.indexOf("lasagne"));
+	});
+
+	it("ignores children that are outside the affected set", () => {
+		// ragu → sauce, but sauce is not in the set → treated as a leaf dependency.
+		const childrenOf: SubRecipeEdges = { ragu: ["sauce"] };
+		expect(orderLeavesFirst(["ragu"], childrenOf)).toEqual(["ragu"]);
+	});
+
+	it("does not loop forever on a malformed cyclic graph", () => {
+		const childrenOf: SubRecipeEdges = { a: ["b"], b: ["a"] };
+		const order = orderLeavesFirst(["a", "b"], childrenOf);
+		expect(new Set(order)).toEqual(new Set(["a", "b"]));
+		expect(order).toHaveLength(2);
 	});
 });

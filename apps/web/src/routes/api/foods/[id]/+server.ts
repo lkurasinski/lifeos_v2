@@ -4,6 +4,7 @@ import {
 	updateFoodProduct,
 	deleteFoodProduct,
 	FoodProductNotFoundError,
+	FoodProductInUseError,
 	UnknownNutrientError,
 } from "$lib/server/food-products";
 import type { RequestHandler } from "./$types";
@@ -55,6 +56,12 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	} catch (err) {
 		if (err instanceof FoodProductNotFoundError) {
 			error(404, "Nie znaleziono produktu");
+		}
+		if (err instanceof FoodProductInUseError) {
+			return json(
+				{ error: "in_use", referencingIds: err.referencingRecipeIds },
+				{ status: 409 },
+			);
 		}
 		throw err;
 	}

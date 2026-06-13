@@ -70,3 +70,61 @@ export function exceedsMaxDepth(
 
 	return depthFrom(rootId) > max;
 }
+
+// ─── Recompute fan-out support (integrity model A) ──────────────────────────────
+
+/** Reverse adjacency: child recipe id → ids of recipes that use it as a sub-recipe. */
+export type ParentEdges = Record<string, string[]>;
+
+/**
+ * Collect every recipe transitively ABOVE the seeds in the sub-recipe graph — the
+ * parents of the seeds, their parents, and so on to a fixpoint. Used by the recompute
+ * fan-out: when a product or sub-recipe changes, every dependent recipe up the graph
+ * must be recomputed (never capped — see plan Critical Implementation Details).
+ *
+ * Does NOT include the seeds themselves (the caller decides whether the seeds also need
+ * recomputing — they do for a product change, they're already done for a recipe change).
+ * A `visited` set bounds the walk against any pre-existing cycle in `parentsOf`.
+ */
+export function collectTransitiveParents(seeds: string[], parentsOf: ParentEdges): Set<string> {
+	const result = new Set<string>();
+	const stack = [...seeds];
+	while (stack.length > 0) {
+		const node = stack.pop()!;
+		for (const parent of parentsOf[node] ?? []) {
+			if (!result.has(parent)) {
+				result.add(parent);
+				stack.push(parent);
+			}
+		}
+	}
+	return result;
+}
+
+/**
+ * Order a set of recipe ids so each appears AFTER its sub-recipe children that are also
+ * in the set (post-order / leaves-first). The recompute fan-out must process sub-recipes
+ * before the parents that aggregate their cached totals, or a parent would roll up stale
+ * child nutrition. Cycles are prevented on save, but an `inProgress` guard keeps a
+ * malformed graph from looping forever.
+ */
+export function orderLeavesFirst(ids: string[], childrenOf: SubRecipeEdges): string[] {
+	const inSet = new Set(ids);
+	const result: string[] = [];
+	const done = new Set<string>();
+	const inProgress = new Set<string>();
+
+	const visit = (node: string): void => {
+		if (done.has(node) || inProgress.has(node)) return;
+		inProgress.add(node);
+		for (const child of childrenOf[node] ?? []) {
+			if (inSet.has(child)) visit(child);
+		}
+		inProgress.delete(node);
+		done.add(node);
+		result.push(node);
+	};
+
+	for (const id of ids) visit(id);
+	return result;
+}

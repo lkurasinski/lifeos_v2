@@ -374,28 +374,21 @@
 {/snippet}
 
 {#if embedded}
-	<div class="detailwrap embedded">{@render body()}</div>
+	<!-- Embedded (inside the Dialog): no glass chrome — the dialog is the surface. -->
+	<div class="flex flex-col px-[22px] pb-[22px] pt-6 max-md:px-4 max-md:pb-[18px] max-md:pt-5">{@render body()}</div>
 {:else}
-	<Panel variant="thick" class="detailwrap sticky top-[18px]">{@render body()}</Panel>
+	<!-- Layout (padding/flex) lives in global Tailwind utilities, NOT a scoped class:
+	     a scoped class passed to the Panel component never receives this component's
+	     style hash, so it would silently fail to apply (mirrors ProductDetail). -->
+	<Panel
+		variant="thick"
+		class="sticky top-[18px] flex flex-col px-6 pb-[22px] pt-6 max-md:px-4 max-md:pb-[18px] max-md:pt-5"
+	>
+		{@render body()}
+	</Panel>
 {/if}
 
 <style>
-	.detailwrap {
-		display: flex;
-		flex-direction: column;
-		padding: 24px 24px 22px;
-		border-radius: var(--radius);
-	}
-	.detailwrap.embedded {
-		padding: 24px 22px 22px;
-	}
-	@media (max-width: 768px) {
-		.detailwrap,
-		.detailwrap.embedded {
-			padding: 20px 16px 18px;
-		}
-	}
-
 	.dchips {
 		display: flex;
 		align-items: center;
@@ -477,7 +470,7 @@
 		color: var(--muted-foreground);
 		background: var(--secondary);
 		padding: 4px 10px;
-		border-radius: var(--pill);
+		border-radius: var(--radius-pill);
 	}
 
 	.basis {
@@ -606,7 +599,7 @@
 		color: var(--muted-foreground);
 		background: var(--accent);
 		padding: 2px 7px;
-		border-radius: var(--pill);
+		border-radius: var(--radius-pill);
 		margin-left: 7px;
 		vertical-align: 1px;
 	}

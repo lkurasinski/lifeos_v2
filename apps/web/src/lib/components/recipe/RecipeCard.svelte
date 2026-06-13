@@ -219,7 +219,7 @@
 		color: var(--muted-foreground);
 		background: var(--secondary);
 		padding: 3px 8px;
-		border-radius: var(--pill);
+		border-radius: var(--radius-pill);
 	}
 	.tag--draft {
 		color: var(--foreground);

@@ -7,6 +7,10 @@
 	import { t } from "$lib/i18n";
 	import { Button } from "$lib/components/ui/button";
 	import { Dialog } from "$lib/components/ui/dialog";
+	import { ListHeader } from "$lib/components/ui/list-header";
+	import { EmptyState } from "$lib/components/ui/empty-state";
+	import { DetailPlaceholder } from "$lib/components/ui/detail-placeholder";
+	import { ConfirmDialog } from "$lib/components/ui/confirm-dialog";
 	import { toast } from "$lib/components/ui/sonner";
 	import CatalogSearchBar from "$lib/components/catalog/CatalogSearchBar.svelte";
 	import Pagination from "$lib/components/catalog/Pagination.svelte";
@@ -202,9 +206,7 @@
 	let deleting = $state(false);
 
 	function onEditRecipe(r: RecipeDetailView) {
-		// `/recipes/[id]/edit` lands in Phase 6 — not yet a typed route, so navigate by string.
-		// eslint-disable-next-line svelte/no-navigation-without-resolve
-		goto(`/recipes/${r.id}/edit`);
+		goto(resolve(`/recipes/${r.id}/edit`));
 	}
 	function onRequestDelete(r: RecipeDetailView) {
 		pendingDelete = r;
@@ -254,30 +256,28 @@
 </svelte:head>
 
 <div class="screen">
-	<div class="topbar">
-		<div class="bar">
-			<div class="brand">
-				<h1>{t("recipe.list.title")}</h1>
-				<div class="sub">
-					<b>{totalLabel}</b>
-					{t("recipe.list.recipesCount")} · {t("recipe.list.perServingBasis")}
-				</div>
-			</div>
+	<ListHeader
+		title={t("recipe.list.title")}
+		count={totalLabel}
+		caption={`${t("recipe.list.recipesCount")} · ${t("recipe.list.perServingBasis")}`}
+	>
+		{#snippet search()}
 			<CatalogSearchBar
 				bind:value={searchValue}
 				placeholder={t("recipe.list.searchPlaceholder")}
 				oninput={onSearchInput}
 				onclear={onClearSearch}
 			/>
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- /recipes/new lands in Phase 6 -->
-			<Button class="addbtn" onclick={() => goto("/recipes/new")}>
+		{/snippet}
+		{#snippet actions()}
+			<Button onclick={() => goto(resolve("/recipes/new"))}>
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 					<path d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z" />
 				</svg>
 				{t("recipe.list.addButton")}
 			</Button>
-		</div>
-	</div>
+		{/snippet}
+	</ListHeader>
 
 	<div class="toolbar">
 		<RecipeFacets
@@ -317,10 +317,10 @@
 			{/if}
 
 			{#if data.result.hits.length === 0}
-				<div class="empty">
-					<p class="et">{isDraftScope ? t("recipe.list.emptyDraftsTitle") : t("recipe.list.emptyTitle")}</p>
-					<p class="ed">{isDraftScope ? t("recipe.list.emptyDraftsHint") : t("recipe.list.emptyHint")}</p>
-				</div>
+				<EmptyState
+					title={isDraftScope ? t("recipe.list.emptyDraftsTitle") : t("recipe.list.emptyTitle")}
+					hint={isDraftScope ? t("recipe.list.emptyDraftsHint") : t("recipe.list.emptyHint")}
+				/>
 			{:else}
 				<div class="list">
 					{#each data.result.hits as hit (hit.id)}
@@ -340,7 +340,9 @@
 		{#if !modalMode.current}
 			<div class="detailcol">
 				{#if detailLoading}
-					<div class="detail-empty"><p>{t("common.loading")}</p></div>
+					<div class="flex min-h-[320px] items-center justify-center text-sm text-muted-foreground">
+						{t("common.loading")}
+					</div>
 				{:else if detail}
 					<RecipeDetail
 						recipe={detail}
@@ -349,12 +351,7 @@
 						onDelete={detail.isOwner ? onRequestDelete : undefined}
 					/>
 				{:else if data.result.hits.length > 0}
-					<div class="detail-empty">
-						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-							<path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd" />
-						</svg>
-						<p>{t("recipe.list.selectPrompt")}</p>
-					</div>
+					<DetailPlaceholder text={t("recipe.list.selectPrompt")} />
 				{/if}
 			</div>
 		{/if}
@@ -369,7 +366,7 @@
 	closeLabel={t("recipe.detail.close")}
 >
 	{#if detailLoading}
-		<div class="modal-loading">{t("common.loading")}</div>
+		<div class="px-6 py-10 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
 	{:else if detail}
 		<RecipeDetail
 			recipe={detail}
@@ -382,74 +379,25 @@
 </Dialog>
 
 <!-- Delete confirmation — destructive action gated behind an explicit confirm step. -->
-<Dialog
+<ConfirmDialog
 	open={pendingDelete !== null}
 	onOpenChange={onConfirmOpenChange}
 	title={t("recipe.delete.confirmTitle")}
-	closeLabel={t("common.cancel")}
->
-	{#if pendingDelete}
-		<div class="confirm">
-			<h2>{t("recipe.delete.confirmTitle")}</h2>
-			<p class="cmsg">{t("recipe.delete.confirmBody")}</p>
-			<p class="cname">{pendingDelete.name}</p>
-			<div class="cactions">
-				<Button variant="secondary" onclick={() => (pendingDelete = null)} disabled={deleting}>
-					{t("common.cancel")}
-				</Button>
-				<Button variant="destructive" onclick={confirmDelete} disabled={deleting}>
-					{deleting ? t("recipe.delete.deleting") : t("common.delete")}
-				</Button>
-			</div>
-		</div>
-	{/if}
-</Dialog>
+	message={t("recipe.delete.confirmBody")}
+	subject={pendingDelete?.name ?? ""}
+	confirmLabel={deleting ? t("recipe.delete.deleting") : t("common.delete")}
+	cancelLabel={t("common.cancel")}
+	onConfirm={confirmDelete}
+	onCancel={() => (pendingDelete = null)}
+	pending={deleting}
+/>
 
 <style>
+	/* Page-unique layout only — shared chrome (header, empty state, detail placeholder,
+	   confirm dialog) is composed from the ui/ components above. */
 	.screen {
 		--content-max: 1600px;
 		min-height: 100svh;
-	}
-	.topbar {
-		position: sticky;
-		top: 0;
-		z-index: 6;
-		padding: 18px 24px;
-		background: var(--glass-fill-thick);
-		backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		border-bottom: 1px solid var(--hairline);
-	}
-	.bar {
-		display: flex;
-		align-items: center;
-		gap: 20px;
-		max-width: var(--content-max);
-		margin-inline: auto;
-	}
-	.brand {
-		flex-shrink: 0;
-	}
-	:global(.addbtn) {
-		flex-shrink: 0;
-	}
-	.brand h1 {
-		font-size: 1.25rem;
-		font-weight: 600;
-		letter-spacing: -0.015em;
-		color: var(--foreground);
-	}
-	.brand .sub {
-		font-size: 0.8125rem;
-		color: var(--muted-foreground);
-		font-variant-numeric: tabular-nums;
-		margin-top: 1px;
-	}
-	.brand .sub b {
-		display: inline-block;
-		min-width: 3ch;
-		color: var(--foreground);
-		font-weight: 500;
 	}
 
 	.toolbar {
@@ -496,7 +444,7 @@
 		color: var(--muted-foreground);
 		cursor: pointer;
 		padding: 5px 11px;
-		border-radius: var(--pill);
+		border-radius: var(--radius-pill);
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
@@ -531,106 +479,12 @@
 		gap: 8px;
 	}
 
-	.detail-empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 12px;
-		min-height: 320px;
-		padding: 32px;
-		text-align: center;
-		color: var(--muted-foreground);
-		border: 1px dashed var(--hairline);
-		border-radius: var(--radius);
-	}
-	.detail-empty svg {
-		width: 30px;
-		height: 30px;
-		opacity: 0.6;
-	}
-	.detail-empty p {
-		font-size: 0.875rem;
-		max-width: 24ch;
-	}
-	.modal-loading {
-		padding: 40px 24px;
-		text-align: center;
-		color: var(--muted-foreground);
-		font-size: 0.875rem;
-	}
-
-	.confirm {
-		padding: 26px 24px 22px;
-	}
-	.confirm h2 {
-		font-size: 1.125rem;
-		font-weight: 600;
-		letter-spacing: -0.01em;
-		color: var(--foreground);
-	}
-	.confirm .cmsg {
-		font-size: 0.875rem;
-		line-height: 1.5;
-		color: var(--muted-foreground);
-		margin-top: 8px;
-	}
-	.confirm .cname {
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: var(--foreground);
-		margin-top: 12px;
-		padding: 10px 12px;
-		background: var(--secondary);
-		border-radius: var(--radius-sm);
-		word-break: break-word;
-	}
-	.confirm .cactions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 10px;
-		margin-top: 22px;
-	}
-
-	.empty {
-		padding: 64px 24px;
-		text-align: center;
-	}
-	.empty .et {
-		font-size: 1rem;
-		font-weight: 550;
-		color: var(--foreground);
-	}
-	.empty .ed {
-		font-size: 0.875rem;
-		color: var(--muted-foreground);
-		margin-top: 6px;
-	}
-
-	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-		.topbar {
-			background: var(--card);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.topbar {
-			backdrop-filter: none;
-			-webkit-backdrop-filter: none;
-			background: var(--card);
-		}
-	}
-
 	@media (max-width: 1199px) {
 		.grid {
 			grid-template-columns: minmax(0, 1fr);
 		}
 	}
 	@media (max-width: 768px) {
-		.bar {
-			flex-direction: column;
-			align-items: stretch;
-			gap: 12px;
-		}
 		.toolbar {
 			padding: 14px 16px 4px;
 		}

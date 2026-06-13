@@ -63,6 +63,9 @@ import {
 	type TaxonomyView,
 	type RecipeTaxonomies,
 	type UnitView,
+	type UnitOption,
+	type RecipeDraft,
+	type DraftComponent,
 } from "$lib/recipe/schema";
 import type { RecipeStep } from "$lib/recipe/schema";
 import type { IncompleteComponent } from "$lib/recipe/nutrition";
@@ -777,6 +780,7 @@ function toRecipeView(recipe: ViewLoadedRecipe, viewerId: string, usedInCount: n
 		perServing,
 		incompleteComponents: (recipe.incompleteComponents ?? []) as unknown as IncompleteComponent[],
 		nutritionComplete: recipe.nutritionComplete,
+		yieldWeightG: recipe.yieldWeightG,
 		energyKcalPerServing: recipe.energyKcalPerServing,
 		proteinPerServing: recipe.proteinPerServing,
 		fatPerServing: recipe.fatPerServing,
@@ -859,6 +863,127 @@ export async function getRecipeForEdit(userId: string, id: string): Promise<Load
 	if (!recipe) throw new RecipeNotFoundError(id);
 	if (recipe.userId !== userId) throw new RecipeForbiddenError(id);
 	return recipe;
+}
+
+/** List the seeded units as the authoring form's per-row select consumes them (display order). */
+export function listUnits(): Promise<UnitOption[]> {
+	return prisma.unit.findMany({
+		select: {
+			id: true,
+			slug: true,
+			namePl: true,
+			nameEn: true,
+			kind: true,
+			baseFactor: true,
+			displayRank: true,
+		},
+		orderBy: [{ displayRank: { sort: "asc", nulls: "last" } }, { namePl: "asc" }],
+	});
+}
+
+/**
+ * The include the EDIT draft projection needs: ordered components with their unit, the product's
+ * display name + conversion inputs + category slug (row glyph) + per-100g nutrients (live panel),
+ * and the sub-recipe's cached `(totals, yieldWeightG)` pair + completeness (its weight-share
+ * contribution to the live panel). Taxonomies + cuisine come as ids (the form toggles by id).
+ */
+const RECIPE_DRAFT_INCLUDE = {
+	components: {
+		orderBy: { orderIndex: "asc" },
+		include: {
+			unit: true,
+			product: {
+				select: {
+					id: true,
+					namePl: true,
+					nameEn: true,
+					densityGPerMl: true,
+					pieceWeightG: true,
+					category: { select: { slug: true } },
+					foodNutrients: { select: { nutrientId: true, amountPer100g: true } },
+				},
+			},
+			subRecipe: {
+				select: { id: true, name: true, nutrients: true, yieldWeightG: true, nutritionComplete: true },
+			},
+		},
+	},
+	mealTypes: { select: { id: true } },
+	diets: { select: { id: true } },
+	techniques: { select: { id: true } },
+	allergens: { select: { id: true } },
+} satisfies Prisma.RecipeInclude;
+
+/**
+ * Load a recipe as the editable `RecipeDraft` the authoring form binds to — owner-only (throws
+ * not-found / forbidden like the write paths). Flattens each component into a `DraftComponent`
+ * with the live-panel preview payload (a product's per-100g map + conversion inputs, or a
+ * sub-recipe's cached `(totals, yieldWeightG)` pair) so the form's live rollup matches the
+ * server's cached figures on first paint. Taxonomy links become `{id}` refs (the `Dodaj`
+ * find-or-create `{name}` form is only produced for newly-added chips).
+ */
+export async function getRecipeDraftForEdit(userId: string, id: string): Promise<RecipeDraft> {
+	const recipe = await prisma.recipe.findUnique({ where: { id }, include: RECIPE_DRAFT_INCLUDE });
+	if (!recipe) throw new RecipeNotFoundError(id);
+	if (recipe.userId !== userId) throw new RecipeForbiddenError(id);
+
+	const components: DraftComponent[] = recipe.components.map((c) => {
+		if (c.productId !== null && c.product !== null) {
+			const per100: Record<string, number> = {};
+			for (const fn of c.product.foodNutrients) {
+				if (fn.amountPer100g !== null) per100[fn.nutrientId] = Number(fn.amountPer100g);
+			}
+			return {
+				key: c.id,
+				productId: c.productId,
+				subRecipeId: null,
+				name: c.product.namePl ?? c.product.nameEn,
+				categorySlug: c.product.category?.slug ?? null,
+				amount: c.amount,
+				unitId: c.unitId,
+				note: c.note,
+				preview: {
+					nutrientsPer100g: per100,
+					densityGPerMl: c.product.densityGPerMl,
+					pieceWeightG: c.product.pieceWeightG,
+				},
+			};
+		}
+		return {
+			key: c.id,
+			productId: null,
+			subRecipeId: c.subRecipeId,
+			name: c.subRecipe?.name ?? "",
+			categorySlug: null,
+			amount: c.amount,
+			unitId: c.unitId,
+			note: c.note,
+			preview: {
+				totals: (c.subRecipe?.nutrients ?? {}) as Record<string, number>,
+				yieldWeightG: c.subRecipe?.yieldWeightG ?? null,
+				nutritionComplete: c.subRecipe?.nutritionComplete ?? false,
+			},
+		};
+	});
+
+	return {
+		name: recipe.name,
+		description: recipe.description,
+		servings: recipe.servings,
+		prepTimeMin: recipe.prepTimeMin,
+		cookTimeMin: recipe.cookTimeMin,
+		difficulty: recipe.difficulty,
+		status: recipe.status,
+		visibility: recipe.visibility,
+		tips: recipe.tips,
+		steps: (recipe.steps ?? []) as RecipeStep[],
+		mealTypeIds: recipe.mealTypes.map((m) => m.id),
+		cuisineId: recipe.cuisineId,
+		diets: recipe.diets.map((d) => ({ id: d.id })),
+		techniques: recipe.techniques.map((tq) => ({ id: tq.id })),
+		allergens: recipe.allergens.map((a) => ({ id: a.id })),
+		components,
+	};
 }
 
 /**

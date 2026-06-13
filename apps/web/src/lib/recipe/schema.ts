@@ -399,6 +399,13 @@ export interface RecipeDetailView {
 	/** Provenance for the honest partial-data banner (empty when complete). */
 	incompleteComponents: IncompleteComponent[];
 	nutritionComplete: boolean;
+	/**
+	 * Derived cached dish weight (`Σ component gramsResolved`), or null when not yet computed.
+	 * Exposed so a parent recipe's authoring form can use this recipe's cached `(totals,
+	 * yieldWeightG)` pair as the weight-share denominator when it is picked as a sub-recipe
+	 * (Phase 6 live-nutrition panel) — mirrors the server-side rollup.
+	 */
+	yieldWeightG: number | null;
 	energyKcalPerServing: number | null;
 	proteinPerServing: number | null;
 	fatPerServing: number | null;
@@ -420,4 +427,158 @@ export interface RecipeTaxonomies {
 	allergens: TaxonomyView[];
 	techniques: TaxonomyView[];
 	cuisines: TaxonomyView[];
+}
+
+// ─── Authoring form (Phase 6) ────────────────────────────────────────────────────
+
+/**
+ * A seeded unit as the authoring form's per-row unit `<select>` consumes it: `id` is
+ * submitted as `unitId`, while `kind` + `baseFactor` drive the CLIENT-side gram resolution
+ * (`resolveGrams`) the live-nutrition panel runs — the same conversion the server caches on
+ * save. (`UnitView` carries no `id`/`baseFactor`; the form needs both.)
+ */
+export interface UnitOption {
+	id: string;
+	slug: string;
+	namePl: string;
+	nameEn: string;
+	kind: UnitKind;
+	baseFactor: number;
+	displayRank: number | null;
+}
+
+/**
+ * The nutrition a picked component feeds the CLIENT live-nutrition rollup (Phase 2 engine).
+ * A product carries its per-100g map (keyed by `infoodsTagname`, straight from the
+ * `/api/foods` hit — no remapping) plus its conversion inputs (present only for an
+ * inline-created product or an edit-loaded row; a search hit omits them, so VOLUME falls
+ * back to density 1.0 and COUNT reads as unresolved in the *preview* until save recomputes
+ * authoritatively). A sub-recipe carries its cached `(totals, yieldWeightG)` pair +
+ * completeness. All fields optional so a half-picked row contributes nothing yet.
+ */
+export interface DraftComponentPreview {
+	nutrientsPer100g?: Record<string, number>;
+	densityGPerMl?: number | null;
+	pieceWeightG?: number | null;
+	totals?: Record<string, number>;
+	yieldWeightG?: number | null;
+	nutritionComplete?: boolean;
+}
+
+/**
+ * One editable component row. EXACTLY one of `productId` / `subRecipeId` is set once picked
+ * (both null while the row's picker is still open). `key` is a stable client identity for
+ * `{#each}` (never persisted); `amount` is null until typed. `preview` feeds the live panel.
+ */
+export interface DraftComponent {
+	key: string;
+	productId: string | null;
+	subRecipeId: string | null;
+	/** Display name of the picked product/sub-recipe (empty until picked). */
+	name: string;
+	/** Product category slug for the row glyph; null for sub-recipes / unpicked. */
+	categorySlug: string | null;
+	amount: number | null;
+	unitId: string;
+	note: string | null;
+	preview: DraftComponentPreview;
+}
+
+/**
+ * The editable recipe model the authoring form (`RecipeForm`) binds to — the create/edit
+ * counterpart of `DraftProduct`. Taxonomy selections are `TaxonomyRef[]` so they map straight
+ * to the payload: an existing pick is `{id}`, a `Dodaj`-added one is `{name}` (find-or-create
+ * by slug on save). `getRecipeDraftForEdit` produces this from a loaded recipe; `emptyRecipeDraft`
+ * seeds a blank create.
+ */
+export interface RecipeDraft {
+	name: string;
+	description: string | null;
+	servings: number;
+	prepTimeMin: number | null;
+	cookTimeMin: number | null;
+	difficulty: RecipeDifficulty | null;
+	status: RecipeStatus;
+	visibility: RecipeVisibility;
+	tips: string[];
+	steps: RecipeStep[];
+	mealTypeIds: string[];
+	cuisineId: string | null;
+	diets: TaxonomyRef[];
+	techniques: TaxonomyRef[];
+	allergens: TaxonomyRef[];
+	components: DraftComponent[];
+}
+
+/** A blank draft for the create form — name-only start (DRAFT/PUBLIC), per FR-003. */
+export function emptyRecipeDraft(): RecipeDraft {
+	return {
+		name: "",
+		description: null,
+		servings: 1,
+		prepTimeMin: null,
+		cookTimeMin: null,
+		difficulty: null,
+		status: "DRAFT",
+		visibility: "PUBLIC",
+		tips: [],
+		steps: [],
+		mealTypeIds: [],
+		cuisineId: null,
+		diets: [],
+		techniques: [],
+		allergens: [],
+		components: [],
+	};
+}
+
+/**
+ * Normalize an editable `RecipeDraft` into the create/patch payload (the save + patch shapes
+ * are identical — a recipe edit is a full content replacement). Trims text, drops blank tips,
+ * and includes only COMPLETE component rows (a picked ref + a positive amount) so an in-progress
+ * empty picker row is never submitted. The payload is re-validated by `recipeSavePayloadSchema`
+ * server-side; this only needs to be type-compatible.
+ */
+export function recipeDraftToSavePayload(draft: RecipeDraft): RecipeSavePayload {
+	return {
+		name: draft.name.trim(),
+		description: draft.description?.trim() || null,
+		servings: draft.servings,
+		prepTimeMin: draft.prepTimeMin ?? null,
+		cookTimeMin: draft.cookTimeMin ?? null,
+		difficulty: draft.difficulty ?? null,
+		status: draft.status,
+		visibility: draft.visibility,
+		tips: draft.tips.map((tip) => tip.trim()).filter(Boolean),
+		// Drop blank-text steps (a half-added trailing row), trim text, and normalize an action
+		// step's image URL: a blank/whitespace value becomes absent (the schema requires an
+		// http(s) URL or null, never "").
+		steps: draft.steps
+			.filter((s) => s.text.trim() !== "")
+			.map((s): RecipeStep =>
+				s.kind === "wait"
+					? { kind: "wait", text: s.text.trim(), durationMin: s.durationMin }
+					: {
+							kind: "action",
+							text: s.text.trim(),
+							...(s.imageUrl && s.imageUrl.trim() ? { imageUrl: s.imageUrl.trim() } : {}),
+						},
+			),
+		mealTypeIds: draft.mealTypeIds,
+		cuisineId: draft.cuisineId ?? null,
+		diets: draft.diets,
+		techniques: draft.techniques,
+		allergens: draft.allergens,
+		components: draft.components
+			.filter(
+				(c) => (c.productId != null || c.subRecipeId != null) && c.amount != null && c.amount > 0,
+			)
+			.map((c) => ({
+				productId: c.productId,
+				subRecipeId: c.subRecipeId,
+				amount: c.amount as number,
+				unitId: c.unitId,
+				note: c.note?.trim() || null,
+			})),
+	};
 }

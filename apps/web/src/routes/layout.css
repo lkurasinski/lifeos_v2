@@ -210,6 +210,32 @@
 		}
 	}
 
+	/* Sticky frosted top bar — the app's page/section chrome (list + form headers).
+	   Thick-glass material + hairline divider, with the same solid fallbacks as the
+	   panels. Inner layout (padding, flex, max-width centering) is composed with
+	   Tailwind utilities at each call site; this class owns only the material. */
+	.appbar {
+		position: sticky;
+		top: 0;
+		z-index: 6;
+		background: var(--glass-fill-thick);
+		backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
+		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
+		border-bottom: 1px solid var(--hairline);
+	}
+	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+		.appbar {
+			background: var(--card);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.appbar {
+			backdrop-filter: none;
+			-webkit-backdrop-filter: none;
+			background: var(--card);
+		}
+	}
+
 	/* Tinted environment behind glass: 3–4 soft radial hue zones, balanced
 	   warm-to-cool, so the frost has color to refract and never reads flat. */
 	.env {

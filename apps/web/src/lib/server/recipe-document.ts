@@ -11,7 +11,16 @@
  * the Prisma + Meili clients — exactly as `syncFoodDocument` lives in `food-products.ts`,
  * not in the pure `food-document.ts`.
  */
-import type { RecipeDocument, RecipeVisibility, RecipeDifficulty } from "../recipe/schema";
+import type { MultiSearchQuery, MultiSearchResult } from "meilisearch";
+import type {
+	RecipeDocument,
+	RecipeVisibility,
+	RecipeDifficulty,
+	RecipeSearchParams,
+	RecipeSortKey,
+	RecipeScope,
+	RecipeSearchResult,
+} from "../recipe/schema";
 
 export const RECIPE_INDEX_NAME = "recipes";
 
@@ -39,6 +48,11 @@ export const RECIPE_INDEX_SETTINGS = {
 	// Match the food index: lift Meili's default 1000-hit cap so the "N przepisów" count
 	// and pagination reflect the real total as the catalog grows.
 	pagination: { maxTotalHits: 50000 },
+	// Meili returns at most `maxValuesPerFacet` distinct values per facet (default 100). The
+	// diet/technique/allergen vocabularies are user-extensible (the `Dodaj` chip), so lift the
+	// cap well above the expected slug count to keep facet-distribution counts from silently
+	// truncating as the taxonomies grow.
+	faceting: { maxValuesPerFacet: 200 },
 };
 
 /** A taxonomy join row reduced to what the document needs. */
@@ -72,6 +86,76 @@ export interface RecipeDocInput {
 	cuisine: TaxonomyRef | null;
 	/** Component product display names (Polish preferred), for the searchable join field. */
 	productNames: string[];
+}
+
+/**
+ * A loaded recipe ROW (Prisma `findUnique`/`findMany` with the rollup relations) reduced to
+ * the structural shape the document projection needs. Both the runtime sync (`recipes.ts`
+ * `toDocInput`) and the batch reindex (`reindex.ts` `reindexRecipes`) load a recipe with the
+ * relations and project it through `projectRecipeToDocInput` — ONE rebuild site, so a field
+ * added to `RecipeDocInput` can't be silently dropped by one path but not the other
+ * (lessons: "update EVERY explicit object reconstruction").
+ */
+export interface RecipeRowForDoc {
+	id: string;
+	userId: string;
+	name: string;
+	description: string | null;
+	visibility: RecipeVisibility;
+	difficulty: RecipeDifficulty | null;
+	servings: number;
+	prepTimeMin: number | null;
+	cookTimeMin: number | null;
+	tips: string[];
+	imageUrl: string | null;
+	energyKcalPerServing: number | null;
+	proteinPerServing: number | null;
+	fatPerServing: number | null;
+	carbsPerServing: number | null;
+	nutritionComplete: boolean;
+	mealTypes: TaxonomyRef[];
+	diets: TaxonomyRef[];
+	allergens: TaxonomyRef[];
+	techniques: TaxonomyRef[];
+	cuisine: TaxonomyRef | null;
+	/** Ordered components; only the product display names are projected (sub-recipes omitted). */
+	components: { product: { namePl: string | null; nameEn: string } | null }[];
+}
+
+/**
+ * Project a loaded recipe row into the pure document builder's input (`RecipeDocInput`).
+ * `productNames` is the component products' display names (Polish preferred) for the
+ * searchable join field; sub-recipe components contribute no name here.
+ */
+export function projectRecipeToDocInput(recipe: RecipeRowForDoc): RecipeDocInput {
+	const productNames = recipe.components
+		.filter((c) => c.product !== null)
+		.map((c) => c.product!.namePl ?? c.product!.nameEn);
+
+	return {
+		id: recipe.id,
+		userId: recipe.userId,
+		name: recipe.name,
+		description: recipe.description,
+		visibility: recipe.visibility,
+		difficulty: recipe.difficulty,
+		servings: recipe.servings,
+		prepTimeMin: recipe.prepTimeMin,
+		cookTimeMin: recipe.cookTimeMin,
+		tips: recipe.tips,
+		imageUrl: recipe.imageUrl,
+		energyKcalPerServing: recipe.energyKcalPerServing,
+		proteinPerServing: recipe.proteinPerServing,
+		fatPerServing: recipe.fatPerServing,
+		carbsPerServing: recipe.carbsPerServing,
+		nutritionComplete: recipe.nutritionComplete,
+		mealTypes: recipe.mealTypes,
+		diets: recipe.diets,
+		allergens: recipe.allergens,
+		techniques: recipe.techniques,
+		cuisine: recipe.cuisine,
+		productNames,
+	};
 }
 
 /**
@@ -119,4 +203,166 @@ export function buildRecipeDocument(recipe: RecipeDocInput): RecipeDocument {
 function sumNullable(a: number | null, b: number | null): number | null {
 	if (a === null && b === null) return null;
 	return (a ?? 0) + (b ?? 0);
+}
+
+// ─── Search query construction (pure — no Meili client) ────────────────────────
+
+/**
+ * Positional layout of the `multiSearch` queries `buildRecipeSearchQueries` emits.
+ * `shapeRecipeSearchResults` reads results by these indices: hits from HITS, and each
+ * facet's switchable counts from ITS OWN distribution query (the query that omits that
+ * facet's own filter), so an active filter narrows the OTHER facets without collapsing its own.
+ */
+export const RECIPE_QUERY_INDEX = {
+	HITS: 0,
+	MEAL_TYPE: 1,
+	DIET: 2,
+	ALLERGEN: 3,
+	TECHNIQUE: 4,
+	CUISINE: 5,
+	DIFFICULTY: 6,
+} as const;
+
+/** Catalog sort key → the top-level document attribute Meili sorts on (`null` = relevance). */
+const RECIPE_SORT_FIELD: Record<RecipeSortKey, string | null> = {
+	relevance: null,
+	kcal: "energyKcalPerServing",
+	protein: "proteinPerServing",
+	time: "totalTimeMin",
+	name: "name",
+};
+
+/**
+ * A disjunctive (OR) clause WITHIN one facet dimension, in Meili's nested-array filter form
+ * (`[attr = "a", attr = "b"]`). `null` when the dimension has no active selection. Mirrors
+ * `food-document.ts`'s private `orClause`, but ESCAPES `"`/`\` in the value: facet values are
+ * unconstrained free text from the URL (`z.array(z.string())`), so a raw `"` would break out
+ * of the quoted filter literal (malformed filter → Meili 400). Defense-in-depth — the base
+ * visibility clause is a separate always-AND'd term, so this can't widen visibility, but a
+ * well-formed value should never be able to corrupt the filter string.
+ */
+function orClause(attribute: string, values: string[] | undefined): string[] | null {
+	if (!values || values.length === 0) return null;
+	return values.map((v) => `${attribute} = "${v.replace(/(["\\])/g, "\\$1")}"`);
+}
+
+/**
+ * The base visibility clause — a CROSS-attribute OR (two DIFFERENT attributes), which the
+ * single-attribute `orClause` cannot express. `wszystkie` ⇒ `visibility = PUBLIC OR ownerId = me`;
+ * `moje` ⇒ only my recipes; `publiczne` ⇒ only public. (`szkice` never reaches Meili — drafts
+ * aren't indexed; the runner routes that scope to Postgres.) Returned as a single AND-term
+ * (string) or a nested OR-group (string[]) — privacy rests on this always being applied.
+ */
+function scopeClause(scope: RecipeScope, viewerId: string): string | string[] {
+	switch (scope) {
+		case "moje":
+			return `ownerId = "${viewerId}"`;
+		case "publiczne":
+			return `visibility = "PUBLIC"`;
+		case "wszystkie":
+		default:
+			return [`visibility = "PUBLIC"`, `ownerId = "${viewerId}"`];
+	}
+}
+
+/** Assemble a Meili filter from the always-present base clause + the non-null facet clauses. */
+function buildFilter(
+	base: string | string[],
+	clauses: (string[] | null)[],
+): (string | string[])[] {
+	const filter: (string | string[])[] = [base];
+	for (const c of clauses) if (c !== null) filter.push(c);
+	return filter;
+}
+
+/**
+ * Build the seven-query `multiSearch` payload powering disjunctive faceting over recipes:
+ * - HITS: base filter AND all facet clauses, sorted + paginated — supplies hits + total.
+ * - one query per facet dimension: base filter AND every OTHER facet clause (omitting its own),
+ *   `facets: [<dim>]`, `limit: 0` — its switchable counts.
+ *
+ * The base visibility/scope clause is applied to EVERY query (including facet-distribution
+ * queries), so another user's PRIVATE rows never leak into hits OR counts. `viewerId` is
+ * threaded in (foods carry no viewer context). Never call this for `scope === "szkice"`.
+ */
+export function buildRecipeSearchQueries(
+	params: RecipeSearchParams,
+	viewerId: string,
+): MultiSearchQuery[] {
+	const q = params.q ?? "";
+	const base = scopeClause(params.scope, viewerId);
+
+	const mealClause = orClause("mealTypeSlugs", params.mealTypes);
+	const dietClause = orClause("dietSlugs", params.diets);
+	const allergenClause = orClause("allergenSlugs", params.allergens);
+	const techniqueClause = orClause("techniqueSlugs", params.techniques);
+	const cuisineClause = orClause("cuisineSlug", params.cuisines);
+	const difficultyClause = orClause("difficulty", params.difficulties);
+	const all = [mealClause, dietClause, allergenClause, techniqueClause, cuisineClause, difficultyClause];
+
+	const sortField = RECIPE_SORT_FIELD[params.sort];
+	const hits: MultiSearchQuery = {
+		indexUid: RECIPE_INDEX_NAME,
+		q,
+		filter: buildFilter(base, all),
+		offset: (params.page - 1) * params.limit,
+		limit: params.limit,
+	};
+	if (sortField !== null) hits.sort = [`${sortField}:${params.dir}`];
+
+	// Each facet query omits ONLY its own clause (so its chips stay switchable) and requests
+	// just that facet's distribution. `c !== omit` is by REFERENCE: each non-null clause is a
+	// distinct array (orClause returns a fresh `.map`), and `omit` is that dimension's own
+	// clause object, so exactly one element is dropped when it's non-null. When the omitted
+	// facet is unselected, `omit === null` and the predicate strips EVERY null clause — but
+	// that's a no-op: buildFilter already skips nulls, so the resulting filter is identical.
+	const facetQuery = (facet: string, omit: string[] | null): MultiSearchQuery => ({
+		indexUid: RECIPE_INDEX_NAME,
+		q,
+		filter: buildFilter(
+			base,
+			all.filter((c) => c !== omit),
+		),
+		facets: [facet],
+		limit: 0,
+	});
+
+	return [
+		hits,
+		facetQuery("mealTypeSlugs", mealClause),
+		facetQuery("dietSlugs", dietClause),
+		facetQuery("allergenSlugs", allergenClause),
+		facetQuery("techniqueSlugs", techniqueClause),
+		facetQuery("cuisineSlug", cuisineClause),
+		facetQuery("difficulty", difficultyClause),
+	];
+}
+
+/**
+ * Shape the `multiSearch` results (in `buildRecipeSearchQueries` order) into the catalog read
+ * model. `total` is the hits query's estimate; each facet map is read from its OWN distribution
+ * query (the one that omitted that facet's filter) so it reflects switchable disjunctive counts.
+ */
+export function shapeRecipeSearchResults(
+	params: RecipeSearchParams,
+	results: MultiSearchResult<RecipeDocument>[],
+): RecipeSearchResult {
+	const hitsResult = results[RECIPE_QUERY_INDEX.HITS];
+	const facet = (i: number, attr: string): Record<string, number> =>
+		results[i]?.facetDistribution?.[attr] ?? {};
+
+	return {
+		hits: (hitsResult?.hits ?? []) as RecipeDocument[],
+		total: hitsResult?.estimatedTotalHits ?? hitsResult?.totalHits ?? 0,
+		page: params.page,
+		limit: params.limit,
+		facets: {
+			mealTypeSlugs: facet(RECIPE_QUERY_INDEX.MEAL_TYPE, "mealTypeSlugs"),
+			dietSlugs: facet(RECIPE_QUERY_INDEX.DIET, "dietSlugs"),
+			allergenSlugs: facet(RECIPE_QUERY_INDEX.ALLERGEN, "allergenSlugs"),
+			techniqueSlugs: facet(RECIPE_QUERY_INDEX.TECHNIQUE, "techniqueSlugs"),
+			cuisineSlug: facet(RECIPE_QUERY_INDEX.CUISINE, "cuisineSlug"),
+			difficulty: facet(RECIPE_QUERY_INDEX.DIFFICULTY, "difficulty"),
+		},
+	};
 }

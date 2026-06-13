@@ -17,12 +17,16 @@
  * Error discipline: the DB recompute is CORRECTNESS and must surface (never swallowed). The
  * Meili re-sync follows the food pattern — swallow + log, reconverged by `recipe:reindex`.
  */
+import type { MultiSearchParams } from "meilisearch";
 import { prisma } from "$lib/server/db";
 import { meili } from "$lib/server/search";
 import { logger } from "$lib/server/logger";
 import { Prisma } from "../../generated/prisma/client";
 import {
 	buildRecipeDocument,
+	buildRecipeSearchQueries,
+	shapeRecipeSearchResults,
+	projectRecipeToDocInput,
 	RECIPE_INDEX_NAME,
 	RECIPE_INDEX_SETTINGS,
 	type RecipeDocInput,
@@ -50,6 +54,9 @@ import {
 	type RecipeSavePayload,
 	type RecipePatchPayload,
 	type TaxonomyRef,
+	type RecipeDocument,
+	type RecipeSearchParams,
+	type RecipeSearchResult,
 } from "$lib/recipe/schema";
 
 type TxClient = Prisma.TransactionClient;
@@ -144,36 +151,13 @@ const ROLLUP_INCLUDE = {
 
 type LoadedRecipe = Prisma.RecipeGetPayload<{ include: typeof ROLLUP_INCLUDE }>;
 
-/** Project a loaded recipe into the pure document builder's input shape. */
+/**
+ * Project a loaded recipe into the pure document builder's input shape. Delegates to the
+ * shared `projectRecipeToDocInput` so the runtime sync and the batch reindex (Phase 4)
+ * share ONE rebuild site (lessons: "update EVERY explicit object reconstruction").
+ */
 function toDocInput(recipe: LoadedRecipe): RecipeDocInput {
-	const productNames = recipe.components
-		.filter((c) => c.product !== null)
-		.map((c) => c.product!.namePl ?? c.product!.nameEn);
-
-	return {
-		id: recipe.id,
-		userId: recipe.userId,
-		name: recipe.name,
-		description: recipe.description,
-		visibility: recipe.visibility,
-		difficulty: recipe.difficulty,
-		servings: recipe.servings,
-		prepTimeMin: recipe.prepTimeMin,
-		cookTimeMin: recipe.cookTimeMin,
-		tips: recipe.tips,
-		imageUrl: recipe.imageUrl,
-		energyKcalPerServing: recipe.energyKcalPerServing,
-		proteinPerServing: recipe.proteinPerServing,
-		fatPerServing: recipe.fatPerServing,
-		carbsPerServing: recipe.carbsPerServing,
-		nutritionComplete: recipe.nutritionComplete,
-		mealTypes: recipe.mealTypes,
-		diets: recipe.diets,
-		allergens: recipe.allergens,
-		techniques: recipe.techniques,
-		cuisine: recipe.cuisine,
-		productNames,
-	};
+	return projectRecipeToDocInput(recipe);
 }
 
 /**
@@ -735,4 +719,46 @@ export function listOwnDrafts(userId: string): Promise<LoadedRecipe[]> {
 		include: ROLLUP_INCLUDE,
 		orderBy: { updatedAt: "desc" },
 	});
+}
+
+// ─── Search ─────────────────────────────────────────────────────────────────────
+
+/** An empty facet-distribution set (the draft scope carries no facets — the probe shows none). */
+const EMPTY_RECIPE_FACETS: RecipeSearchResult["facets"] = {
+	mealTypeSlugs: {},
+	dietSlugs: {},
+	allergenSlugs: {},
+	techniqueSlugs: {},
+	cuisineSlug: {},
+	difficulty: {},
+};
+
+/**
+ * The single typed recipe search, used by both the SSR page load and the thin GET endpoint.
+ * Mirrors `searchFoodProducts`: one `multiSearch` round-trip delivers disjunctive facets (a
+ * query per dimension, each omitting its own filter) alongside the hits query. Query
+ * construction + shaping are pure (`recipe-document.ts`); this does only the I/O, threading
+ * `viewerId` so the base visibility filter (`visibility = PUBLIC OR ownerId = viewerId`) is
+ * always applied.
+ *
+ * `scope === "szkice"` (the viewer's own drafts) BYPASSES Meili — drafts are never indexed —
+ * and is served from Postgres via `listOwnDrafts`, projected into the SAME card read model so
+ * the browse UI consumes one shape. Drafts carry no facets and are paginated in memory.
+ */
+export async function searchRecipes(
+	params: RecipeSearchParams,
+	viewerId: string,
+): Promise<RecipeSearchResult> {
+	if (params.scope === "szkice") {
+		const drafts = await listOwnDrafts(viewerId);
+		const start = (params.page - 1) * params.limit;
+		const hits: RecipeDocument[] = drafts
+			.slice(start, start + params.limit)
+			.map((r) => buildRecipeDocument(toDocInput(r)));
+		return { hits, total: drafts.length, page: params.page, limit: params.limit, facets: EMPTY_RECIPE_FACETS };
+	}
+
+	const queries = buildRecipeSearchQueries(params, viewerId);
+	const { results } = await meili.multiSearch<MultiSearchParams, RecipeDocument>({ queries });
+	return shapeRecipeSearchResults(params, results);
 }

@@ -9,6 +9,9 @@
     "lint:fix": "pnpm -r lint:fix",
     "format": "pnpm -r format",
     "format:check": "pnpm -r format:check",
+    "db:studio": "pnpm --filter @lifeos/web db:studio",
+    "db:migrate": "pnpm --filter @lifeos/web db:migrate",
+    "db:generate": "pnpm --filter @lifeos/web db:generate",
     "db:push": "bash scripts/db-sync.sh push",
     "db:pull": "bash scripts/db-sync.sh pull",
     "db:status": "bash scripts/db-sync.sh status"

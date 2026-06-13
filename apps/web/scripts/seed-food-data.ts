@@ -22,8 +22,9 @@ import { seedNutrients } from './steps/seed-nutrients.js';
 import { importUsda } from './steps/import-usda.js';
 import { translateProducts } from './steps/translate-products.js';
 import { indexMeilisearch } from './steps/index-meilisearch.js';
+import { seedRecipeTaxonomies } from './steps/seed-recipe-taxonomies.js';
 
-const VALID_STEPS = ['nutrients', 'usda', 'translate', 'index'] as const;
+const VALID_STEPS = ['nutrients', 'usda', 'translate', 'index', 'recipe-taxonomies'] as const;
 type Step = (typeof VALID_STEPS)[number];
 
 function parseStep(): Step | undefined {
@@ -71,6 +72,10 @@ async function main() {
 		if (!step || step === 'index') {
 			console.log('\n=== Step: index ===');
 			await indexMeilisearch(prisma, meili);
+		}
+		if (!step || step === 'recipe-taxonomies') {
+			console.log('\n=== Step: recipe-taxonomies ===');
+			await seedRecipeTaxonomies(prisma);
 		}
 	} finally {
 		await prisma.$disconnect();

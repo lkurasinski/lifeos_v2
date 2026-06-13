@@ -19,7 +19,8 @@
 		"db:studio": "prisma studio",
 		"db:migrate": "prisma migrate dev",
 		"db:generate": "prisma generate",
-		"search:reindex": "tsx scripts/seed-food-data.ts --step index"
+		"search:reindex": "tsx scripts/seed-food-data.ts --step index",
+		"recipe:seed": "tsx scripts/seed-food-data.ts --step recipe-taxonomies"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

@@ -72,6 +72,10 @@ export interface DraftProduct {
 	brand?: string | null;
 	categoryId?: string | null;
 	servingSizeG?: number | null;
+	// Unit→grams conversion inputs (S-03 recipe mapping). Null density → 1.0 at resolve;
+	// null piece-weight makes COUNT units unresolvable (flagged, not zeroed). NULL ≠ 0.
+	densityGPerMl?: number | null;
+	pieceWeightG?: number | null;
 	// OFF product photos (CC-BY-SA), carried through preview → save and edit prefill.
 	imageUrl?: string | null;
 	imageThumbUrl?: string | null;
@@ -221,6 +225,8 @@ export const savePayloadSchema = z.object({
 	brand: z.string().trim().max(200).nullable().optional(),
 	categoryId: z.uuid().nullable().optional(),
 	servingSizeG: z.number().min(0).nullable().optional(),
+	densityGPerMl: z.number().min(0).nullable().optional(),
+	pieceWeightG: z.number().min(0).nullable().optional(),
 	imageUrl: offImageUrlSchema,
 	imageThumbUrl: offImageUrlSchema,
 	imageIngredientsUrl: offImageUrlSchema,
@@ -254,6 +260,8 @@ export function emptyDraft(source: FoodSource): DraftProduct {
 		brand: null,
 		categoryId: null,
 		servingSizeG: null,
+		densityGPerMl: null,
+		pieceWeightG: null,
 		imageUrl: null,
 		imageThumbUrl: null,
 		imageIngredientsUrl: null,
@@ -275,6 +283,8 @@ export function draftToSavePayload(draft: DraftProduct): SavePayload {
 		brand: draft.brand ?? null,
 		categoryId: draft.categoryId ?? null,
 		servingSizeG: draft.servingSizeG ?? null,
+		densityGPerMl: draft.densityGPerMl ?? null,
+		pieceWeightG: draft.pieceWeightG ?? null,
 		imageUrl: draft.imageUrl ?? null,
 		imageThumbUrl: draft.imageThumbUrl ?? null,
 		imageIngredientsUrl: draft.imageIngredientsUrl ?? null,

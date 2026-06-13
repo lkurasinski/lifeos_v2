@@ -35,6 +35,26 @@ describe("draftToSavePayload", () => {
 		expect(payload.namePl).toBeNull();
 		expect(payload.categoryId).toBeNull();
 	});
+
+	it("carries through the conversion fields and defaults them to null when absent", () => {
+		const withConversion = draftToSavePayload({
+			source: "CUSTOM",
+			nameEn: "Olive oil",
+			densityGPerMl: 0.92,
+			pieceWeightG: 5,
+			nutrients: [],
+		});
+		expect(withConversion.densityGPerMl).toBe(0.92);
+		expect(withConversion.pieceWeightG).toBe(5);
+
+		const withoutConversion = draftToSavePayload({
+			source: "CUSTOM",
+			nameEn: "Test",
+			nutrients: [],
+		});
+		expect(withoutConversion.densityGPerMl).toBeNull();
+		expect(withoutConversion.pieceWeightG).toBeNull();
+	});
 });
 
 describe("partitionNutrients", () => {

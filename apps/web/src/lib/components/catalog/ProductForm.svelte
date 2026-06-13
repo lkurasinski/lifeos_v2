@@ -65,6 +65,8 @@
 			brand: draft.brand ?? "",
 			categoryId: draft.categoryId ?? "",
 			servingSizeG: (draft.servingSizeG ?? null) as AmountField,
+			densityGPerMl: (draft.densityGPerMl ?? null) as AmountField,
+			pieceWeightG: (draft.pieceWeightG ?? null) as AmountField,
 			values,
 		};
 	});
@@ -74,6 +76,8 @@
 	let brand = $state(init.brand);
 	let categoryId = $state(init.categoryId);
 	let servingSizeG = $state<AmountField>(init.servingSizeG);
+	let densityGPerMl = $state<AmountField>(init.densityGPerMl);
+	let pieceWeightG = $state<AmountField>(init.pieceWeightG);
 	let values = $state<Record<string, AmountField>>(init.values);
 
 	// Group expand/collapse — default every group open (the locked probe shows them expanded).
@@ -149,6 +153,8 @@
 			brand: brand.trim() || null,
 			categoryId: categoryId || null,
 			servingSizeG: parseAmount(servingSizeG),
+			densityGPerMl: parseAmount(densityGPerMl),
+			pieceWeightG: parseAmount(pieceWeightG),
 			// Image URLs aren't edited in the form — carry them through from the source draft
 			// so saving/editing an OFF product preserves its photos.
 			imageUrl: draft.imageUrl ?? null,
@@ -270,6 +276,37 @@
 					<span class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground">g</span>
 				</span>
 			</label>
+			<label class="flex items-center justify-between gap-3">
+				<span class="text-[0.8125rem] text-muted-foreground">{t("add.density")}</span>
+				<span class="relative flex items-center">
+					<input
+						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[36px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
+						type="number"
+						inputmode="decimal"
+						min="0"
+						step="any"
+						bind:value={densityGPerMl}
+						aria-label={t("add.density")}
+					/>
+					<span class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground">g/ml</span>
+				</span>
+			</label>
+			<label class="flex items-center justify-between gap-3">
+				<span class="text-[0.8125rem] text-muted-foreground">{t("add.pieceWeight")}</span>
+				<span class="relative flex items-center">
+					<input
+						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[26px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
+						type="number"
+						inputmode="decimal"
+						min="0"
+						step="any"
+						bind:value={pieceWeightG}
+						aria-label={t("add.pieceWeight")}
+					/>
+					<span class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground">g</span>
+				</span>
+			</label>
+			<p class="text-[0.6875rem] leading-[1.4] text-muted-foreground">{t("add.conversionHint")}</p>
 		</div>
 
 		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { RecipeDocument } from "$lib/recipe/schema";
+	import { Chip } from "$lib/components/ui/chip";
 	import { t } from "$lib/i18n";
 	import { CARD_MACROS, formatMacro, formatMinutes, difficultyLabel } from "./meta";
 
@@ -68,10 +69,13 @@
 		</div>
 		<div class="rbadges">
 			{#each dietBadges as label (label)}
-				<span class="tag">{label}</span>
+				<Chip variant="badge" class="px-2 py-[3px] tracking-[0.05em]">{label}</Chip>
 			{/each}
 			{#if isDraft}
-				<span class="tag tag--draft"><span class="pd"></span>{t("recipe.card.draft")}</span>
+				<Chip variant="badge-outline" class="px-2 py-[3px] tracking-[0.05em] text-foreground">
+					{#snippet leading()}<span class="pd"></span>{/snippet}
+					{t("recipe.card.draft")}
+				</Chip>
 			{/if}
 			{#if !hit.nutritionComplete}
 				<span
@@ -212,32 +216,15 @@
 		margin-top: 8px;
 		flex-wrap: wrap;
 	}
-	.tag {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		font-size: 0.625rem;
-		font-weight: 600;
-		letter-spacing: 0.05em;
-		text-transform: uppercase;
-		color: var(--muted-foreground);
-		background: var(--secondary);
-		padding: 3px 8px;
-		border-radius: var(--radius-pill);
-	}
-	.tag--draft {
-		color: var(--foreground);
-		background: transparent;
-		box-shadow: inset 0 0 0 1px var(--border);
-	}
-	.tag--draft .pd {
+	/* Draft pill's pulsing dot (passed into the Chip's `leading` slot). */
+	.pd {
 		width: 6px;
 		height: 6px;
 		border-radius: 50%;
 		background: var(--muted-foreground);
 	}
 	@media (prefers-reduced-motion: no-preference) {
-		.tag--draft .pd {
+		.pd {
 			animation: pulse 2s var(--ease) infinite;
 		}
 	}

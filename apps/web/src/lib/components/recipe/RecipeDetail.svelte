@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Badge } from "$lib/components/ui/badge";
 	import { Button } from "$lib/components/ui/button";
 	import { Chip } from "$lib/components/ui/chip";
 	import { Gauge } from "$lib/components/ui/gauge";
@@ -119,14 +118,14 @@
 {#snippet body()}
 	<div class="dchips">
 		{#each recipe.mealTypes as mt (mt.id)}
-			<Badge>{mt.namePl}</Badge>
+			<Chip variant="badge">{mt.namePl}</Chip>
 		{/each}
 		{#if recipe.cuisine}
-			<Badge>{recipe.cuisine.namePl}</Badge>
+			<Chip variant="badge">{recipe.cuisine.namePl}</Chip>
 		{/if}
-		<Badge variant="outline">{visibilityLabel}</Badge>
+		<Chip variant="badge-outline">{visibilityLabel}</Chip>
 		{#if recipe.status === "DRAFT"}
-			<Badge variant="outline">{t("recipe.card.draft")}</Badge>
+			<Chip variant="badge-outline">{t("recipe.card.draft")}</Chip>
 		{/if}
 	</div>
 

@@ -97,17 +97,27 @@ function macro(value) { return value === undefined ? "—" : formatAmount(value)
 
 ---
 
-## Tier 4 — Component decomposition (readability, larger effort)
+## Tier 4 — Component decomposition (readability, larger effort) ✅ DONE
 
-Largest components mixing concerns:
-- `RecipeForm.svelte` — **1048 lines** (bindings + live nutrition rollup + step editor +
-  component editor + taxonomy chips). Extract `<LiveNutritionPanel>` and the step/component editors.
-- `RecipeDetail.svelte` — **910 lines**. Step-staging derivation (~L103–127) is a pure function
-  begging to be a tested util.
-- `ComponentEditor.svelte` (554), `ProductPicker.svelte` (507), `ProductForm.svelte` (474) —
-  each would benefit from a row/result child component.
+Five large components decomposed into child components + tested pure utils. Unlike Tiers 1–3
+(covered by existing tests), these touch untested `.svelte` files, so each was verified by
+running the app, one component per commit. **Net: test suite 204 → 243 (+39)** — three
+integrity-critical pure seams are now unit-tested instead of only exercised through the UI.
 
-The client correctly reads server-cached nutrition (no redundant recompute) — that part is clean.
+| Component | Lines | Extracted |
+|---|---|---|
+| `RecipeDetail.svelte` | 910 → 866 | step-staging → `steps.ts` (`buildStepStages`/`countNumberedSteps`) + `steps.test.ts` (11) |
+| `RecipeForm.svelte` | 1048 → 800 | `<LiveNutritionPanel>` (the live per-serving rollup + basis toggle) |
+| `ComponentEditor.svelte` | 554 → 354 | `<ComponentRow>` + `component-row.ts` (`rowInfo`/`parseAmount`) + test (10) |
+| `ProductPicker.svelte` | 507 → 459 | `<PickerResult>` + `picker-meta.ts` (`productMeta`/`recipeMeta`) + test (7) |
+| `ProductForm.svelte` | 474 → 453 | `<NutrientRow>` + `product-form.ts` (`parseAmount`/`seedFields`/`buildDraftProduct`) + test (11) |
+
+`product-form.ts`'s `buildDraftProduct` locks the "product data must never be silently lost"
+guardrail (NULL≠0, `nameEn`→Polish fallback, OFF-photo passthrough, every-registry-nutrient
+emission). The client correctly reads server-cached nutrition (no redundant recompute) — clean.
+
+Not extracted: RecipeForm's taxonomy-chip section — a weaker seam (tightly coupled to the draft),
+left inline by choice.
 
 ---
 
@@ -124,8 +134,10 @@ while `recipes.ts` is the integrity hub — a near-circular dependency a shared
 
 ## Suggested sequence
 
-1. **Tier 1** — `lib/server/http.ts` + wire 5 endpoints (~150 lines removed, no behavior change,
-   covered by existing tests).
-2. **Tier 2** — consolidate the mirror; fix the `orClause` escaping inconsistency.
-3. **Tier 3** — shared primitives (`macros.ts`, `search-params.ts`, `macro()` formatter).
-4. **Tier 4** — component decomposition, incremental.
+1. ~~**Tier 1** — `lib/server/http.ts` + wire 5 endpoints (~150 lines removed, no behavior change,
+   covered by existing tests).~~ ✅
+2. ~~**Tier 2** — consolidate the mirror; fix the `orClause` escaping inconsistency.~~ ✅
+3. ~~**Tier 3** — shared primitives (`macros.ts`, `search-params.ts`, `macro()` formatter).~~ ✅
+4. ~~**Tier 4** — component decomposition, incremental.~~ ✅
+
+All four tiers complete.

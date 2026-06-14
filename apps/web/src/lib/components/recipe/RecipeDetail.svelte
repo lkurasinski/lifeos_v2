@@ -6,7 +6,7 @@
 	import NutrientGroupSection from "$lib/components/catalog/NutrientGroupSection.svelte";
 	import { groupRegistryRows } from "$lib/components/catalog/meta";
 	import type { NutrientRegistryGroup } from "$lib/food/schema";
-	import type { RecipeComponentView, RecipeDetailView, RecipeStep, SubComponentView } from "$lib/recipe/schema";
+	import type { RecipeComponentView, RecipeDetailView, SubComponentView } from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
 	import {
 		formatAmount,
@@ -18,6 +18,7 @@
 		totalTime,
 		MACRO_TAG_SET,
 	} from "./meta";
+	import { buildStepStages, countNumberedSteps } from "./steps";
 
 	// The recipe detail panel (locked by `browse-detail.html` / `-complex.html`): header
 	// chips → meta → per-serving macro gauges → honest partial-data banner (names the
@@ -79,53 +80,10 @@
 	});
 
 	// ─── Step stages (derived presentation) ──────────────────────────────────────
-	// Each sub-recipe with its own steps becomes a stage; the parent's own steps become a
-	// final "assembly" stage. With no sub-recipe steps it's a single flat numbered list
-	// (the simple probe). Action steps number sequentially per stage; wait-steps render as
-	// passive-time blocks (not numbered).
-	// `key` is a stable per-item index within the stage (NOT derived from text) — two wait-steps
-	// with identical text in one stage must not collide into a duplicate `{#each}` key.
-	type NumberedStep = { step: RecipeStep; num: number | null; key: string };
-	type Stage = {
-		key: string;
-		title: string | null;
-		timeLabel: string | null;
-		items: NumberedStep[];
-		/** Names of nested sub-recipes whose own steps this one-level-deep view can't show. */
-		omittedSubSteps: string[];
-	};
-
-	function numberSteps(steps: RecipeStep[]): NumberedStep[] {
-		let n = 0;
-		return steps.map((step, i) => ({ step, num: step.kind === "action" ? ++n : null, key: `${i}` }));
-	}
-
-	const stages = $derived.by<Stage[]>(() => {
-		const subStages: Stage[] = recipe.components
-			.filter((c) => c.subRecipe && c.subRecipe.steps.length > 0)
-			.map((c) => ({
-				key: c.id,
-				title: c.subRecipe!.name,
-				timeLabel: formatMinutes(totalTime(c.subRecipe!.prepTimeMin, c.subRecipe!.cookTimeMin)),
-				items: numberSteps(c.subRecipe!.steps),
-				// A grandchild sub-recipe with its own steps can't render here (the view flattens
-				// one level) — name it so the method is an honest partial, not a silent gap.
-				omittedSubSteps: c
-					.subRecipe!.components.filter((sc) => sc.subRecipeName && sc.subRecipeHasSteps)
-					.map((sc) => sc.subRecipeName!),
-			}));
-		if (subStages.length === 0) {
-			return recipe.steps.length > 0
-				? [{ key: "main", title: null, timeLabel: null, items: numberSteps(recipe.steps), omittedSubSteps: [] }]
-				: [];
-		}
-		const assembly: Stage[] =
-			recipe.steps.length > 0
-				? [{ key: "assembly", title: t("recipe.detail.assembly"), timeLabel: null, items: numberSteps(recipe.steps), omittedSubSteps: [] }]
-				: [];
-		return [...subStages, ...assembly];
-	});
-	const totalSteps = $derived(stages.reduce((sum, s) => sum + s.items.filter((i) => i.num !== null).length, 0));
+	// Sub-recipe steps → titled stages, parent steps → assembly/flat list; see `steps.ts`
+	// for the locked shape rules. Pure + unit-tested there (`steps.test.ts`).
+	const stages = $derived(buildStepStages(recipe));
+	const totalSteps = $derived(countNumberedSteps(stages));
 
 	/** Display text for a parent component's amount (products + sub-recipes use the same fn). */
 	function qty(c: RecipeComponentView | SubComponentView) {
@@ -147,8 +105,13 @@
 
 {#snippet nestIcon()}
 	<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-		<path d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z" />
-		<path d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z" opacity=".5" />
+		<path
+			d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z"
+		/>
+		<path
+			d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z"
+			opacity=".5"
+		/>
 	</svg>
 {/snippet}
 
@@ -176,18 +139,33 @@
 	<div class="dmeta">
 		{#if timeLabel}
 			<span class="dm">
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm.75 4a.75.75 0 0 0-1.5 0V10c0 .24.11.46.3.6l2.4 1.8a.75.75 0 0 0 .9-1.2l-2.1-1.57V6.5Z" clip-rule="evenodd" /></svg>
+				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+					><path
+						fill-rule="evenodd"
+						d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm.75 4a.75.75 0 0 0-1.5 0V10c0 .24.11.46.3.6l2.4 1.8a.75.75 0 0 0 .9-1.2l-2.1-1.57V6.5Z"
+						clip-rule="evenodd"
+					/></svg
+				>
 				<b>{timeLabel}</b><span class="ml">{t("recipe.detail.totalTime")}</span>
 			</span>
 		{/if}
 		{#if difficulty}
 			<span class="dm">
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 13.5a7 7 0 0 1 14 0 .75.75 0 0 1-.75.75H3.75A.75.75 0 0 1 3 13.5Z" opacity=".4" /><path d="M10 13.25 13.4 8a.6.6 0 0 0-.84-.82L10 11.9a1.3 1.3 0 1 0 0 1.35Z" /></svg>
+				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+					><path
+						d="M3 13.5a7 7 0 0 1 14 0 .75.75 0 0 1-.75.75H3.75A.75.75 0 0 1 3 13.5Z"
+						opacity=".4"
+					/><path d="M10 13.25 13.4 8a.6.6 0 0 0-.84-.82L10 11.9a1.3 1.3 0 1 0 0 1.35Z" /></svg
+				>
 				<b>{difficulty}</b>
 			</span>
 		{/if}
 		<span class="dm">
-			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 3.2c-3.6 0-6.6 2.3-7 5.3-.05.4.27.74.67.74h12.66c.4 0 .72-.34.67-.74-.4-3-3.4-5.3-7-5.3Z" /><rect x="2.5" y="10.6" width="15" height="2.2" rx="1.1" /></svg>
+			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+				><path
+					d="M10 3.2c-3.6 0-6.6 2.3-7 5.3-.05.4.27.74.67.74h12.66c.4 0 .72-.34.67-.74-.4-3-3.4-5.3-7-5.3Z"
+				/><rect x="2.5" y="10.6" width="15" height="2.2" rx="1.1" /></svg
+			>
 			<b>{recipe.servings}</b><span class="ml">{t("recipe.detail.servings")}</span>
 		</span>
 	</div>
@@ -203,7 +181,9 @@
 
 	<div class="basis">
 		{t("recipe.detail.nutritionTitle")}
-		<span class="pp">· {t("recipe.detail.perServing")} ({t("recipe.detail.ofServings")} {recipe.servings})</span>
+		<span class="pp"
+			>· {t("recipe.detail.perServing")} ({t("recipe.detail.ofServings")} {recipe.servings})</span
+		>
 	</div>
 	<div class="gauges">
 		{#each gauges as g (g.macro)}
@@ -219,11 +199,19 @@
 
 	{#if !recipe.nutritionComplete && recipe.incompleteComponents.length > 0}
 		<div class="honest">
-			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z" clip-rule="evenodd" /></svg>
+			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+				><path
+					fill-rule="evenodd"
+					d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z"
+					clip-rule="evenodd"
+				/></svg
+			>
 			<p>
 				<b>{t("recipe.detail.partialTitle")}</b>
 				{t("recipe.detail.partialIntro")}
-				{#each recipe.incompleteComponents as ic, i (`${ic.kind}:${ic.refId}`)}{i > 0 ? ", " : " "}„{ic.name}"{/each}.
+				{#each recipe.incompleteComponents as ic, i (`${ic.kind}:${ic.refId}`)}{i > 0
+						? ", "
+						: " "}„{ic.name}"{/each}.
 				{t("recipe.detail.partialOutro")}
 			</p>
 		</div>
@@ -233,14 +221,27 @@
 
 	<div class="sec-h">
 		{t("recipe.detail.ingredients")}
-		<span class="ct">{componentCount} {t("recipe.detail.itemsCount")} · {t("recipe.detail.forServings")} {recipe.servings} {t("recipe.detail.servings")}</span>
+		<span class="ct"
+			>{componentCount}
+			{t("recipe.detail.itemsCount")} · {t("recipe.detail.forServings")}
+			{recipe.servings}
+			{t("recipe.detail.servings")}</span
+		>
 	</div>
 	<div class="comp">
 		{#each recipe.components as c (c.id)}
 			{#if c.subRecipe}
 				<div class="citem">
-					<button type="button" class="crow shead" class:open={isOpen(c.id)} aria-expanded={isOpen(c.id)} onclick={() => (collapsed[c.id] = isOpen(c.id))}>
-						<svg class="chev2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 13.5l-4.5-5h9z" /></svg>
+					<button
+						type="button"
+						class="crow shead"
+						class:open={isOpen(c.id)}
+						aria-expanded={isOpen(c.id)}
+						onclick={() => (collapsed[c.id] = isOpen(c.id))}
+					>
+						<svg class="chev2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+							><path d="M10 13.5l-4.5-5h9z" /></svg
+						>
 						<span class="cname">
 							{c.subRecipe.name}
 							<span class="subtag">{@render nestIcon()}{t("recipe.detail.subRecipeTag")}</span>
@@ -253,9 +254,14 @@
 								{@const sq = qty(sc)}
 								<div class="subrow">
 									<span class="sn">
-										{componentName(sc)}{#if sq.missing}<span class="star" title={t("recipe.detail.noData")}>*</span>{/if}
+										{componentName(sc)}{#if sq.missing}<span
+												class="star"
+												title={t("recipe.detail.noData")}>*</span
+											>{/if}
 									</span>
-									<span class="sq" class:missing={sq.missing}>{sq.main}{#if sq.clarifier}<i>{sq.clarifier}</i>{/if}</span>
+									<span class="sq" class:missing={sq.missing}
+										>{sq.main}{#if sq.clarifier}<i>{sq.clarifier}</i>{/if}</span
+									>
 								</div>
 							{/each}
 						</div>
@@ -293,7 +299,13 @@
 						{#each stage.items as item (item.key)}
 							{#if item.step.kind === "wait"}
 								<div class="waitblock">
-									<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm.75 4a.75.75 0 0 0-1.5 0V10c0 .24.11.46.3.6l2.4 1.8a.75.75 0 0 0 .9-1.2l-2.1-1.57V6.5Z" clip-rule="evenodd" /></svg>
+									<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+										><path
+											fill-rule="evenodd"
+											d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm.75 4a.75.75 0 0 0-1.5 0V10c0 .24.11.46.3.6l2.4 1.8a.75.75 0 0 0 .9-1.2l-2.1-1.57V6.5Z"
+											clip-rule="evenodd"
+										/></svg
+									>
 									<span class="wtext">{item.step.text}</span>
 									<span class="wdur">{formatMinutes(item.step.durationMin)}</span>
 								</div>
@@ -309,7 +321,10 @@
 						{/each}
 					</div>
 					{#if stage.omittedSubSteps.length > 0}
-						<p class="omit">{t("recipe.detail.nestedStepsOmitted")} {stage.omittedSubSteps.join(", ")}</p>
+						<p class="omit">
+							{t("recipe.detail.nestedStepsOmitted")}
+							{stage.omittedSubSteps.join(", ")}
+						</p>
 					{/if}
 				</div>
 			{/each}
@@ -322,7 +337,17 @@
 		<div class="tips">
 			{#each recipe.tips as tip, i (i)}
 				<div class="tip">
-					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2.2a5.3 5.3 0 0 0-3.2 9.5c.5.4.8.9.9 1.5l.1.8h4.4l.1-.8c.1-.6.4-1.1.9-1.5A5.3 5.3 0 0 0 10 2.2Z" /><path d="M7.7 16.2h4.6M8.4 17.8h3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+						><path
+							d="M10 2.2a5.3 5.3 0 0 0-3.2 9.5c.5.4.8.9.9 1.5l.1.8h4.4l.1-.8c.1-.6.4-1.1.9-1.5A5.3 5.3 0 0 0 10 2.2Z"
+						/><path
+							d="M7.7 16.2h4.6M8.4 17.8h3.2"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+						/></svg
+					>
 					<span>{tip}</span>
 				</div>
 			{/each}
@@ -331,14 +356,27 @@
 
 	{#if profileCount > 0}
 		<div class="divider"></div>
-		<button type="button" class="expand" class:open={profileOpen} aria-expanded={profileOpen} onclick={() => (profileOpen = !profileOpen)}>
+		<button
+			type="button"
+			class="expand"
+			class:open={profileOpen}
+			aria-expanded={profileOpen}
+			onclick={() => (profileOpen = !profileOpen)}
+		>
 			<span class="et">{t("recipe.detail.fullProfile")}</span>
-			<span class="ec">{t("recipe.detail.perServing")} · {profileCount} {t("recipe.detail.nutrientsCount")}</span>
-			<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 13.5l-4.5-5h9z" /></svg>
+			<span class="ec"
+				>{t("recipe.detail.perServing")} · {profileCount} {t("recipe.detail.nutrientsCount")}</span
+			>
+			<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+				><path d="M10 13.5l-4.5-5h9z" /></svg
+			>
 		</button>
 		{#if profileOpen}
 			{#each profileGroups as group (group.label)}
-				<NutrientGroupSection label={group.label} count={`${group.rows.length} ${t("recipe.detail.itemsCount")}`}>
+				<NutrientGroupSection
+					label={group.label}
+					count={`${group.rows.length} ${t("recipe.detail.itemsCount")}`}
+				>
 					{#each group.rows as row (row.id)}
 						<div class="prow">
 							<span class="pn">{row.name}</span>
@@ -357,7 +395,11 @@
 			{/if}
 			{#if onEdit}
 				<Button class="flex-1" onclick={() => onEdit?.(recipe)}>
-					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M13.94 3.31a1.75 1.75 0 0 1 2.475 2.475l-8.3 8.3a2 2 0 0 1-.86.503l-2.74.76a.75.75 0 0 1-.922-.923l.76-2.74a2 2 0 0 1 .503-.86l8.3-8.3Z" /></svg>
+					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+						><path
+							d="M13.94 3.31a1.75 1.75 0 0 1 2.475 2.475l-8.3 8.3a2 2 0 0 1-.86.503l-2.74.76a.75.75 0 0 1-.922-.923l.76-2.74a2 2 0 0 1 .503-.86l8.3-8.3Z"
+						/></svg
+					>
 					{t("recipe.detail.editRecipe")}
 				</Button>
 			{/if}
@@ -375,7 +417,9 @@
 
 {#if embedded}
 	<!-- Embedded (inside the Dialog): no glass chrome — the dialog is the surface. -->
-	<div class="flex flex-col px-[22px] pb-[22px] pt-6 max-md:px-4 max-md:pb-[18px] max-md:pt-5">{@render body()}</div>
+	<div class="flex flex-col px-[22px] pb-[22px] pt-6 max-md:px-4 max-md:pb-[18px] max-md:pt-5">
+		{@render body()}
+	</div>
 {:else}
 	<!-- Layout (padding/flex) lives in global Tailwind utilities, NOT a scoped class:
 	     a scoped class passed to the Panel component never receives this component's

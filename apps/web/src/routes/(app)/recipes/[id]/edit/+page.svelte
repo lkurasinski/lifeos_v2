@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
+	import { goto, invalidateAll } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { FormHeader } from "$lib/components/ui/form-header";
 	import { ConfirmDialog } from "$lib/components/ui/confirm-dialog";
@@ -32,12 +32,16 @@
 			});
 			if (res.ok) {
 				toast.success(t("recipe.form.updated"), { description: d.name });
+				// Refresh the cached section layout so any custom taxonomy created on save lands
+				// in the taxonomy options (otherwise its chip can't render on the next edit).
+				await invalidateAll();
 				toCatalog();
 				return;
 			}
 			if (res.status === 409) {
 				const body = await res.json().catch(() => null);
-				saveError = body?.error === "depth" ? t("recipe.form.depthError") : t("recipe.form.cycleError");
+				saveError =
+					body?.error === "depth" ? t("recipe.form.depthError") : t("recipe.form.cycleError");
 				return;
 			}
 			if (res.status === 404) {

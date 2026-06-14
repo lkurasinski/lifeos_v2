@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
+	import { goto, invalidateAll } from "$app/navigation";
 	import { resolve } from "$app/paths";
 	import { FormHeader } from "$lib/components/ui/form-header";
 	import { toast } from "$lib/components/ui/sonner";
@@ -33,6 +33,9 @@
 			});
 			if (res.status === 201) {
 				toast.success(t("recipe.form.created"), { description: d.name });
+				// Refresh the cached section layout so any custom taxonomy created on save lands
+				// in the taxonomy options (otherwise its chip can't render when editing later).
+				await invalidateAll();
 				toCatalog();
 				return;
 			}

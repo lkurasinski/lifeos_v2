@@ -1,10 +1,10 @@
 /**
  * Shared recipe-domain contracts — the client↔server boundary.
  *
- * Depends ONLY on `zod`. Imports nothing from `$lib/server/*` or `$env/*`, so it is
- * safe to import from client components (the authoring form, the live-nutrition panel),
- * from the server endpoints, and — type-only — from the dependency-free
- * `recipe-document.ts` the tsx batch reindex chain (Phase 4) loads.
+ * Depends only on `zod` and the zod-only `$lib/search-params` helpers. Imports nothing from
+ * `$lib/server/*` or `$env/*`, so it is safe to import from client components (the authoring
+ * form, the live-nutrition panel), from the server endpoints, and — type-only — from the
+ * dependency-free `recipe-document.ts` the tsx batch reindex chain (Phase 4) loads.
  *
  * Everything nutrition-related is keyed by `infoodsTagname` — the single canonical
  * recipe-nutrition key (see `$lib/recipe/nutrition`). The `RecipeDocument` below is the
@@ -13,6 +13,7 @@
  * `getRecipeForView`, never round-tripped through Meili.
  */
 import { z } from "zod";
+import { baseSearchParamsShape, listParam, numParam, qParam } from "$lib/search-params";
 import type { UnitKind } from "./units";
 import type { IncompleteComponent } from "./nutrition";
 
@@ -87,7 +88,7 @@ export type RecipeScope = (typeof RECIPE_SCOPES)[number];
 
 /** Normalized recipe search params (the endpoint pre-parses the URL into this). */
 export const recipeSearchParamsSchema = z.object({
-	q: z.string().trim().max(200).optional(),
+	...baseSearchParamsShape,
 	mealTypes: z.array(z.string()).optional(),
 	diets: z.array(z.string()).optional(),
 	allergens: z.array(z.string()).optional(),
@@ -96,9 +97,6 @@ export const recipeSearchParamsSchema = z.object({
 	difficulties: z.array(z.enum(RECIPE_DIFFICULTIES)).optional(),
 	scope: z.enum(RECIPE_SCOPES).default("wszystkie"),
 	sort: z.enum(RECIPE_SORT_KEYS).default("relevance"),
-	dir: z.enum(["asc", "desc"]).default("asc"),
-	page: z.number().int().min(1).default(1),
-	limit: z.number().int().min(1).max(100).default(24),
 });
 export type RecipeSearchParams = z.infer<typeof recipeSearchParamsSchema>;
 
@@ -127,36 +125,19 @@ export interface RecipeSearchResult {
  * client error the endpoint surfaces as 400). Mirrors `lib/food/schema.parseSearchParams`.
  */
 export function parseRecipeSearchParams(searchParams: URLSearchParams): RecipeSearchParams {
-	const list = (key: string): string[] | undefined => {
-		const values = searchParams
-			.getAll(key)
-			.flatMap((v) => v.split(","))
-			.map((v) => v.trim())
-			.filter(Boolean);
-		return values.length > 0 ? values : undefined;
-	};
-	const num = (key: string): number | undefined => {
-		const raw = searchParams.get(key);
-		if (raw === null || raw.trim() === "") return undefined;
-		const n = Number(raw);
-		return Number.isFinite(n) ? n : undefined;
-	};
-	const q = searchParams.get("q")?.trim();
-	const difficulties = list("difficulties");
-
 	return recipeSearchParamsSchema.parse({
-		q: q ? q : undefined,
-		mealTypes: list("mealTypes"),
-		diets: list("diets"),
-		allergens: list("allergens"),
-		techniques: list("techniques"),
-		cuisines: list("cuisines"),
-		difficulties,
+		q: qParam(searchParams),
+		mealTypes: listParam(searchParams, "mealTypes"),
+		diets: listParam(searchParams, "diets"),
+		allergens: listParam(searchParams, "allergens"),
+		techniques: listParam(searchParams, "techniques"),
+		cuisines: listParam(searchParams, "cuisines"),
+		difficulties: listParam(searchParams, "difficulties"),
 		scope: searchParams.get("scope") ?? undefined,
 		sort: searchParams.get("sort") ?? undefined,
 		dir: searchParams.get("dir") ?? undefined,
-		page: num("page"),
-		limit: num("limit"),
+		page: numParam(searchParams, "page"),
+		limit: numParam(searchParams, "limit"),
 	});
 }
 
@@ -555,14 +536,15 @@ export function recipeDraftToSavePayload(draft: RecipeDraft): RecipeSavePayload 
 		// http(s) URL or null, never "").
 		steps: draft.steps
 			.filter((s) => s.text.trim() !== "")
-			.map((s): RecipeStep =>
-				s.kind === "wait"
-					? { kind: "wait", text: s.text.trim(), durationMin: s.durationMin }
-					: {
-							kind: "action",
-							text: s.text.trim(),
-							...(s.imageUrl && s.imageUrl.trim() ? { imageUrl: s.imageUrl.trim() } : {}),
-						},
+			.map(
+				(s): RecipeStep =>
+					s.kind === "wait"
+						? { kind: "wait", text: s.text.trim(), durationMin: s.durationMin }
+						: {
+								kind: "action",
+								text: s.text.trim(),
+								...(s.imageUrl && s.imageUrl.trim() ? { imageUrl: s.imageUrl.trim() } : {}),
+							},
 			),
 		mealTypeIds: draft.mealTypeIds,
 		cuisineId: draft.cuisineId ?? null,

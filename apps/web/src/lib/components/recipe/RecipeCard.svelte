@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { RecipeDocument } from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
-	import { CARD_MACROS, formatAmount, formatMinutes, difficultyLabel } from "./meta";
+	import { CARD_MACROS, formatMacro, formatMinutes, difficultyLabel } from "./meta";
 
 	// A scannable recipe card (locked by `browse-detail.html`): thumbnail placeholder ·
 	// name · time/meal/difficulty meta · diet badges (incl. "Na zapas") · per-serving
@@ -22,18 +22,13 @@
 	// badge stays correct even if drafts ever become indexable in non-`szkice` scopes.
 	const isDraft = $derived(hit.status === "DRAFT");
 	const time = $derived(formatMinutes(hit.totalTimeMin ?? null));
-	const mealLabel = $derived(hit.mealTypeSlugs[0] ? (mealTypeLabels[hit.mealTypeSlugs[0]] ?? null) : null);
+	const mealLabel = $derived(
+		hit.mealTypeSlugs[0] ? (mealTypeLabels[hit.mealTypeSlugs[0]] ?? null) : null,
+	);
 	const difficulty = $derived(difficultyLabel(hit.difficulty));
 	// Up to two diet/attribute badges (the probe shows two) — resolved to Polish labels.
-	const dietBadges = $derived(
-		hit.dietSlugs.slice(0, 2).map((slug) => dietLabels[slug] ?? slug),
-	);
+	const dietBadges = $derived(hit.dietSlugs.slice(0, 2).map((slug) => dietLabels[slug] ?? slug));
 	const meta = $derived([time, mealLabel, difficulty].filter((x): x is string => !!x));
-
-	/** A per-serving macro figure, or an em dash when absent (NULL, never 0). */
-	function macro(value: number | undefined): string {
-		return value === undefined ? "—" : formatAmount(value);
-	}
 </script>
 
 <button type="button" class="rcard" class:on={selected} onclick={() => onSelect(hit.id)}>
@@ -79,7 +74,11 @@
 				<span class="tag tag--draft"><span class="pd"></span>{t("recipe.card.draft")}</span>
 			{/if}
 			{#if !hit.nutritionComplete}
-				<span class="np" title={t("recipe.card.partialNutrition")} aria-label={t("recipe.card.partialNutrition")}>
+				<span
+					class="np"
+					title={t("recipe.card.partialNutrition")}
+					aria-label={t("recipe.card.partialNutrition")}
+				>
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 						<path
 							fill-rule="evenodd"
@@ -93,10 +92,13 @@
 	</div>
 
 	<div class="rright">
-		<div class="rkcal">{macro(hit.energyKcalPerServing)}<span class="u">{t("recipe.card.kcalPerServing")}</span></div>
+		<div class="rkcal">
+			{formatMacro(hit.energyKcalPerServing)}<span class="u">{t("recipe.card.kcalPerServing")}</span
+			>
+		</div>
 		<div class="rmacros">
 			{#each CARD_MACROS as m (m.macro)}
-				<b><span class="md {m.macro}"></span>{macro(hit[m.field])}</b>
+				<b><span class="md {m.macro}"></span>{formatMacro(hit[m.field])}</b>
 			{/each}
 		</div>
 	</div>
@@ -128,7 +130,9 @@
 	}
 	.rcard.on {
 		background: var(--card);
-		box-shadow: var(--shadow-lift), inset 0 0 0 1px var(--hairline);
+		box-shadow:
+			var(--shadow-lift),
+			inset 0 0 0 1px var(--hairline);
 	}
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 		.rcard {

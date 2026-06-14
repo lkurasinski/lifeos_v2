@@ -1,16 +1,17 @@
 /**
  * Shared food-catalog contracts — the client↔server boundary.
  *
- * Depends ONLY on `zod`. Imports nothing from `$lib/server/*` or `$env/*`, so it is
- * safe to import from client components (via `$lib/food/schema`), from server
- * endpoints, and — type-only — from the dependency-free `food-document.ts` used by
- * the tsx batch index chain.
+ * Depends only on `zod` and the zod-only `$lib/search-params` helpers. Imports nothing from
+ * `$lib/server/*` or `$env/*`, so it is safe to import from client components (via
+ * `$lib/food/schema`), from server endpoints, and — type-only — from the dependency-free
+ * `food-document.ts` used by the tsx batch index chain.
  *
  * NULL ≠ 0: a nutrient `amountPer100g` of `null` means "no data" and is distinct
  * from a stored `0`. The schemas below accept `number | null` and the pure adapters
  * preserve the distinction end-to-end.
  */
 import { z } from "zod";
+import { baseSearchParamsShape, listParam, numParam, qParam } from "$lib/search-params";
 
 // ─── Source enum (mirrors the Prisma `FoodSource`) ───────────────────────────
 
@@ -130,13 +131,10 @@ export type SortKey = (typeof SORT_KEYS)[number];
 
 /** Normalized catalog search params (the endpoint pre-parses the URL into this). */
 export const searchParamsSchema = z.object({
-	q: z.string().trim().max(200).optional(),
+	...baseSearchParamsShape,
 	sources: z.array(z.enum(FOOD_SOURCES)).optional(),
 	categories: z.array(z.string()).optional(),
 	sort: z.enum(SORT_KEYS).default("name"),
-	dir: z.enum(["asc", "desc"]).default("asc"),
-	page: z.number().int().min(1).default(1),
-	limit: z.number().int().min(1).max(100).default(24),
 });
 export type SearchParams = z.infer<typeof searchParamsSchema>;
 
@@ -166,30 +164,14 @@ export interface FoodSearchResult {
  * throws (a real client error the endpoint surfaces as 400).
  */
 export function parseSearchParams(searchParams: URLSearchParams): SearchParams {
-	const list = (key: string): string[] | undefined => {
-		const values = searchParams
-			.getAll(key)
-			.flatMap((v) => v.split(","))
-			.map((v) => v.trim())
-			.filter(Boolean);
-		return values.length > 0 ? values : undefined;
-	};
-	const num = (key: string): number | undefined => {
-		const raw = searchParams.get(key);
-		if (raw === null || raw.trim() === "") return undefined;
-		const n = Number(raw);
-		return Number.isFinite(n) ? n : undefined;
-	};
-	const q = searchParams.get("q")?.trim();
-
 	return searchParamsSchema.parse({
-		q: q ? q : undefined,
-		sources: list("sources"),
-		categories: list("categories"),
+		q: qParam(searchParams),
+		sources: listParam(searchParams, "sources"),
+		categories: listParam(searchParams, "categories"),
 		sort: searchParams.get("sort") ?? undefined,
 		dir: searchParams.get("dir") ?? undefined,
-		page: num("page"),
-		limit: num("limit"),
+		page: numParam(searchParams, "page"),
+		limit: numParam(searchParams, "limit"),
 	});
 }
 

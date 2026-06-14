@@ -10,6 +10,7 @@
 import type { MultiSearchQuery, MultiSearchResult } from "meilisearch";
 import type { FoodDocument, FoodSearchResult, SearchParams, SortKey } from "../food/schema";
 import { orClause } from "./meili-filter";
+import { MACRO_FIELDS } from "../macros";
 
 export const FOOD_INDEX_NAME = "food_products";
 
@@ -26,14 +27,6 @@ export const FOOD_INDEX_SETTINGS = {
 	// understate the catalog count + page count. Raise it well above the catalog size
 	// so the "N produktów" header and pagination reflect the real total.
 	pagination: { maxTotalHits: 50000 },
-};
-
-/** INFOODS tag → the top-level document field promoted for sorting. */
-const MACRO_FIELDS: Record<string, "energyKcal" | "protein" | "fat" | "carbs"> = {
-	ENERC_KCAL: "energyKcal",
-	PROCNT: "protein",
-	FAT: "fat",
-	CHOCDF: "carbs",
 };
 
 interface ProductInput {

@@ -20,13 +20,9 @@
  */
 import { resolveGrams, type UnitConversion, type ProductConversion } from "./units.js";
 
-/** The four macros, by their INFOODS tagnames — promoted to dedicated cached columns. */
-export const MACRO_TAGS = {
-	energyKcal: "ENERC_KCAL",
-	protein: "PROCNT",
-	fat: "FAT",
-	carbs: "CHOCDF",
-} as const;
+// Re-exported from the shared single source of truth so the engine's outputs (totals/perServing
+// maps keyed by INFOODS tagname) and their existing `$lib/recipe/nutrition` importers stay put.
+export { MACRO_TAGS } from "../macros.js";
 
 /** One recipe line — a product OR a sub-recipe — in engine-generic form. */
 export interface RollupComponent {

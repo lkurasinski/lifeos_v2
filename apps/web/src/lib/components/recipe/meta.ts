@@ -9,12 +9,12 @@
  * identity palette via the shared `Gauge`; the figure stays graphite.
  */
 import type { Macro } from "$lib/components/ui/gauge";
-import { formatAmount, macroPct } from "$lib/components/catalog/meta";
+import { formatAmount, formatMacro, macroPct } from "$lib/components/catalog/meta";
 import { MACRO_TAGS } from "$lib/recipe/nutrition";
 import type { RecipeDifficulty, RecipeSortKey, UnitView } from "$lib/recipe/schema";
 import { t } from "$lib/i18n";
 
-export { formatAmount, macroPct };
+export { formatAmount, formatMacro, macroPct };
 
 // ─── Per-serving macro gauges ───────────────────────────────────────────────────
 
@@ -38,15 +38,42 @@ export type RecipeMacroGauge = {
 /** The four per-serving macro rings, in the locked kcal/protein/carbs/fat order. */
 export function recipeMacroGauges(): RecipeMacroGauge[] {
 	return [
-		{ macro: "kcal", label: t("recipe.macros.energy"), field: "energyKcalPerServing", unit: "kcal", max: RECIPE_MACRO_REFERENCE.kcal },
-		{ macro: "pro", label: t("recipe.macros.protein"), field: "proteinPerServing", unit: "g", max: RECIPE_MACRO_REFERENCE.protein },
-		{ macro: "carb", label: t("recipe.macros.carbs"), field: "carbsPerServing", unit: "g", max: RECIPE_MACRO_REFERENCE.carbs },
-		{ macro: "fat", label: t("recipe.macros.fat"), field: "fatPerServing", unit: "g", max: RECIPE_MACRO_REFERENCE.fat },
+		{
+			macro: "kcal",
+			label: t("recipe.macros.energy"),
+			field: "energyKcalPerServing",
+			unit: "kcal",
+			max: RECIPE_MACRO_REFERENCE.kcal,
+		},
+		{
+			macro: "pro",
+			label: t("recipe.macros.protein"),
+			field: "proteinPerServing",
+			unit: "g",
+			max: RECIPE_MACRO_REFERENCE.protein,
+		},
+		{
+			macro: "carb",
+			label: t("recipe.macros.carbs"),
+			field: "carbsPerServing",
+			unit: "g",
+			max: RECIPE_MACRO_REFERENCE.carbs,
+		},
+		{
+			macro: "fat",
+			label: t("recipe.macros.fat"),
+			field: "fatPerServing",
+			unit: "g",
+			max: RECIPE_MACRO_REFERENCE.fat,
+		},
 	];
 }
 
 /** Card macro dots (protein / carbs / fat) — the compact per-serving figures under the kcal. */
-export type CardMacro = { macro: Macro; field: "proteinPerServing" | "carbsPerServing" | "fatPerServing" };
+export type CardMacro = {
+	macro: Macro;
+	field: "proteinPerServing" | "carbsPerServing" | "fatPerServing";
+};
 export const CARD_MACROS: CardMacro[] = [
 	{ macro: "pro", field: "proteinPerServing" },
 	{ macro: "carb", field: "carbsPerServing" },
@@ -125,7 +152,11 @@ export type ComponentQty = {
  * append a gram clarifier — exact for VOLUME (`1 łyżka · 15 g`), approximate for COUNT
  * (`1 szt. · ≈120 g`). An unresolved household unit flips `missing` so the UI can mark it.
  */
-export function formatComponentQty(amount: number, unit: UnitView, gramsResolved: number | null): ComponentQty {
+export function formatComponentQty(
+	amount: number,
+	unit: UnitView,
+	gramsResolved: number | null,
+): ComponentQty {
 	const main = `${formatAmount(amount)} ${unit.namePl}`;
 	if (DIRECT_UNIT_SLUGS.has(unit.slug)) {
 		return { main, clarifier: null, missing: false };
@@ -155,7 +186,16 @@ export function defaultSortDir(key: RecipeSortKey): "asc" | "desc" {
 }
 
 /** Meal-type chip display order (the seeded closed set), unknown slugs last. */
-const MEAL_TYPE_ORDER = ["breakfast", "lunch", "dinner", "snack", "dessert", "sauce", "base", "side"];
+const MEAL_TYPE_ORDER = [
+	"breakfast",
+	"lunch",
+	"dinner",
+	"snack",
+	"dessert",
+	"sauce",
+	"base",
+	"side",
+];
 
 /** Order meal-type taxonomy rows by the closed-set display order, unknowns last (by namePl). */
 export function compareMealTypes(a: string, b: string): number {

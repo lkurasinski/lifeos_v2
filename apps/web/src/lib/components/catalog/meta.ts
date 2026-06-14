@@ -9,6 +9,7 @@
  */
 import type { Macro } from "$lib/components/ui/gauge";
 import type { FoodSource, NutrientRegistryGroup } from "$lib/food/schema";
+import { MACRO_TAGS } from "$lib/macros";
 import { t } from "$lib/i18n";
 
 // ─── Number formatting (Polish: comma decimal, tabular) ───────────────────────
@@ -18,6 +19,11 @@ const NUMBER_FORMAT = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 
 /** Format a nutrient amount the Polish way (comma decimal, ≤1 fraction digit). */
 export function formatAmount(value: number): string {
 	return NUMBER_FORMAT.format(value);
+}
+
+/** A macro figure for a card/table cell: the formatted amount, or an em-dash when absent. */
+export function formatMacro(value: number | undefined): string {
+	return value === undefined ? "—" : formatAmount(value);
 }
 
 // ─── Source segment (the locked 4-way toolbar: all / USDA / własne / OFF) ─────
@@ -81,10 +87,34 @@ export function macroPct(value: number | undefined, max: number): number {
 export type MacroGauge = { macro: Macro; label: string; tag: string; unit: string; max: number };
 export function macroGauges(): MacroGauge[] {
 	return [
-		{ macro: "kcal", label: t("catalog.macros.energy"), tag: "ENERC_KCAL", unit: "kcal", max: MACRO_REFERENCE.kcal },
-		{ macro: "pro", label: t("catalog.macros.protein"), tag: "PROCNT", unit: "g", max: MACRO_REFERENCE.protein },
-		{ macro: "carb", label: t("catalog.macros.carbs"), tag: "CHOCDF", unit: "g", max: MACRO_REFERENCE.carbs },
-		{ macro: "fat", label: t("catalog.macros.fat"), tag: "FAT", unit: "g", max: MACRO_REFERENCE.fat },
+		{
+			macro: "kcal",
+			label: t("catalog.macros.energy"),
+			tag: MACRO_TAGS.energyKcal,
+			unit: "kcal",
+			max: MACRO_REFERENCE.kcal,
+		},
+		{
+			macro: "pro",
+			label: t("catalog.macros.protein"),
+			tag: MACRO_TAGS.protein,
+			unit: "g",
+			max: MACRO_REFERENCE.protein,
+		},
+		{
+			macro: "carb",
+			label: t("catalog.macros.carbs"),
+			tag: MACRO_TAGS.carbs,
+			unit: "g",
+			max: MACRO_REFERENCE.carbs,
+		},
+		{
+			macro: "fat",
+			label: t("catalog.macros.fat"),
+			tag: MACRO_TAGS.fat,
+			unit: "g",
+			max: MACRO_REFERENCE.fat,
+		},
 	];
 }
 

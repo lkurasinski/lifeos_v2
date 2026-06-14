@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { RecipeTaxonomies, TaxonomyRef } from "$lib/recipe/schema";
 	import { Chip } from "$lib/components/ui/chip";
+	import { SelectField } from "$lib/components/ui/select-field";
 	import { t } from "$lib/i18n";
 	import { compareMealTypes } from "./meta";
 
@@ -184,21 +185,16 @@
 
 <div class="metafield">
 	<span class="flab">{t("recipe.form.cuisineLabel")}</span>
-	<span class="selwrap">
-		<select
-			value={cuisineId ?? ""}
-			onchange={onCuisineChange}
-			aria-label={t("recipe.form.cuisineLabel")}
-		>
-			<option value="">{t("recipe.form.cuisineNone")}</option>
-			{#each taxonomies.cuisines as c (c.id)}
-				<option value={c.id}>{c.namePl}</option>
-			{/each}
-		</select>
-		<svg class="schev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-			><path d="M10 13.5l-4.5-5h9z" /></svg
-		>
-	</span>
+	<SelectField
+		value={cuisineId ?? ""}
+		onchange={onCuisineChange}
+		aria-label={t("recipe.form.cuisineLabel")}
+	>
+		<option value="">{t("recipe.form.cuisineNone")}</option>
+		{#each taxonomies.cuisines as c (c.id)}
+			<option value={c.id}>{c.namePl}</option>
+		{/each}
+	</SelectField>
 </div>
 
 <style>
@@ -235,37 +231,5 @@
 	}
 	.mchip-input::placeholder {
 		color: var(--muted-foreground);
-	}
-
-	.selwrap {
-		position: relative;
-	}
-	.selwrap select {
-		width: 100%;
-		appearance: none;
-		-webkit-appearance: none;
-		font-family: inherit;
-		font-size: 0.9375rem;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 10px 34px 10px 12px;
-		outline: none;
-		cursor: pointer;
-	}
-	.selwrap select:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.selwrap .schev {
-		position: absolute;
-		right: 11px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 14px;
-		height: 14px;
-		color: var(--muted-foreground);
-		pointer-events: none;
 	}
 </style>

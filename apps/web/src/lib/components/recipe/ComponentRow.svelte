@@ -4,6 +4,7 @@
 	import { t } from "$lib/i18n";
 	import { IconButton } from "$lib/components/ui/icon-button";
 	import { NumberField } from "$lib/components/ui/number-field";
+	import { SelectField } from "$lib/components/ui/select-field";
 	import ProductPicker from "./ProductPicker.svelte";
 	import { formatAmount } from "./meta";
 	import { rowInfo } from "./component-row";
@@ -121,20 +122,16 @@
 		placeholder="—"
 		aria-label={t("recipe.form.amountLabel")}
 	/>
-	<span class="unit">
-		<select
-			value={component.unitId}
-			onchange={(e) => onUnitChange(e.currentTarget.value)}
-			aria-label={t("recipe.form.unitLabel")}
-		>
-			{#each units as u (u.id)}
-				<option value={u.id}>{u.namePl}</option>
-			{/each}
-		</select>
-		<svg class="uchev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-			><path d="M10 13.5l-4.5-5h9z" /></svg
-		>
-	</span>
+	<SelectField
+		selectClass="py-[9px] pl-2.5 pr-[26px] text-[0.875rem] tabular-nums"
+		value={component.unitId}
+		onchange={(e) => onUnitChange(e.currentTarget.value)}
+		aria-label={t("recipe.form.unitLabel")}
+	>
+		{#each units as u (u.id)}
+			<option value={u.id}>{u.namePl}</option>
+		{/each}
+	</SelectField>
 	<IconButton
 		type="button"
 		variant="ghost"
@@ -201,41 +198,6 @@
 	.grip svg {
 		width: 15px;
 		height: 15px;
-	}
-	.unit select {
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.875rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 9px 10px;
-		outline: none;
-	}
-	.unit select:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.unit {
-		position: relative;
-	}
-	.unit select {
-		appearance: none;
-		-webkit-appearance: none;
-		padding-right: 26px;
-		cursor: pointer;
-	}
-	.unit .uchev {
-		position: absolute;
-		right: 9px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 13px;
-		height: 13px;
-		color: var(--muted-foreground);
-		pointer-events: none;
 	}
 	.ing-sub {
 		grid-column: 2 / 4;

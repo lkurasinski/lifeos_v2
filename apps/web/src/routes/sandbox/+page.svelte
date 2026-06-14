@@ -5,6 +5,7 @@
 	import { Field } from "$lib/components/ui/field";
 	import { Input } from "$lib/components/ui/input";
 	import { NumberField } from "$lib/components/ui/number-field";
+	import { SelectField } from "$lib/components/ui/select-field";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -100,6 +101,11 @@
 				<Field orientation="horizontal" label="Porcja">
 					<NumberField class="w-24" unit="g" placeholder="0" />
 				</Field>
+				<SelectField aria-label="Kuchnia">
+					<option>Polska</option>
+					<option>Włoska</option>
+					<option>Tajska</option>
+				</SelectField>
 				<div class="flex flex-wrap gap-2">
 					<Button>Zapisz</Button>
 					<Button variant="secondary">Anuluj</Button>

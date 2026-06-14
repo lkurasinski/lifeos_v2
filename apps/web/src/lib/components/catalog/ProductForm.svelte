@@ -2,6 +2,7 @@
 	import { untrack } from "svelte";
 	import { Badge } from "$lib/components/ui/badge";
 	import { Button } from "$lib/components/ui/button";
+	import { Field } from "$lib/components/ui/field";
 	import { Gauge } from "$lib/components/ui/gauge";
 	import { Input } from "$lib/components/ui/input";
 	import { NumberField } from "$lib/components/ui/number-field";
@@ -231,8 +232,7 @@
 		</div>
 
 		<div class="mt-4 flex flex-col gap-2.5">
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.brandLabel")}</span>
+			<Field orientation="horizontal" label={t("add.brandLabel")}>
 				<input
 					class="min-w-0 max-w-[260px] flex-1 rounded-sm border bg-card px-[9px] py-[7px] text-right text-[0.8125rem] text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:shadow-[var(--focus)]"
 					type="text"
@@ -240,9 +240,8 @@
 					placeholder={t("add.brandPlaceholder")}
 					aria-label={t("add.brandLabel")}
 				/>
-			</label>
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.servingSize")}</span>
+			</Field>
+			<Field orientation="horizontal" label={t("add.servingSize")}>
 				<NumberField
 					bind:value={servingSizeG}
 					class="w-24"
@@ -251,9 +250,8 @@
 					min="0"
 					aria-label={t("add.servingSize")}
 				/>
-			</label>
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.density")}</span>
+			</Field>
+			<Field orientation="horizontal" label={t("add.density")}>
 				<NumberField
 					bind:value={densityGPerMl}
 					class="w-24"
@@ -264,9 +262,8 @@
 					step="any"
 					aria-label={t("add.density")}
 				/>
-			</label>
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.pieceWeight")}</span>
+			</Field>
+			<Field orientation="horizontal" label={t("add.pieceWeight")}>
 				<NumberField
 					bind:value={pieceWeightG}
 					class="w-24"
@@ -276,7 +273,7 @@
 					step="any"
 					aria-label={t("add.pieceWeight")}
 				/>
-			</label>
+			</Field>
 			<p class="text-[0.6875rem] leading-[1.4] text-muted-foreground">{t("add.conversionHint")}</p>
 		</div>
 

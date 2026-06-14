@@ -2,6 +2,7 @@
 	// Dev-only kit sandbox: every Phase-2 generic component in light + dark.
 	// Not a product screen — copy here isn't routed through i18n.
 	import { Button } from "$lib/components/ui/button";
+	import { Field } from "$lib/components/ui/field";
 	import { Input } from "$lib/components/ui/input";
 	import { NumberField } from "$lib/components/ui/number-field";
 	import { Label } from "$lib/components/ui/label";
@@ -95,6 +96,10 @@
 					<NumberField class="w-24" unit="g" placeholder="0" />
 					<NumberField class="w-28" unit="g/ml" inputClass="pr-[36px]" placeholder="0" />
 				</div>
+				<Field label="Nazwa" for="fld"><Input id="fld" placeholder="Wpisz nazwę" /></Field>
+				<Field orientation="horizontal" label="Porcja">
+					<NumberField class="w-24" unit="g" placeholder="0" />
+				</Field>
 				<div class="flex flex-wrap gap-2">
 					<Button>Zapisz</Button>
 					<Button variant="secondary">Anuluj</Button>

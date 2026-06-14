@@ -11,6 +11,7 @@
 	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
 	import { MetadataItem } from "$lib/components/ui/metadata-item";
 	import { ExpandableRow } from "$lib/components/ui/expandable-row";
+	import { TintedBadge } from "$lib/components/ui/tinted-badge";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -145,6 +146,8 @@
 					</IconButton>
 					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="positive" />Live</span>
 					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="muted" />Szkic</span>
+					<TintedBadge tone="amber"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg></TintedBadge>
+					<TintedBadge tone="positive"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg></TintedBadge>
 				</div>
 				<div class="flex flex-wrap gap-x-[18px] gap-y-2">
 					<MetadataItem label="czas">

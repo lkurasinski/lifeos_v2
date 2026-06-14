@@ -3,6 +3,7 @@
 	import type { RecipeStep } from "$lib/recipe/schema";
 	import { Button } from "$lib/components/ui/button";
 	import { IconButton } from "$lib/components/ui/icon-button";
+	import { TintedBadge } from "$lib/components/ui/tinted-badge";
 	import { t } from "$lib/i18n";
 
 	// The steps editor (locked by `form.html`): an ordered list of `action` steps (numbered,
@@ -111,9 +112,9 @@
 		{#if item.kind === "wait"}
 			<div class="waite" class:dragging={dragKey === item.key} role="listitem" ondragover={(e) => e.preventDefault()} ondrop={(e) => { e.preventDefault(); onDrop(item.key); }}>
 				{@render grip(item.key)}
-				<span class="wbadge">
+				<TintedBadge tone="amber">
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.5 2.5h9a1 1 0 0 1 0 2H14c0 2.5-1.3 3.8-3.2 5.5C12.7 11.7 14 13 14 15.5h.5a1 1 0 0 1 0 2h-9a1 1 0 0 1 0-2H6c0-2.5 1.3-3.8 3.2-5.5C7.3 8.3 6 7 6 4.5h-.5a1 1 0 0 1 0-2Z" /></svg>
-				</span>
+				</TintedBadge>
 				<div class="wbody">
 					<input class="wt" type="text" bind:value={item.text} placeholder={t("recipe.form.waitPlaceholder")} aria-label={t("recipe.form.waitPlaceholder")} />
 					<span class="wdur">
@@ -267,21 +268,6 @@
 		grid-template-columns: 18px 26px minmax(0, 1fr) 30px;
 		gap: 10px;
 		align-items: center;
-	}
-	.wbadge {
-		width: 26px;
-		height: 26px;
-		border-radius: 50%;
-		background: oklch(0.78 0.13 78 / 0.22);
-		color: oklch(0.52 0.1 74);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-	.wbadge svg {
-		width: 14px;
-		height: 14px;
 	}
 	.wbody {
 		display: flex;

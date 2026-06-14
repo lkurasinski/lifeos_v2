@@ -9,6 +9,7 @@
 	import { SearchInput } from "$lib/components/ui/search-input";
 	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
 	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
+	import { MetadataItem } from "$lib/components/ui/metadata-item";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -142,6 +143,13 @@
 					</IconButton>
 					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="positive" />Live</span>
 					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="muted" />Szkic</span>
+				</div>
+				<div class="flex flex-wrap gap-x-[18px] gap-y-2">
+					<MetadataItem label="czas">
+						{#snippet icon()}<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="7" /></svg>{/snippet}
+						45 min
+					</MetadataItem>
+					<MetadataItem label="porcje">4</MetadataItem>
 				</div>
 			</CardContent>
 		</Card>

@@ -5,8 +5,9 @@
 	import { t } from "$lib/i18n";
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
-	import { Label } from "$lib/components/ui/label";
+	import { Field } from "$lib/components/ui/field";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
+	import { AuthHeader, AuthFooterLink } from "$lib/components/auth";
 
 	let email = $state("");
 	let password = $state("");
@@ -40,10 +41,7 @@
 </svelte:head>
 
 <div>
-	<header class="auth-holo" style="--hd: 0ms">
-		<p class="auth-sys-label">{t("auth.login")}</p>
-		<h1 class="auth-page-title">{t("auth.loginTitle")}</h1>
-	</header>
+	<AuthHeader holo style="--hd: 0ms" label={t("auth.login")} title={t("auth.loginTitle")} />
 
 	<form onsubmit={handleSubmit} class="flex flex-col gap-5">
 		{#if error}
@@ -54,8 +52,7 @@
 			</div>
 		{/if}
 
-		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 160ms">
-			<Label for="email">{t("auth.email")}</Label>
+		<Field class="auth-holo" style="--hd: 160ms" label={t("auth.email")} for="email">
 			<div class="auth-field">
 				<Input
 					id="email"
@@ -66,18 +63,17 @@
 					placeholder="ty@przyklad.pl"
 				/>
 			</div>
-		</div>
+		</Field>
 
-		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 260ms">
-			<div class="flex items-center justify-between">
-				<Label for="password">{t("auth.password")}</Label>
+		<Field class="auth-holo" style="--hd: 260ms" label={t("auth.password")} for="password">
+			{#snippet labelAction()}
 				<a
 					href={resolve("/forgot-password")}
 					class="auth-sys-label transition-colors hover:text-primary"
 				>
 					{t("auth.forgotPassword")}
 				</a>
-			</div>
+			{/snippet}
 			<div class="auth-field">
 				<Input
 					id="password"
@@ -87,7 +83,7 @@
 					autocomplete="current-password"
 				/>
 			</div>
-		</div>
+		</Field>
 
 		<div class="auth-holo" style="--hd: 360ms">
 			<Button size="lg" type="submit" disabled={loading} class="mt-1 w-full">
@@ -95,11 +91,12 @@
 			</Button>
 		</div>
 
-		<p class="auth-holo auth-sys-label text-center" style="--hd: 440ms">
-			{t("auth.noAccount")}
-			<a href={resolve("/register")} class="text-foreground transition-colors hover:text-primary">
-				{t("auth.register")}
-			</a>
-		</p>
+		<AuthFooterLink
+			holo
+			style="--hd: 440ms"
+			text={t("auth.noAccount")}
+			linkText={t("auth.register")}
+			href={resolve("/register")}
+		/>
 	</form>
 </div>

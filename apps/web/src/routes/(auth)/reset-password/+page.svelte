@@ -6,8 +6,9 @@
 	import { z } from "zod";
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
-	import { Label } from "$lib/components/ui/label";
+	import { Field } from "$lib/components/ui/field";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
+	import { AuthHeader, AuthFooterLink } from "$lib/components/auth";
 
 	const resetSchema = z
 		.object({
@@ -65,32 +66,21 @@
 </svelte:head>
 
 <div>
-	<header>
-		<p class="auth-sys-label">{t("auth.resetPassword")}</p>
-		<h1 class="auth-page-title">{t("auth.resetPasswordTitle")}</h1>
-	</header>
+	<AuthHeader label={t("auth.resetPassword")} title={t("auth.resetPasswordTitle")} />
 
 	{#if success}
 		<div class="flex flex-col gap-5">
 			<Alert>
 				<AlertDescription>{t("auth.resetPasswordSuccess")}</AlertDescription>
 			</Alert>
-			<p class="auth-sys-label text-center">
-				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
-					{t("auth.backToLogin")}
-				</a>
-			</p>
+			<AuthFooterLink linkText={t("auth.backToLogin")} href={resolve("/login")} />
 		</div>
 	{:else if urlError || !token}
 		<div class="flex flex-col gap-5">
 			<Alert variant="destructive">
 				<AlertDescription>{t("auth.invalidOrExpiredToken")}</AlertDescription>
 			</Alert>
-			<p class="auth-sys-label text-center">
-				<a href={resolve("/forgot-password")} class="text-foreground transition-colors hover:text-primary">
-					{t("auth.forgotPassword")}
-				</a>
-			</p>
+			<AuthFooterLink linkText={t("auth.forgotPassword")} href={resolve("/forgot-password")} />
 		</div>
 	{:else}
 		<form onsubmit={handleSubmit} class="flex flex-col gap-5">
@@ -100,8 +90,7 @@
 				</Alert>
 			{/if}
 
-			<div class="flex flex-col gap-1.5">
-				<Label for="password">{t("auth.newPassword")}</Label>
+			<Field label={t("auth.newPassword")} for="password">
 				<div class="auth-field">
 					<Input
 						id="password"
@@ -111,10 +100,9 @@
 						autocomplete="new-password"
 					/>
 				</div>
-			</div>
+			</Field>
 
-			<div class="flex flex-col gap-1.5">
-				<Label for="confirm-password">{t("auth.confirmNewPassword")}</Label>
+			<Field label={t("auth.confirmNewPassword")} for="confirm-password">
 				<div class="auth-field">
 					<Input
 						id="confirm-password"
@@ -124,17 +112,13 @@
 						autocomplete="new-password"
 					/>
 				</div>
-			</div>
+			</Field>
 
 			<Button size="lg" type="submit" disabled={loading} class="mt-2 w-full">
 				{loading ? t("common.loading") : t("auth.resetPassword")}
 			</Button>
 
-			<p class="auth-sys-label text-center">
-				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
-					{t("auth.backToLogin")}
-				</a>
-			</p>
+			<AuthFooterLink linkText={t("auth.backToLogin")} href={resolve("/login")} />
 		</form>
 	{/if}
 </div>

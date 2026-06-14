@@ -4,8 +4,9 @@
 	import { t } from "$lib/i18n";
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
-	import { Label } from "$lib/components/ui/label";
+	import { Field } from "$lib/components/ui/field";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
+	import { AuthHeader, AuthFooterLink } from "$lib/components/auth";
 
 	let email = $state("");
 	let submitted = $state(false);
@@ -37,10 +38,12 @@
 </svelte:head>
 
 <div>
-	<header class="auth-holo" style="--hd: 0ms">
-		<p class="auth-sys-label">{t("auth.resetPasswordTitle")}</p>
-		<h1 class="auth-page-title">{t("auth.resetPasswordTitle")}</h1>
-	</header>
+	<AuthHeader
+		holo
+		style="--hd: 0ms"
+		label={t("auth.resetPasswordTitle")}
+		title={t("auth.resetPasswordTitle")}
+	/>
 
 	{#if submitted}
 		<div class="flex flex-col gap-5">
@@ -49,11 +52,13 @@
 					<AlertDescription>{t("auth.resetLinkSent")}</AlertDescription>
 				</Alert>
 			</div>
-			<p class="auth-holo auth-sys-label text-center" style="--hd: 180ms">
-				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
-					{t("auth.backToLogin")}
-				</a>
-			</p>
+			<AuthFooterLink
+				holo
+				style="--hd: 180ms"
+				text=""
+				linkText={t("auth.backToLogin")}
+				href={resolve("/login")}
+			/>
 		</div>
 	{:else}
 		<form onsubmit={handleSubmit} class="flex flex-col gap-5">
@@ -65,8 +70,7 @@
 				</div>
 			{/if}
 
-			<div class="auth-holo flex flex-col gap-1.5" style="--hd: 160ms">
-				<Label for="email">{t("auth.email")}</Label>
+			<Field class="auth-holo" style="--hd: 160ms" label={t("auth.email")} for="email">
 				<div class="auth-field">
 					<Input
 						id="email"
@@ -77,7 +81,7 @@
 						placeholder="ty@przyklad.pl"
 					/>
 				</div>
-			</div>
+			</Field>
 
 			<div class="auth-holo" style="--hd: 260ms">
 				<Button size="lg" type="submit" disabled={loading} class="w-full">
@@ -85,11 +89,13 @@
 				</Button>
 			</div>
 
-			<p class="auth-holo auth-sys-label text-center" style="--hd: 340ms">
-				<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
-					{t("auth.backToLogin")}
-				</a>
-			</p>
+			<AuthFooterLink
+				holo
+				style="--hd: 340ms"
+				text=""
+				linkText={t("auth.backToLogin")}
+				href={resolve("/login")}
+			/>
 		</form>
 	{/if}
 </div>

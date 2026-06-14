@@ -16,6 +16,7 @@
 		error?: string;
 		hint?: string;
 		class?: string;
+		style?: string;
 		labelAction?: Snippet;
 		children: Snippet;
 	};
@@ -27,18 +28,19 @@
 		error,
 		hint,
 		class: className,
+		style,
 		labelAction,
 		children,
 	}: Props = $props();
 </script>
 
 {#if orientation === "horizontal"}
-	<label class={cn("flex items-center justify-between gap-3", className)}>
+	<label class={cn("flex items-center justify-between gap-3", className)} {style}>
 		<span class="text-[0.8125rem] text-muted-foreground">{label}</span>
 		{@render children()}
 	</label>
 {:else}
-	<div class={cn("flex flex-col gap-1.5", className)}>
+	<div class={cn("flex flex-col gap-1.5", className)} {style}>
 		{#if labelAction}
 			<div class="flex items-center justify-between">
 				<Label for={htmlFor}>{label}</Label>

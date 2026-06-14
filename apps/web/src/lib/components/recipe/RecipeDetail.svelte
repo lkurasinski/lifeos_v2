@@ -179,6 +179,24 @@
 		</div>
 	{/if}
 
+	{#if recipe.diets.length > 0}
+		<div class="dtech">
+			<span class="tl">{t("recipe.facets.diet")}</span>
+			{#each recipe.diets as diet (diet.id)}
+				<span class="techchip">{diet.namePl}</span>
+			{/each}
+		</div>
+	{/if}
+
+	{#if recipe.allergens.length > 0}
+		<div class="dtech">
+			<span class="tl">{t("recipe.facets.allergen")}</span>
+			{#each recipe.allergens as allergen (allergen.id)}
+				<span class="techchip">{allergen.namePl}</span>
+			{/each}
+		</div>
+	{/if}
+
 	<div class="basis">
 		{t("recipe.detail.nutritionTitle")}
 		<span class="pp"

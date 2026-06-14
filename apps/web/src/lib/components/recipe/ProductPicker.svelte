@@ -3,6 +3,7 @@
 	import CategoryIcon from "$lib/components/catalog/CategoryIcon.svelte";
 	import type { FoodDocument } from "$lib/food/schema";
 	import type { RecipeDocument } from "$lib/recipe/schema";
+	import { SearchInput } from "$lib/components/ui/search-input";
 	import { t } from "$lib/i18n";
 	import PickerResult from "./PickerResult.svelte";
 	import { productMeta, recipeMeta } from "./picker-meta";
@@ -51,7 +52,7 @@
 	let recipes = $state<RecipeDocument[]>([]);
 	let loading = $state(false);
 	let rootEl: HTMLElement | undefined = $state();
-	let searchEl: HTMLInputElement | undefined = $state();
+	let searchEl = $state<HTMLInputElement | null>(null);
 
 	function toggle() {
 		open = !open;
@@ -174,6 +175,20 @@
 		>
 	</button>
 
+	{#snippet ppSearchIcon()}
+		<svg
+			class="pointer-events-none absolute left-[11px] top-1/2 size-[15px] -translate-y-1/2 text-muted-foreground"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+			aria-hidden="true"
+			><path
+				fill-rule="evenodd"
+				d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+				clip-rule="evenodd"
+			/></svg
+		>
+	{/snippet}
+
 	{#if open}
 		<div class="picker-pop">
 			<div class="pp-tabs">
@@ -184,26 +199,18 @@
 					>{t("recipe.form.tabSubRecipes")}</button
 				>
 			</div>
-			<div class="pp-search">
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-					><path
-						fill-rule="evenodd"
-						d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
-						clip-rule="evenodd"
-					/></svg
-				>
-				<input
-					bind:this={searchEl}
-					bind:value={query}
-					type="text"
-					placeholder={tab === "products"
-						? t("recipe.form.pickerSearchProduct")
-						: t("recipe.form.pickerSearchSubRecipe")}
-					aria-label={tab === "products"
-						? t("recipe.form.pickerSearchProduct")
-						: t("recipe.form.pickerSearchSubRecipe")}
-				/>
-			</div>
+			<SearchInput
+				bind:inputEl={searchEl}
+				bind:value={query}
+				inputClass="h-auto py-[9px] pl-[33px] pr-3 text-[0.875rem]"
+				leading={ppSearchIcon}
+				placeholder={tab === "products"
+					? t("recipe.form.pickerSearchProduct")
+					: t("recipe.form.pickerSearchSubRecipe")}
+				aria-label={tab === "products"
+					? t("recipe.form.pickerSearchProduct")
+					: t("recipe.form.pickerSearchSubRecipe")}
+			/>
 
 			{#if tab === "products"}
 				<div class="pp-lab">{t("recipe.form.matchingProducts")}</div>
@@ -366,33 +373,6 @@
 		background: var(--card);
 		color: var(--foreground);
 		box-shadow: var(--shadow-soft);
-	}
-	.pp-search {
-		position: relative;
-	}
-	.pp-search svg {
-		position: absolute;
-		left: 11px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 15px;
-		height: 15px;
-		color: var(--muted-foreground);
-	}
-	.pp-search input {
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.875rem;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 9px 12px 9px 33px;
-		outline: none;
-	}
-	.pp-search input:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
 	}
 	.pp-lab {
 		font-size: 0.5625rem;

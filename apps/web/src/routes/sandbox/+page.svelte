@@ -6,6 +6,7 @@
 	import { Input } from "$lib/components/ui/input";
 	import { NumberField } from "$lib/components/ui/number-field";
 	import { SelectField } from "$lib/components/ui/select-field";
+	import { SearchInput } from "$lib/components/ui/search-input";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -21,6 +22,7 @@
 
 	let dark = $state(false);
 	let view = $state("day");
+	let search = $state("");
 	const macros: { macro: Macro; label: string; pct: number; val: string }[] = [
 		{ macro: "kcal", label: "Energia", pct: 72, val: "2 140" },
 		{ macro: "pro", label: "Białko", pct: 48, val: "112" },
@@ -106,6 +108,7 @@
 					<option>Włoska</option>
 					<option>Tajska</option>
 				</SelectField>
+				<SearchInput bind:value={search} placeholder="Szukaj…" onclear={() => (search = "")} clearLabel="Wyczyść" />
 				<div class="flex flex-wrap gap-2">
 					<Button>Zapisz</Button>
 					<Button variant="secondary">Anuluj</Button>

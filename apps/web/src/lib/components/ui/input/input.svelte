@@ -21,9 +21,25 @@
 	});
 
 	type Props = HTMLInputAttributes &
-		VariantProps<typeof inputVariants> & { class?: string; value?: string };
+		VariantProps<typeof inputVariants> & {
+			class?: string;
+			value?: string;
+			/** Element handle, for imperative focus/select. */
+			ref?: HTMLInputElement | null;
+		};
 
-	let { class: className, variant, value = $bindable(""), ...restProps }: Props = $props();
+	let {
+		class: className,
+		variant,
+		value = $bindable(""),
+		ref = $bindable(null),
+		...restProps
+	}: Props = $props();
 </script>
 
-<input class={cn(inputVariants({ variant }), className)} bind:value {...restProps} />
+<input
+	bind:this={ref}
+	class={cn(inputVariants({ variant }), className)}
+	bind:value
+	{...restProps}
+/>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { NumberField } from "$lib/components/ui/number-field";
 	import { t } from "$lib/i18n";
 	import { parseAmount, type AmountField } from "./product-form";
 
@@ -20,12 +21,9 @@
 <div class="flex items-center justify-between gap-3 py-1.5 pl-4 pr-0.5">
 	<span class="text-[0.8125rem] text-muted-foreground">{label}</span>
 	<span class="flex shrink-0 items-center gap-1.5">
-		<input
-			class={[
-				"numin w-[84px] rounded-sm border bg-card px-[9px] py-[5px] text-right text-[0.8125rem] tabular-nums tracking-[-0.01em] text-foreground outline-none placeholder:italic placeholder:text-muted-foreground placeholder:[font-variant-numeric:normal] focus:border-transparent focus:shadow-[var(--focus)]",
-				empty && "border-dashed",
-			]}
-			type="number"
+		<NumberField
+			class="w-[84px]"
+			inputClass={`py-[5px] tracking-[-0.01em] placeholder:italic placeholder:[font-variant-numeric:normal]${empty ? " border-dashed" : ""}`}
 			inputmode="decimal"
 			min="0"
 			step="any"
@@ -38,16 +36,3 @@
 		>
 	</span>
 </div>
-
-<style>
-	/* Number inputs: suppress the native spinners (no utility for the webkit pseudo-elements). */
-	.numin {
-		-moz-appearance: textfield;
-		appearance: textfield;
-	}
-	.numin::-webkit-outer-spin-button,
-	.numin::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-</style>

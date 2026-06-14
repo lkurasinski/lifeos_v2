@@ -3,6 +3,7 @@
 	import type { DraftComponent, RecipeDocument, UnitOption } from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
 	import { IconButton } from "$lib/components/ui/icon-button";
+	import { NumberField } from "$lib/components/ui/number-field";
 	import ProductPicker from "./ProductPicker.svelte";
 	import { formatAmount } from "./meta";
 	import { rowInfo } from "./component-row";
@@ -111,16 +112,15 @@
 		onOpenChange={(o) => onPickerOpenChange(o)}
 	/>
 
-	<span class="amt">
-		<input
-			type="text"
-			inputmode="decimal"
-			value={amountValue}
-			oninput={(e) => onAmountInput(e.currentTarget.value)}
-			placeholder="—"
-			aria-label={t("recipe.form.amountLabel")}
-		/>
-	</span>
+	<NumberField
+		type="text"
+		inputmode="decimal"
+		inputClass="px-2.5 py-[9px] text-[0.875rem]"
+		value={amountValue}
+		oninput={(e) => onAmountInput(e.currentTarget.value)}
+		placeholder="—"
+		aria-label={t("recipe.form.amountLabel")}
+	/>
 	<span class="unit">
 		<select
 			value={component.unitId}
@@ -202,7 +202,6 @@
 		width: 15px;
 		height: 15px;
 	}
-	.amt input,
 	.unit select {
 		width: 100%;
 		font-family: inherit;
@@ -214,18 +213,7 @@
 		border-radius: var(--radius-sm);
 		padding: 9px 10px;
 		outline: none;
-		-moz-appearance: textfield;
-		appearance: textfield;
 	}
-	.amt input::-webkit-outer-spin-button,
-	.amt input::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-	.amt input {
-		text-align: right;
-	}
-	.amt input:focus,
 	.unit select:focus {
 		border-color: transparent;
 		box-shadow: var(--focus);

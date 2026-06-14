@@ -3,6 +3,7 @@
 	import { Button } from "$lib/components/ui/button";
 	import { IconButton } from "$lib/components/ui/icon-button";
 	import { Input } from "$lib/components/ui/input";
+	import { NumberField } from "$lib/components/ui/number-field";
 	import { Panel } from "$lib/components/ui/panel";
 	import { SegmentedToggle } from "$lib/components/ui/segmented";
 	import type { FoodCategoryMeta, NutrientRegistryGroup } from "$lib/food/schema";
@@ -178,42 +179,43 @@
 				<div class="nums">
 					<label class="numf">
 						<span class="flab">{t("recipe.form.servingsLabel")}</span>
-						<span class="numwrap"
-							><input
-								type="number"
-								inputmode="numeric"
-								min="1"
-								step="1"
-								bind:value={data.servings}
-								aria-label={t("recipe.form.servingsLabel")}
-							/></span
-						>
+						<NumberField
+							value={data.servings}
+							inputClass="px-3 py-[10px] text-left text-[0.9375rem]"
+							inputmode="numeric"
+							min="1"
+							step="1"
+							oninput={(e) => (data.servings = e.currentTarget.valueAsNumber)}
+							aria-label={t("recipe.form.servingsLabel")}
+						/>
 					</label>
 					<label class="numf">
 						<span class="flab">{t("recipe.form.prepLabel")}</span>
-						<span class="numwrap"
-							><input
-								type="number"
-								inputmode="numeric"
-								min="0"
-								step="1"
-								bind:value={data.prepTimeMin}
-								aria-label={t("recipe.form.prepLabel")}
-							/><span class="nu">{t("recipe.form.minUnit")}</span></span
-						>
+						<NumberField
+							value={data.prepTimeMin}
+							unit={t("recipe.form.minUnit")}
+							inputClass="py-[10px] pl-3 pr-[38px] text-left text-[0.9375rem]"
+							inputmode="numeric"
+							min="0"
+							step="1"
+							oninput={(e) =>
+								(data.prepTimeMin = e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
+							aria-label={t("recipe.form.prepLabel")}
+						/>
 					</label>
 					<label class="numf">
 						<span class="flab">{t("recipe.form.cookLabel")}</span>
-						<span class="numwrap"
-							><input
-								type="number"
-								inputmode="numeric"
-								min="0"
-								step="1"
-								bind:value={data.cookTimeMin}
-								aria-label={t("recipe.form.cookLabel")}
-							/><span class="nu">{t("recipe.form.minUnit")}</span></span
-						>
+						<NumberField
+							value={data.cookTimeMin}
+							unit={t("recipe.form.minUnit")}
+							inputClass="py-[10px] pl-3 pr-[38px] text-left text-[0.9375rem]"
+							inputmode="numeric"
+							min="0"
+							step="1"
+							oninput={(e) =>
+								(data.cookTimeMin = e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
+							aria-label={t("recipe.form.cookLabel")}
+						/>
 					</label>
 				</div>
 
@@ -502,41 +504,6 @@
 	.numf {
 		display: flex;
 		flex-direction: column;
-	}
-	.numwrap {
-		position: relative;
-		display: flex;
-		align-items: center;
-	}
-	.numwrap input {
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.9375rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 10px 38px 10px 12px;
-		outline: none;
-		-moz-appearance: textfield;
-		appearance: textfield;
-	}
-	.numwrap input::-webkit-outer-spin-button,
-	.numwrap input::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-	.numwrap input:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.numwrap .nu {
-		position: absolute;
-		right: 11px;
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		pointer-events: none;
 	}
 
 	.tipslist {

@@ -3,6 +3,7 @@
 	// Not a product screen — copy here isn't routed through i18n.
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
+	import { NumberField } from "$lib/components/ui/number-field";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -90,6 +91,10 @@
 					<Input id="e" type="email" placeholder="ty@przyklad.pl" />
 				</div>
 				<Input variant="seamless" class="py-1.5 text-xl font-semibold" placeholder="Tytuł (seamless)" />
+				<div class="flex items-center gap-2">
+					<NumberField class="w-24" unit="g" placeholder="0" />
+					<NumberField class="w-28" unit="g/ml" inputClass="pr-[36px]" placeholder="0" />
+				</div>
 				<div class="flex flex-wrap gap-2">
 					<Button>Zapisz</Button>
 					<Button variant="secondary">Anuluj</Button>

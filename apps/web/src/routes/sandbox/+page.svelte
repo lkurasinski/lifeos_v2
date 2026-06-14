@@ -89,6 +89,7 @@
 					<Label for="e">E-mail</Label>
 					<Input id="e" type="email" placeholder="ty@przyklad.pl" />
 				</div>
+				<Input variant="seamless" class="py-1.5 text-xl font-semibold" placeholder="Tytuł (seamless)" />
 				<div class="flex flex-wrap gap-2">
 					<Button>Zapisz</Button>
 					<Button variant="secondary">Anuluj</Button>

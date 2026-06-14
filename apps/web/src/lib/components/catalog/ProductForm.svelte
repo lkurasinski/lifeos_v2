@@ -3,6 +3,7 @@
 	import { Badge } from "$lib/components/ui/badge";
 	import { Button } from "$lib/components/ui/button";
 	import { Gauge } from "$lib/components/ui/gauge";
+	import { Input } from "$lib/components/ui/input";
 	import { Panel } from "$lib/components/ui/panel";
 	import type { DraftProduct, NutrientRegistryGroup } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
@@ -182,8 +183,9 @@
 
 		<div class="flex flex-col gap-1.5">
 			<div class="relative">
-				<input
-					class="w-full rounded-sm border border-transparent bg-transparent py-[5px] pl-[9px] pr-8 text-2xl font-semibold leading-[1.15] tracking-[-0.02em] text-foreground outline-none hover:border-[color:var(--border)] focus:border-transparent focus:bg-card focus:shadow-[var(--focus)] max-md:text-[1.375rem]"
+				<Input
+					variant="seamless"
+					class="py-[5px] pl-[9px] pr-8 text-2xl font-semibold leading-[1.15] tracking-[-0.02em] max-md:text-[1.375rem]"
 					type="text"
 					bind:value={namePl}
 					aria-label={t("add.namePlLabel")}
@@ -195,8 +197,9 @@
 				>
 			</div>
 			<div class="relative">
-				<input
-					class="w-full rounded-sm border border-transparent bg-transparent py-[5px] pl-[9px] pr-8 text-[0.875rem] text-muted-foreground outline-none hover:border-[color:var(--border)] focus:border-transparent focus:bg-card focus:shadow-[var(--focus)]"
+				<Input
+					variant="seamless"
+					class="py-[5px] pl-[9px] pr-8 text-[0.875rem] text-muted-foreground"
 					type="text"
 					bind:value={nameEn}
 					aria-label={t("add.nameEnLabel")}

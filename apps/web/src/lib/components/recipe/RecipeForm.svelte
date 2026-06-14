@@ -2,6 +2,7 @@
 	import { untrack, type Snippet } from "svelte";
 	import { Button } from "$lib/components/ui/button";
 	import { IconButton } from "$lib/components/ui/icon-button";
+	import { Input } from "$lib/components/ui/input";
 	import { Panel } from "$lib/components/ui/panel";
 	import { SegmentedToggle } from "$lib/components/ui/segmented";
 	import type { FoodCategoryMeta, NutrientRegistryGroup } from "$lib/food/schema";
@@ -140,8 +141,8 @@
 	<!-- ── LEFT: editors ── -->
 	<div class="col-main">
 		<Panel variant="thick" class="sect">
-			<input
-				class="namebig"
+			<Input
+				class="h-auto py-3 text-2xl font-semibold leading-[1.2] tracking-[-0.02em] placeholder:font-medium placeholder:text-muted-foreground"
 				type="text"
 				bind:value={data.name}
 				placeholder={t("recipe.form.namePlaceholder")}
@@ -453,28 +454,6 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	.namebig {
-		width: 100%;
-		font-family: inherit;
-		font-size: 1.5rem;
-		font-weight: 600;
-		letter-spacing: -0.02em;
-		line-height: 1.2;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 12px 14px;
-		outline: none;
-	}
-	.namebig:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.namebig::placeholder {
-		color: var(--muted-foreground);
-		font-weight: 500;
-	}
 	.descbox {
 		width: 100%;
 		margin-top: 10px;

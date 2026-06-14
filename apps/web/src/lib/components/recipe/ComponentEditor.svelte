@@ -9,12 +9,15 @@
 		type FoodCategoryMeta,
 		type NutrientRegistryGroup,
 	} from "$lib/food/schema";
-	import { resolveGrams } from "$lib/recipe/units";
-	import { MACRO_TAGS } from "$lib/recipe/nutrition";
-	import type { DraftComponent, RecipeDetailView, RecipeDocument, UnitOption } from "$lib/recipe/schema";
+	import type {
+		DraftComponent,
+		RecipeDetailView,
+		RecipeDocument,
+		UnitOption,
+	} from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
-	import ProductPicker from "./ProductPicker.svelte";
-	import { formatAmount } from "./meta";
+	import ComponentRow from "./ComponentRow.svelte";
+	import { parseAmount } from "./component-row";
 
 	// The ingredient editor (locked by `form.html`): ordered rows = picker (product OR sub-recipe)
 	// + amount + unit + remove, with a drag grip to reorder and a per-row gram/kcal clarifier.
@@ -50,11 +53,7 @@
 		onPickerOpenChange?.(anyPickerOpen);
 	});
 
-	const unitById = $derived(new Map(units.map((u) => [u.id, u])));
 	const defaultUnitId = $derived(units.find((u) => u.slug === "g")?.id ?? units[0]?.id ?? "");
-
-	// Metric units already read precisely; only household measures get a gram clarifier.
-	const DIRECT = new Set(["g", "dag", "kg", "ml"]);
 
 	// Which freshly-added row should auto-open its picker, and to which tab.
 	let autoOpenKey = $state<string | null>(null);
@@ -71,13 +70,6 @@
 	// number the rollup reads. Mirrors ProductForm's `parseAmount`; the server re-validates via
 	// `amountSchema` (which also accepts the comma string) regardless.
 	let amountRaw = $state<Record<string, string>>({});
-
-	function parseAmount(raw: string): number | null {
-		const trimmed = raw.trim();
-		if (trimmed === "") return null;
-		const n = Number(trimmed.replace(",", "."));
-		return Number.isFinite(n) && n >= 0 ? n : null;
-	}
 
 	function amountDisplay(c: DraftComponent): string {
 		if (amountRaw[c.key] !== undefined) return amountRaw[c.key];
@@ -233,31 +225,6 @@
 		}
 	}
 
-	// ─── Per-row gram / kcal clarifier ───────────────────────────────────────────────
-	type RowInfo = { grams: number | null; kcal: number | null; partial: boolean; direct: boolean };
-	function rowInfo(c: DraftComponent): RowInfo | null {
-		const u = unitById.get(c.unitId);
-		if (!u || c.amount == null || c.amount <= 0) return null;
-		const direct = DIRECT.has(u.slug);
-		const grams = resolveGrams(
-			c.amount,
-			{ kind: u.kind, baseFactor: u.baseFactor },
-			{ densityGPerMl: c.preview.densityGPerMl, pieceWeightG: c.preview.pieceWeightG },
-		);
-		if (c.subRecipeId != null) {
-			const yw = c.preview.yieldWeightG ?? null;
-			const totals = c.preview.totals ?? {};
-			const kcal = grams != null && yw && yw > 0 ? (grams / yw) * (totals[MACRO_TAGS.energyKcal] ?? 0) : null;
-			const partial = grams == null || !yw || yw <= 0 || c.preview.nutritionComplete === false;
-			return { grams, kcal, partial, direct };
-		}
-		const per100 = c.preview.nutrientsPer100g ?? {};
-		const hasData = Object.keys(per100).length > 0;
-		const kcal = grams != null && hasData ? (grams / 100) * (per100[MACRO_TAGS.energyKcal] ?? 0) : null;
-		const partial = grams == null || !hasData;
-		return { grams, kcal, partial, direct };
-	}
-
 	// ─── Drag reorder (grip is the draggable handle; rows are drop targets) ───────────
 	let dragKey = $state<string | null>(null);
 	function onDragStart(e: DragEvent, key: string) {
@@ -279,100 +246,57 @@
 
 <div class="ings">
 	{#each components as c (c.key)}
-		{@const info = rowInfo(c)}
-		<div
-			class="ing-row"
-			class:dragging={dragKey === c.key}
-			role="listitem"
-			ondragover={(e) => e.preventDefault()}
-			ondrop={(e) => {
-				e.preventDefault();
-				onDrop(c.key);
-			}}
-		>
-			<span
-				class="grip"
-				role="button"
-				tabindex="0"
-				draggable="true"
-				aria-label={t("recipe.form.removeRow")}
-				ondragstart={(e) => onDragStart(e, c.key)}
-				ondragend={() => (dragKey = null)}
-			>
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-					<circle cx="7.5" cy="5" r="1.3" /><circle cx="12.5" cy="5" r="1.3" /><circle cx="7.5" cy="10" r="1.3" /><circle cx="12.5" cy="10" r="1.3" /><circle cx="7.5" cy="15" r="1.3" /><circle cx="12.5" cy="15" r="1.3" />
-				</svg>
-			</span>
-
-			<ProductPicker
-				selection={c.productId || c.subRecipeId ? { name: c.name, categorySlug: c.categorySlug, isSubRecipe: c.subRecipeId != null } : null}
-				autoOpen={c.key === autoOpenKey}
-				initialTab={c.key === autoOpenKey ? autoOpenTab : "products"}
-				{excludeRecipeId}
-				onSelectProduct={(hit) => applyProduct(c.key, hit)}
-				onSelectSubRecipe={(hit) => applySubRecipe(c.key, hit)}
-				onCreateProduct={(query) => openCreate(c.key, query)}
-				onOpenChange={(o) => (openRows[c.key] = o)}
-			/>
-
-			<span class="amt">
-				<input
-					type="text"
-					inputmode="decimal"
-					value={amountDisplay(c)}
-					oninput={(e) => onAmountInput(c.key, e.currentTarget.value)}
-					placeholder="—"
-					aria-label={t("recipe.form.amountLabel")}
-				/>
-			</span>
-			<span class="unit">
-				<select bind:value={c.unitId} aria-label={t("recipe.form.unitLabel")}>
-					{#each units as u (u.id)}
-						<option value={u.id}>{u.namePl}</option>
-					{/each}
-				</select>
-				<svg class="uchev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 13.5l-4.5-5h9z" /></svg>
-			</span>
-			<button type="button" class="rm" aria-label={t("recipe.form.removeRow")} onclick={() => removeRow(c.key)}>
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z" /></svg>
-			</button>
-
-			{#if info && ((info.grams != null && !info.direct) || info.kcal != null || info.partial)}
-				<div class="ing-sub">
-					{#if info.grams != null && !info.direct}
-						<span>= <b>{formatAmount(info.grams)} g</b></span>
-					{/if}
-					{#if info.kcal != null}
-						{#if info.grams != null && !info.direct}<span class="sepd"></span>{/if}
-						<span><b>{formatAmount(info.kcal)}</b> kcal</span>
-					{/if}
-					{#if info.partial}
-						{#if (info.grams != null && !info.direct) || info.kcal != null}<span class="sepd"></span>{/if}
-						<span class="part">
-							<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z" clip-rule="evenodd" /></svg>
-							{t("recipe.form.partialRow")}
-						</span>
-					{/if}
-				</div>
-			{/if}
-		</div>
+		<ComponentRow
+			component={c}
+			{units}
+			amountValue={amountDisplay(c)}
+			autoOpen={c.key === autoOpenKey}
+			initialTab={autoOpenTab}
+			dragging={dragKey === c.key}
+			{excludeRecipeId}
+			onAmountInput={(v) => onAmountInput(c.key, v)}
+			onUnitChange={(id) => (c.unitId = id)}
+			onRemove={() => removeRow(c.key)}
+			onSelectProduct={(hit) => applyProduct(c.key, hit)}
+			onSelectSubRecipe={(hit) => applySubRecipe(c.key, hit)}
+			onCreateProduct={(query) => openCreate(c.key, query)}
+			onPickerOpenChange={(o) => (openRows[c.key] = o)}
+			onDragStart={(e) => onDragStart(e, c.key)}
+			onDragEnd={() => (dragKey = null)}
+			onDrop={() => onDrop(c.key)}
+		/>
 	{/each}
 </div>
 
 <div class="addbtns">
 	<button type="button" class="addbtn" onclick={() => addRow("products")}>
-		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z" /></svg>
+		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+			><path
+				d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
+			/></svg
+		>
 		{t("recipe.form.addIngredient")}
 	</button>
 	<button type="button" class="addbtn" onclick={() => addRow("subRecipes")}>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-			<path d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z" /><path d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z" opacity=".5" />
+			<path
+				d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z"
+			/><path
+				d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z"
+				opacity=".5"
+			/>
 		</svg>
 		{t("recipe.form.addSubRecipe")}
 	</button>
 </div>
 
-<Dialog open={createDraft !== null} onOpenChange={onCreateOpenChange} title={t("recipe.form.createProduct")} closeLabel={t("common.cancel")} class="recipe-create-dialog">
+<Dialog
+	open={createDraft !== null}
+	onOpenChange={onCreateOpenChange}
+	title={t("recipe.form.createProduct")}
+	closeLabel={t("common.cancel")}
+	class="recipe-create-dialog"
+>
 	{#if createDraft}
 		<ProductForm
 			draft={createDraft}
@@ -398,130 +322,6 @@
 		flex-direction: column;
 		gap: 7px;
 	}
-	.ing-row {
-		display: grid;
-		grid-template-columns: 18px minmax(0, 1fr) 74px 104px 30px;
-		gap: 9px;
-		align-items: center;
-	}
-	.ing-row.dragging {
-		opacity: 0.45;
-	}
-	.grip {
-		color: var(--muted-foreground);
-		opacity: 0.5;
-		cursor: grab;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.grip:active {
-		cursor: grabbing;
-	}
-	.grip svg {
-		width: 15px;
-		height: 15px;
-	}
-	.amt input,
-	.unit select {
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.875rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 9px 10px;
-		outline: none;
-		-moz-appearance: textfield;
-		appearance: textfield;
-	}
-	.amt input::-webkit-outer-spin-button,
-	.amt input::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-	.amt input {
-		text-align: right;
-	}
-	.amt input:focus,
-	.unit select:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.unit {
-		position: relative;
-	}
-	.unit select {
-		appearance: none;
-		-webkit-appearance: none;
-		padding-right: 26px;
-		cursor: pointer;
-	}
-	.unit .uchev {
-		position: absolute;
-		right: 9px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 13px;
-		height: 13px;
-		color: var(--muted-foreground);
-		pointer-events: none;
-	}
-	.rm {
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-sm);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.rm:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.rm svg {
-		width: 16px;
-		height: 16px;
-	}
-	.ing-sub {
-		grid-column: 2 / 4;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		padding: 1px 2px 3px;
-		flex-wrap: wrap;
-	}
-	.ing-sub .sepd {
-		width: 3px;
-		height: 3px;
-		border-radius: 50%;
-		background: currentColor;
-		opacity: 0.45;
-		flex-shrink: 0;
-	}
-	.ing-sub b {
-		color: var(--foreground);
-		font-weight: 550;
-		font-variant-numeric: tabular-nums;
-	}
-	.ing-sub .part {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-	}
-	.ing-sub .part svg {
-		width: 12px;
-		height: 12px;
-	}
-
 	.addbtns {
 		display: flex;
 		gap: 8px;

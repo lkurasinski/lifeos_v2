@@ -19,6 +19,8 @@
 				filter: "py-1.5",
 				ghost:
 					"bg-transparent px-1 py-1.5 text-foreground underline decoration-[var(--border)] underline-offset-[3px] hover:decoration-[var(--muted-foreground)]",
+				// Outlined "+ add a custom term" affordance (recipe taxonomy editor).
+				add: "bg-transparent px-3 py-1.5 text-muted-foreground shadow-[inset_0_0_0_1px_var(--border)] hover:text-foreground hover:shadow-[inset_0_0_0_1px_var(--muted-foreground)]",
 				// Static display tag — overrides the interactive base (cursor/text size) via tw-merge.
 				tag: "cursor-default bg-secondary px-2.5 py-1 text-[0.75rem] text-muted-foreground",
 				// Static uppercase metadata capsule (mirrors the Badge primitive's default/outline).

@@ -12,6 +12,7 @@
  * not in the pure `food-document.ts`.
  */
 import type { MultiSearchQuery, MultiSearchResult } from "meilisearch";
+import { orClause } from "./meili-filter";
 import type {
 	RecipeDocument,
 	RecipeStatus,
@@ -238,20 +239,6 @@ const RECIPE_SORT_FIELD: Record<RecipeSortKey, string | null> = {
 };
 
 /**
- * A disjunctive (OR) clause WITHIN one facet dimension, in Meili's nested-array filter form
- * (`[attr = "a", attr = "b"]`). `null` when the dimension has no active selection. Mirrors
- * `food-document.ts`'s private `orClause`, but ESCAPES `"`/`\` in the value: facet values are
- * unconstrained free text from the URL (`z.array(z.string())`), so a raw `"` would break out
- * of the quoted filter literal (malformed filter → Meili 400). Defense-in-depth — the base
- * visibility clause is a separate always-AND'd term, so this can't widen visibility, but a
- * well-formed value should never be able to corrupt the filter string.
- */
-function orClause(attribute: string, values: string[] | undefined): string[] | null {
-	if (!values || values.length === 0) return null;
-	return values.map((v) => `${attribute} = "${v.replace(/(["\\])/g, "\\$1")}"`);
-}
-
-/**
  * The base visibility clause — a CROSS-attribute OR (two DIFFERENT attributes), which the
  * single-attribute `orClause` cannot express. `wszystkie` ⇒ `visibility = PUBLIC OR ownerId = me`;
  * `moje` ⇒ only my recipes; `publiczne` ⇒ only public. (`szkice` never reaches Meili — drafts
@@ -271,10 +258,7 @@ function scopeClause(scope: RecipeScope, viewerId: string): string | string[] {
 }
 
 /** Assemble a Meili filter from the always-present base clause + the non-null facet clauses. */
-function buildFilter(
-	base: string | string[],
-	clauses: (string[] | null)[],
-): (string | string[])[] {
+function buildFilter(base: string | string[], clauses: (string[] | null)[]): (string | string[])[] {
 	const filter: (string | string[])[] = [base];
 	for (const c of clauses) if (c !== null) filter.push(c);
 	return filter;
@@ -303,7 +287,14 @@ export function buildRecipeSearchQueries(
 	const techniqueClause = orClause("techniqueSlugs", params.techniques);
 	const cuisineClause = orClause("cuisineSlug", params.cuisines);
 	const difficultyClause = orClause("difficulty", params.difficulties);
-	const all = [mealClause, dietClause, allergenClause, techniqueClause, cuisineClause, difficultyClause];
+	const all = [
+		mealClause,
+		dietClause,
+		allergenClause,
+		techniqueClause,
+		cuisineClause,
+		difficultyClause,
+	];
 
 	const sortField = RECIPE_SORT_FIELD[params.sort];
 	const hits: MultiSearchQuery = {

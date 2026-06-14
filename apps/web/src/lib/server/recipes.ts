@@ -20,7 +20,8 @@
 import type { MultiSearchParams } from "meilisearch";
 import { prisma } from "$lib/server/db";
 import { meili } from "$lib/server/search";
-import { logger } from "$lib/server/logger";
+import { waitForMeiliTask, syncAfterCommit, makeIndexConfigurer } from "$lib/server/meili-sync";
+import { isUniqueConstraintError } from "$lib/server/prisma-errors";
 import { Prisma } from "../../generated/prisma/client";
 import {
 	buildRecipeDocument,
@@ -114,34 +115,17 @@ export class RecipeDepthError extends Error {
 
 // ─── Meili index + single/batch doc sync ─────────────────────────────────────────
 
-async function waitForMeiliTask(taskUid: number): Promise<void> {
-	const task = await meili.tasks.waitForTask(taskUid);
-	if (task.status === "failed") {
-		throw new Error(`Meili task ${taskUid} failed: ${task.error?.message ?? "unknown error"}`);
-	}
-}
-
 /**
- * Ensure the recipe index carries its settings before the FIRST live `addDocuments`.
- * `addDocuments` auto-creates a bare index (empty filterable/sortable attributes); a
- * later faceted/sorted/visibility-filtered search would then throw. Memoize the in-flight
- * promise (one `updateSettings` per process); reset on failure so it can retry.
- * (Lessons: "Runtime-created Meili indexes must have settings applied before first use".)
+ * The runtime recipe-index configurer (shared plumbing). `configureRecipeIndex` applies the
+ * settings idempotently; `ensureConfigured` runs once per process before the first live
+ * `addDocuments` so a faceted/sorted/visibility-filtered search can't throw on a bare auto-
+ * created index.
  */
-let indexConfigured: Promise<void> | null = null;
-function ensureRecipeIndexConfigured(): Promise<void> {
-	return (indexConfigured ??= configureRecipeIndex().catch((err) => {
-		indexConfigured = null;
-		throw err;
-	}));
-}
+const recipeIndex = makeIndexConfigurer(RECIPE_INDEX_NAME, RECIPE_INDEX_SETTINGS);
+export const configureRecipeIndex = recipeIndex.configure;
 
-/** Apply the shared `RECIPE_INDEX_SETTINGS` to the runtime singleton index. Idempotent. */
-export async function configureRecipeIndex(): Promise<void> {
-	const index = meili.index(RECIPE_INDEX_NAME);
-	const task = await index.updateSettings(RECIPE_INDEX_SETTINGS);
-	await waitForMeiliTask(task.taskUid);
-}
+/** The recipe-index reconvergence path, appended to the shared `syncAfterCommit` log line. */
+const RECIPE_SYNC_RECOVERY = "recipe index stale; recover via recipe:reindex";
 
 /** The relation graph a recipe needs to build its Meili document + roll up nutrition. */
 const ROLLUP_INCLUDE = {
@@ -181,7 +165,7 @@ export async function syncRecipeDocument(id: string): Promise<void> {
 		await removeRecipeDocument(id);
 		return;
 	}
-	await ensureRecipeIndexConfigured();
+	await recipeIndex.ensureConfigured();
 	const index = meili.index(RECIPE_INDEX_NAME);
 	const task = await index.addDocuments([buildRecipeDocument(toDocInput(recipe))], {
 		primaryKey: "id",
@@ -203,7 +187,10 @@ export async function removeRecipeDocument(id: string): Promise<void> {
  */
 async function syncRecipeDocumentsBatch(ids: string[]): Promise<void> {
 	if (ids.length === 0) return;
-	const recipes = await prisma.recipe.findMany({ where: { id: { in: ids } }, include: ROLLUP_INCLUDE });
+	const recipes = await prisma.recipe.findMany({
+		where: { id: { in: ids } },
+		include: ROLLUP_INCLUDE,
+	});
 	const publishedDocs = recipes
 		.filter((r) => r.status === "PUBLISHED")
 		.map((r) => buildRecipeDocument(toDocInput(r)));
@@ -212,29 +199,13 @@ async function syncRecipeDocumentsBatch(ids: string[]): Promise<void> {
 
 	const index = meili.index(RECIPE_INDEX_NAME);
 	if (publishedDocs.length > 0) {
-		await ensureRecipeIndexConfigured();
+		await recipeIndex.ensureConfigured();
 		const task = await index.addDocuments(publishedDocs, { primaryKey: "id" });
 		await waitForMeiliTask(task.taskUid);
 	}
 	if (toRemove.length > 0) {
 		const task = await index.deleteDocuments(toRemove);
 		await waitForMeiliTask(task.taskUid);
-	}
-}
-
-/**
- * Run a Meili sync side-effect AFTER a committed DB write. The DB row is authoritative,
- * so an index failure must never mask a successful write: log it (the recoverable-drift
- * signal) and swallow. The index reconverges on the next mutation or `recipe:reindex`.
- */
-async function syncAfterCommit(op: () => Promise<void>, id: string): Promise<void> {
-	try {
-		await op();
-	} catch (err) {
-		logger.error(
-			{ err, id },
-			"Meili recipe sync failed after committed DB write — index stale; recover via recipe:reindex",
-		);
 	}
 }
 
@@ -335,7 +306,10 @@ async function recomputeRecipe(tx: TxClient, recipeId: string): Promise<RollupRe
 // ─── Sub-recipe graph loading (cycle / depth / fan-out) ──────────────────────────
 
 /** Load every existing sub-recipe edge as both forward (children) + reverse (parents) maps. */
-async function loadSubRecipeGraph(): Promise<{ childrenOf: SubRecipeEdges; parentsOf: ParentEdges }> {
+async function loadSubRecipeGraph(): Promise<{
+	childrenOf: SubRecipeEdges;
+	parentsOf: ParentEdges;
+}> {
 	const rows = await prisma.recipeComponent.findMany({
 		where: { subRecipeId: { not: null } },
 		select: { recipeId: true, subRecipeId: true },
@@ -376,13 +350,6 @@ async function assertSubRecipeSafety(recipeId: string, subRecipeIds: string[]): 
 }
 
 // ─── Taxonomy find-or-create ─────────────────────────────────────────────────────
-
-/** Prisma's "unique constraint failed" code (P2002), duck-typed (mirrors `food-products.ts`). */
-function isUniqueConstraintError(err: unknown): boolean {
-	return (
-		typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === "P2002"
-	);
-}
 
 /**
  * Resolve a list of taxonomy refs to ids: a ref with `id` links the existing row; a ref
@@ -459,7 +426,9 @@ async function resolveTaxonomyIds(userId: string, input: RecipeSavePayload) {
 }
 
 /** Build the nested `components.create` data from the payload (orderIndex = array position). */
-function componentCreateData(input: RecipeSavePayload): Prisma.RecipeComponentCreateWithoutRecipeInput[] {
+function componentCreateData(
+	input: RecipeSavePayload,
+): Prisma.RecipeComponentCreateWithoutRecipeInput[] {
 	return input.components.map((c, i) => ({
 		orderIndex: i,
 		amount: c.amount,
@@ -474,7 +443,10 @@ function componentCreateData(input: RecipeSavePayload): Prisma.RecipeComponentCr
 // ─── Write paths ──────────────────────────────────────────────────────────────────
 
 /** Create a recipe (+ components, taxonomy links), cache its nutrition, sync Meili. */
-export async function createRecipe(userId: string, input: RecipeSavePayload): Promise<{ id: string }> {
+export async function createRecipe(
+	userId: string,
+	input: RecipeSavePayload,
+): Promise<{ id: string }> {
 	const recipeId = crypto.randomUUID();
 	const subRecipeIds = input.components
 		.map((c) => c.subRecipeId)
@@ -512,7 +484,7 @@ export async function createRecipe(userId: string, input: RecipeSavePayload): Pr
 	});
 
 	// No dependents on create (nothing references the new recipe yet); sync its own doc.
-	await syncAfterCommit(() => syncRecipeDocument(recipeId), recipeId);
+	await syncAfterCommit(() => syncRecipeDocument(recipeId), recipeId, RECIPE_SYNC_RECOVERY);
 	return { id: recipeId };
 }
 
@@ -567,7 +539,7 @@ export async function updateRecipe(
 	// sub-recipe (and up the graph). CORRECTNESS: surfaced, never swallowed.
 	await recomputeDependents({ recipeId: id });
 	// Sync this recipe's own doc (DRAFT removes it; PUBLISHED upserts it).
-	await syncAfterCommit(() => syncRecipeDocument(id), id);
+	await syncAfterCommit(() => syncRecipeDocument(id), id, RECIPE_SYNC_RECOVERY);
 	return { id };
 }
 
@@ -580,7 +552,7 @@ export async function deleteRecipe(userId: string, id: string): Promise<void> {
 	await assertRecipeNotInUse(id);
 
 	await prisma.recipe.delete({ where: { id } });
-	await syncAfterCommit(() => removeRecipeDocument(id), id);
+	await syncAfterCommit(() => removeRecipeDocument(id), id, RECIPE_SYNC_RECOVERY);
 }
 
 /**
@@ -658,7 +630,11 @@ export async function recomputeDependents(
 	}
 
 	// One batched Meili write for the whole fan-out (swallow + log — reconverges via reindex).
-	await syncAfterCommit(() => syncRecipeDocumentsBatch(ordered), `recompute:${ordered.length}`);
+	await syncAfterCommit(
+		() => syncRecipeDocumentsBatch(ordered),
+		`recompute:${ordered.length}`,
+		RECIPE_SYNC_RECOVERY,
+	);
 }
 
 // ─── Read paths ───────────────────────────────────────────────────────────────────
@@ -709,7 +685,12 @@ function toUnitView(unit: ViewLoadedRecipe["components"][number]["unit"]): UnitV
 }
 
 /** Reduce a taxonomy join row to the id + slug + localized-name slice the view ships. */
-function toTaxonomyView(row: { id: string; slug: string; namePl: string; nameEn: string }): TaxonomyView {
+function toTaxonomyView(row: {
+	id: string;
+	slug: string;
+	namePl: string;
+	nameEn: string;
+}): TaxonomyView {
 	return { id: row.id, slug: row.slug, namePl: row.namePl, nameEn: row.nameEn };
 }
 
@@ -719,7 +700,11 @@ function toTaxonomyView(row: { id: string; slug: string; namePl: string; nameEn:
  * (`steps`/`nutrients`/`incompleteComponents`) to their typed shapes, and flatten one level of
  * sub-recipe breakdown. `usedInCount` is supplied by the caller (a separate distinct query).
  */
-function toRecipeView(recipe: ViewLoadedRecipe, viewerId: string, usedInCount: number): RecipeDetailView {
+function toRecipeView(
+	recipe: ViewLoadedRecipe,
+	viewerId: string,
+	usedInCount: number,
+): RecipeDetailView {
 	const components: RecipeComponentView[] = recipe.components.map((c) => ({
 		id: c.id,
 		orderIndex: c.orderIndex,
@@ -727,7 +712,9 @@ function toRecipeView(recipe: ViewLoadedRecipe, viewerId: string, usedInCount: n
 		note: c.note,
 		gramsResolved: c.gramsResolved,
 		unit: toUnitView(c.unit),
-		product: c.product ? { id: c.product.id, namePl: c.product.namePl, nameEn: c.product.nameEn } : null,
+		product: c.product
+			? { id: c.product.id, namePl: c.product.namePl, nameEn: c.product.nameEn }
+			: null,
 		subRecipe: c.subRecipe
 			? {
 					id: c.subRecipe.id,
@@ -808,8 +795,7 @@ function isRecipeVisibleToViewer(
 	viewerId: string,
 ): boolean {
 	return (
-		recipe.userId === viewerId ||
-		(recipe.status === "PUBLISHED" && recipe.visibility === "PUBLIC")
+		recipe.userId === viewerId || (recipe.status === "PUBLISHED" && recipe.visibility === "PUBLIC")
 	);
 }
 
@@ -904,7 +890,13 @@ const RECIPE_DRAFT_INCLUDE = {
 				},
 			},
 			subRecipe: {
-				select: { id: true, name: true, nutrients: true, yieldWeightG: true, nutritionComplete: true },
+				select: {
+					id: true,
+					name: true,
+					nutrients: true,
+					yieldWeightG: true,
+					nutritionComplete: true,
+				},
 			},
 		},
 	},

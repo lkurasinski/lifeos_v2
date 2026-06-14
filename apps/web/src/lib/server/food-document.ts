@@ -9,6 +9,7 @@
  */
 import type { MultiSearchQuery, MultiSearchResult } from "meilisearch";
 import type { FoodDocument, FoodSearchResult, SearchParams, SortKey } from "../food/schema";
+import { orClause } from "./meili-filter";
 
 export const FOOD_INDEX_NAME = "food_products";
 
@@ -122,15 +123,6 @@ const SORT_FIELD: Record<SortKey, "nameEn" | "energyKcal" | "protein" | "fat" | 
  * an active filter narrows the *other* facets without collapsing its own.
  */
 export const FOOD_QUERY_INDEX = { HITS: 0, SOURCE: 1, CATEGORY: 2 } as const;
-
-/**
- * A disjunctive (OR) clause within one facet dimension, expressed as Meili's
- * nested-array filter form. `null` when the dimension has no active selection.
- */
-function orClause(attribute: string, values: string[] | undefined): string[] | null {
-	if (!values || values.length === 0) return null;
-	return values.map((v) => `${attribute} = "${v}"`);
-}
 
 /**
  * Build the three-query `multiSearch` payload that powers disjunctive faceting:

@@ -8,6 +8,8 @@
  *   pnpm tsx scripts/seed-food-data.ts --step usda
  *   pnpm tsx scripts/seed-food-data.ts --step translate
  *   pnpm tsx scripts/seed-food-data.ts --step index
+ *   pnpm tsx scripts/seed-food-data.ts --step recipe-taxonomies
+ *   pnpm tsx scripts/seed-food-data.ts --step recipe-index
  *
  * Each step is idempotent. Run from apps/web/ so dotenv finds .env.
  * On Railway: railway run pnpm tsx scripts/seed-food-data.ts
@@ -22,8 +24,10 @@ import { seedNutrients } from './steps/seed-nutrients.js';
 import { importUsda } from './steps/import-usda.js';
 import { translateProducts } from './steps/translate-products.js';
 import { indexMeilisearch } from './steps/index-meilisearch.js';
+import { seedRecipeTaxonomies } from './steps/seed-recipe-taxonomies.js';
+import { indexRecipes } from './steps/index-recipes.js';
 
-const VALID_STEPS = ['nutrients', 'usda', 'translate', 'index'] as const;
+const VALID_STEPS = ['nutrients', 'usda', 'translate', 'index', 'recipe-taxonomies', 'recipe-index'] as const;
 type Step = (typeof VALID_STEPS)[number];
 
 function parseStep(): Step | undefined {
@@ -71,6 +75,14 @@ async function main() {
 		if (!step || step === 'index') {
 			console.log('\n=== Step: index ===');
 			await indexMeilisearch(prisma, meili);
+		}
+		if (!step || step === 'recipe-taxonomies') {
+			console.log('\n=== Step: recipe-taxonomies ===');
+			await seedRecipeTaxonomies(prisma);
+		}
+		if (!step || step === 'recipe-index') {
+			console.log('\n=== Step: recipe-index ===');
+			await indexRecipes(prisma, meili);
 		}
 	} finally {
 		await prisma.$disconnect();

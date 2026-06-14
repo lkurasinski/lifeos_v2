@@ -18,6 +18,12 @@
 import type { Meilisearch } from "meilisearch";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { buildFoodDocument, FOOD_INDEX_NAME, FOOD_INDEX_SETTINGS } from "./food-document";
+import {
+	buildRecipeDocument,
+	projectRecipeToDocInput,
+	RECIPE_INDEX_NAME,
+	RECIPE_INDEX_SETTINGS,
+} from "./recipe-document";
 
 const BATCH_SIZE = 1_000;
 
@@ -94,4 +100,74 @@ export async function reindexFoodProducts(
 
 	log(`  Done: ${indexed} documents indexed in "${FOOD_INDEX_NAME}"`);
 	return { products: products.length, indexed };
+}
+
+// ─── Recipes ────────────────────────────────────────────────────────────────────
+
+export interface RecipeReindexResult {
+	recipes: number;
+	indexed: number;
+}
+
+/**
+ * Full reindex of the recipes Meilisearch index from the database — the fresh-environment /
+ * drift-recovery path the runtime sync (`recipes.ts` `syncRecipeDocument`) reconverges to.
+ *
+ * Mirrors `reindexFoodProducts`: clients are arguments (no `$lib/server/db`/`search`/`$env`),
+ * settings applied first (lessons: "settings before first use" — also covers the runtime
+ * `ensureRecipeIndexConfigured` path), clear-then-load (recipe ids are reminted on reseed), and
+ * batched `addDocuments`. Only PUBLISHED recipes are indexed — DRAFTs are owner-only and served
+ * from Postgres. Each row is projected through the SHARED `projectRecipeToDocInput`, so the
+ * batch + runtime docs can't drift.
+ */
+export async function reindexRecipes(
+	prisma: PrismaClient,
+	meili: Meilisearch,
+	log: (msg: string) => void = () => {},
+): Promise<RecipeReindexResult> {
+	const index = meili.index(RECIPE_INDEX_NAME);
+
+	log(`Configuring Meilisearch index "${RECIPE_INDEX_NAME}"...`);
+	await index.updateSettings(RECIPE_INDEX_SETTINGS);
+
+	log("Clearing existing documents...");
+	const clearTask = await index.deleteAllDocuments();
+	await waitForMeiliTask(meili, clearTask.taskUid);
+
+	log("Loading PUBLISHED recipes from database...");
+	const recipes = await prisma.recipe.findMany({
+		where: { status: "PUBLISHED" },
+		include: {
+			components: {
+				orderBy: { orderIndex: "asc" },
+				include: { product: { select: { namePl: true, nameEn: true } } },
+			},
+			mealTypes: true,
+			diets: true,
+			allergens: true,
+			techniques: true,
+			cuisine: true,
+		},
+	});
+	log(`  Loaded ${recipes.length} recipes`);
+
+	if (recipes.length === 0) {
+		log("  No recipes to index.");
+		return { recipes: 0, indexed: 0 };
+	}
+
+	const docs = recipes.map((r) => buildRecipeDocument(projectRecipeToDocInput(r)));
+
+	log(`Indexing ${docs.length} documents in batches of ${BATCH_SIZE}...`);
+	let indexed = 0;
+	for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+		const batch = docs.slice(i, i + BATCH_SIZE);
+		const task = await index.addDocuments(batch, { primaryKey: "id" });
+		await waitForMeiliTask(meili, task.taskUid);
+		indexed += batch.length;
+		log(`  Indexed ${indexed}/${docs.length}`);
+	}
+
+	log(`  Done: ${indexed} documents indexed in "${RECIPE_INDEX_NAME}"`);
+	return { recipes: recipes.length, indexed };
 }

@@ -13,6 +13,7 @@
 	// Produkty is the only wired route; everything else in the rail is a disabled
 	// placeholder until its slice lands (S-02+).
 	let productsActive = $derived(page.url.pathname.startsWith("/foods"));
+	let recipesActive = $derived(page.url.pathname.startsWith("/recipes"));
 
 	function initials(name?: string | null): string {
 		if (!name) return "?";
@@ -68,7 +69,12 @@
 				>
 				{t("nav.products")}
 			</a>
-			<button class="navitem" type="button" disabled>
+			<a
+				class="navitem"
+				class:active={recipesActive}
+				href={resolve("/recipes")}
+				aria-current={recipesActive ? "page" : undefined}
+			>
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 					><path d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z" /><path
 						d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z"
@@ -76,7 +82,7 @@
 					/></svg
 				>
 				{t("nav.recipes")}
-			</button>
+			</a>
 			<button class="navitem" type="button" disabled>
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 					><path

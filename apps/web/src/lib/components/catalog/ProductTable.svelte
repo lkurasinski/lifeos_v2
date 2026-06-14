@@ -3,7 +3,7 @@
 	import { t } from "$lib/i18n";
 	import { Badge } from "$lib/components/ui/badge";
 	import CategoryIcon from "./CategoryIcon.svelte";
-	import { formatAmount, sourceBadgeKey } from "./meta";
+	import { formatMacro, sourceBadgeKey } from "./meta";
 
 	// Master list — the locked catalog table with sortable column headers (sort lives
 	// in the header, no dedicated control). Rows compose the category glyph + a source
@@ -32,41 +32,58 @@
 		{ key: "carbs", label: t("catalog.columns.carbs"), cls: "c-carb" },
 		{ key: "fat", label: t("catalog.columns.fat"), cls: "c-fat" },
 	];
-
-	/** Display a macro value, or an em dash when it's absent (NULL, never 0). */
-	function macro(value: number | undefined): string {
-		return value === undefined ? "—" : formatAmount(value);
-	}
 </script>
 
-<div class="listhead cols grid items-end gap-[14px] px-[18px] pb-[11px] pt-0.5 max-md:px-[14px] max-md:pb-2.5">
+<div
+	class="listhead cols grid items-end gap-[14px] px-[18px] pb-[11px] pt-0.5 max-md:px-[14px] max-md:pb-2.5"
+>
 	<button
 		type="button"
 		class={[
 			"inline-flex items-center gap-[5px] border-0 bg-transparent p-0 text-[0.625rem] font-medium uppercase tracking-[0.06em] focus-visible:text-foreground focus-visible:outline-none",
-			sort === "name" ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
+			sort === "name"
+				? "font-semibold text-foreground"
+				: "text-muted-foreground hover:text-foreground",
 		]}
 		onclick={() => onSort("name")}
 	>
 		{t("catalog.columns.product")}
-		<svg class="h-[13px] w-[13px] shrink-0 {sort === 'name' ? '' : 'opacity-0'}" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+		<svg
+			class="h-[13px] w-[13px] shrink-0 {sort === 'name' ? '' : 'opacity-0'}"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+			aria-hidden="true"
+		>
 			<path d={sort === "name" && dir === "asc" ? "M10 6l3.5 4h-7z" : "M10 14l-3.5-4h7z"} />
 		</svg>
 	</button>
-	<span class="c-cat inline-flex cursor-default items-center gap-[5px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("catalog.columns.category")}</span>
-	<span class="c-src inline-flex cursor-default items-center gap-[5px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("catalog.columns.source")}</span>
+	<span
+		class="c-cat inline-flex cursor-default items-center gap-[5px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+		>{t("catalog.columns.category")}</span
+	>
+	<span
+		class="c-src inline-flex cursor-default items-center gap-[5px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+		>{t("catalog.columns.source")}</span
+	>
 	{#each numericCols as col (col.key)}
 		<button
 			type="button"
 			class={[
 				"inline-flex items-center justify-end gap-[5px] border-0 bg-transparent p-0 text-[0.625rem] font-medium uppercase tracking-[0.06em] focus-visible:text-foreground focus-visible:outline-none",
 				col.cls,
-				sort === col.key ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
+				sort === col.key
+					? "font-semibold text-foreground"
+					: "text-muted-foreground hover:text-foreground",
 			]}
 			onclick={() => onSort(col.key)}
 		>
 			{col.label}
-			<svg class="h-[13px] w-[13px] shrink-0 {sort === col.key ? '' : 'opacity-0'}" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+			<svg
+				class="h-[13px] w-[13px] shrink-0 {sort === col.key ? '' : 'opacity-0'}"
+				viewBox="0 0 20 20"
+				fill="currentColor"
+				aria-hidden="true"
+			>
 				<path d={sort === col.key && dir === "asc" ? "M10 6l3.5 4h-7z" : "M10 14l-3.5-4h7z"} />
 			</svg>
 		</button>
@@ -84,23 +101,45 @@
 		>
 			<div class="flex min-w-0 items-center gap-[11px]">
 				{#if hit.imageThumbUrl ?? hit.imageUrl}
-					<img class="h-[34px] w-[34px] shrink-0 rounded-[8px] bg-secondary object-cover" src={hit.imageThumbUrl ?? hit.imageUrl} alt="" loading="lazy" />
+					<img
+						class="h-[34px] w-[34px] shrink-0 rounded-[8px] bg-secondary object-cover"
+						src={hit.imageThumbUrl ?? hit.imageUrl}
+						alt=""
+						loading="lazy"
+					/>
 				{/if}
 				<div class="min-w-0">
-					<div class="truncate text-[0.9375rem] font-[550] leading-[1.25] tracking-[-0.01em] text-foreground">{hit.namePl ?? hit.nameEn}</div>
+					<div
+						class="truncate text-[0.9375rem] font-[550] leading-[1.25] tracking-[-0.01em] text-foreground"
+					>
+						{hit.namePl ?? hit.nameEn}
+					</div>
 					{#if hit.brand}
-						<div class="mt-px truncate text-xs leading-[1.2] text-muted-foreground">{hit.brand}</div>
+						<div class="mt-px truncate text-xs leading-[1.2] text-muted-foreground">
+							{hit.brand}
+						</div>
 					{/if}
 				</div>
 			</div>
 			<span class="c-cat flex items-center" title={hit.categoryNamePl ?? ""}>
 				<CategoryIcon slug={hit.categorySlug} size={18} />
 			</span>
-			<span class="c-src inline-flex items-center justify-self-start"><Badge>{SOURCE_BADGE[badge]}</Badge></span>
-			<span class="text-right text-[1.3125rem] font-light leading-none tracking-[-0.02em] tabular-nums text-foreground">{macro(hit.energyKcal)}</span>
-			<span class="c-pro text-right text-[0.9375rem] tabular-nums text-foreground">{macro(hit.protein)}</span>
-			<span class="c-carb text-right text-[0.9375rem] tabular-nums text-foreground">{macro(hit.carbs)}</span>
-			<span class="c-fat text-right text-[0.9375rem] tabular-nums text-foreground">{macro(hit.fat)}</span>
+			<span class="c-src inline-flex items-center justify-self-start"
+				><Badge>{SOURCE_BADGE[badge]}</Badge></span
+			>
+			<span
+				class="text-right text-[1.3125rem] font-light leading-none tracking-[-0.02em] tabular-nums text-foreground"
+				>{formatMacro(hit.energyKcal)}</span
+			>
+			<span class="c-pro text-right text-[0.9375rem] tabular-nums text-foreground"
+				>{formatMacro(hit.protein)}</span
+			>
+			<span class="c-carb text-right text-[0.9375rem] tabular-nums text-foreground"
+				>{formatMacro(hit.carbs)}</span
+			>
+			<span class="c-fat text-right text-[0.9375rem] tabular-nums text-foreground"
+				>{formatMacro(hit.fat)}</span
+			>
 		</button>
 	{/each}
 </div>
@@ -139,7 +178,9 @@
 	}
 	.prow.on {
 		background: var(--card);
-		box-shadow: var(--shadow-lift), inset 0 0 0 1px var(--hairline);
+		box-shadow:
+			var(--shadow-lift),
+			inset 0 0 0 1px var(--hairline);
 	}
 
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {

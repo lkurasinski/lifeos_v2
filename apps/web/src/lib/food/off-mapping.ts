@@ -96,6 +96,10 @@ export function offToDraft(
 		brand,
 		categoryId,
 		servingSizeG: null,
+		// OFF rarely supplies density/piece-weight; leave null (the user can fill them in
+		// the editable preview). Keys kept present so the field is never silently dropped.
+		densityGPerMl: null,
+		pieceWeightG: null,
 		imageUrl: off.image_url || null,
 		imageThumbUrl: off.image_thumb_url || null,
 		imageIngredientsUrl: off.image_ingredients_url || null,

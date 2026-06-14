@@ -9,6 +9,11 @@ export async function seedNutrients(prisma: PrismaClient, options?: { reset?: bo
 		console.log('  Done.');
 	}
 
+	// INVARIANT: seed the FULL registry — never filter it here. `Nutrient.id` is the
+	// INFOODS tagname (natural key), and the write paths (OFF `buildNutrimentRows`,
+	// USDA `buildUsdaMap`) emit those tags straight as `FoodNutrient.nutrientId`. If a
+	// tag referenced by OFF_NUTRIENT_MAP / the USDA registry weren't seeded, those
+	// inserts would fail the FK (P2003). Full coverage is what keeps that FK safe.
 	console.log(`Upserting ${NUTRIENT_REGISTRY.length} nutrients from registry...`);
 	let upserted = 0;
 

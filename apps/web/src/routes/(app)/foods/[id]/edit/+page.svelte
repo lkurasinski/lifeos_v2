@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
-	import { IconButton } from "$lib/components/ui/icon-button";
+	import { FormHeader } from "$lib/components/ui/form-header";
 	import { toast } from "$lib/components/ui/sonner";
 	import ProductForm from "$lib/components/catalog/ProductForm.svelte";
 	import { draftDisplayName, saveDraft } from "$lib/components/catalog/save-product";
@@ -48,20 +48,14 @@
 	<title>{t("edit.title")} — {t("common.appName")}</title>
 </svelte:head>
 
-<div class="editscreen">
-	<div class="edittop">
-		<IconButton onclick={toCatalog} aria-label={t("add.close")}>
-			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M12.7 4.3a1 1 0 0 1 0 1.4L8.42 10l4.3 4.3a1 1 0 1 1-1.42 1.4l-5-5a1 1 0 0 1 0-1.4l5-5a1 1 0 0 1 1.4 0Z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</IconButton>
-		<h1>{t("edit.title")}</h1>
-		<button type="button" class="cancel" onclick={toCatalog}>{t("common.cancel")}</button>
-	</div>
+<div class="min-h-svh">
+	<FormHeader
+		title={t("edit.title")}
+		onBack={toCatalog}
+		backLabel={t("add.close")}
+		onCancel={toCatalog}
+		cancelLabel={t("common.cancel")}
+	/>
 
 	<div class="flow">
 		<ProductForm
@@ -78,70 +72,14 @@
 </div>
 
 <style>
-	.editscreen {
-		min-height: 100svh;
-	}
-
-	.edittop {
-		position: sticky;
-		top: 0;
-		z-index: 6;
-		display: flex;
-		align-items: center;
-		gap: 16px;
-		padding: 16px 24px;
-		background: var(--glass-fill-thick);
-		backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		border-bottom: 1px solid var(--hairline);
-	}
-	.edittop h1 {
-		font-size: 1.25rem;
-		font-weight: 600;
-		letter-spacing: -0.015em;
-		color: var(--foreground);
-	}
-	.edittop .cancel {
-		margin-left: auto;
-		border: 0;
-		background: transparent;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		cursor: pointer;
-		padding: 8px 10px;
-		border-radius: var(--radius-sm);
-	}
-	.edittop .cancel:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-
-	/* The form is the whole screen here (no finder column) — center it in a readable column. */
+	/* The form is the whole screen here (no finder column) — center it in a readable
+	   column. Shared chrome (the sticky header) is the FormHeader component above. */
 	.flow {
 		max-width: 640px;
 		margin-inline: auto;
 		padding: 18px 24px 48px;
 	}
-
-	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-		.edittop {
-			background: var(--card);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.edittop {
-			backdrop-filter: none;
-			-webkit-backdrop-filter: none;
-			background: var(--card);
-		}
-	}
-
 	@media (max-width: 768px) {
-		.edittop {
-			padding: 12px 16px;
-		}
 		.flow {
 			padding: 14px 16px 64px;
 		}

@@ -13,6 +13,9 @@ import type { MultiSearchParams } from "meilisearch";
 import { prisma } from "$lib/server/db";
 import { meili } from "$lib/server/search";
 import { logger } from "$lib/server/logger";
+import { waitForMeiliTask, syncAfterCommit, makeIndexConfigurer } from "$lib/server/meili-sync";
+import { memoizeAsync } from "$lib/server/memoize";
+import { isUniqueConstraintError, isForeignKeyConstraintError } from "$lib/server/prisma-errors";
 import {
 	buildFoodDocument,
 	buildFoodSearchQueries,
@@ -21,6 +24,7 @@ import {
 	FOOD_INDEX_SETTINGS,
 } from "./food-document";
 import { searchOFF, getOFFProductByBarcode, buildNutrimentRows } from "$lib/server/off";
+import { recomputeDependents } from "$lib/server/recipes";
 import { offToDraft } from "$lib/food/off-mapping";
 import {
 	isBarcodeQuery,
@@ -48,14 +52,6 @@ export class FoodProductConflictError extends Error {
 	}
 }
 
-/** Prisma's "unique constraint failed" code, duck-typed so we needn't import the
- *  Prisma error namespace from the generated client. */
-function isUniqueConstraintError(err: unknown): boolean {
-	return (
-		typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === "P2002"
-	);
-}
-
 /** Thrown when an update/delete targets a missing product. */
 export class FoodProductNotFoundError extends Error {
 	constructor(public id: string) {
@@ -64,35 +60,34 @@ export class FoodProductNotFoundError extends Error {
 	}
 }
 
-// ─── Meili single-doc sync helpers ────────────────────────────────────────────
-
-/**
- * Await a Meili task and throw if it ended in a `failed` state. `waitForTask`
- * resolves on ANY terminal status (succeeded OR failed), so without this check a
- * task that Meili rejected (bad doc, settings mismatch) would look like success.
- */
-async function waitForMeiliTask(taskUid: number): Promise<void> {
-	const task = await meili.tasks.waitForTask(taskUid);
-	if (task.status === "failed") {
-		throw new Error(`Meili task ${taskUid} failed: ${task.error?.message ?? "unknown error"}`);
+/** Thrown when a product can't be deleted because recipes map ingredients to it. */
+export class FoodProductInUseError extends Error {
+	constructor(public referencingRecipeIds: string[]) {
+		super("Food product is used by recipes");
+		this.name = "FoodProductInUseError";
 	}
 }
 
-/**
- * Ensure the food index carries its settings before the FIRST live `addDocuments`.
- * `addDocuments` auto-creates a bare index (no filterable/sortable/searchable
- * attributes) on a fresh environment where the batch `--step index` reseed hasn't
- * run; later faceted/sorted search would then throw. Memoize the in-flight promise so
- * this costs one `updateSettings` per process; reset on failure so it can retry.
- * (See lessons: "Runtime-created Meili indexes must have settings applied before first use".)
- */
-let indexConfigured: Promise<void> | null = null;
-function ensureFoodIndexConfigured(): Promise<void> {
-	return (indexConfigured ??= configureFoodIndex().catch((err) => {
-		indexConfigured = null;
-		throw err;
-	}));
+/** Thrown when a payload references a `nutrientId` that is not a known Nutrient tag.
+ *  `nutrientId` is a natural key (INFOODS tagname) the client sends, so an unknown
+ *  value trips the FK (P2003) on insert — surface it as a 400, not a 500. */
+export class UnknownNutrientError extends Error {
+	constructor() {
+		super("Unknown nutrient id");
+		this.name = "UnknownNutrientError";
+	}
 }
+
+// ─── Meili single-doc sync helpers ────────────────────────────────────────────
+
+/**
+ * The runtime index configurer (shared plumbing). `configureFoodIndex` applies the settings
+ * idempotently; `ensureConfigured` runs once per process before the first live `addDocuments`.
+ * Mirrors the batch step's `updateSettings` (same constant), so search/facet/sort behavior is
+ * identical whether the index was last touched by a reseed or a live mutation.
+ */
+const foodIndex = makeIndexConfigurer(FOOD_INDEX_NAME, FOOD_INDEX_SETTINGS);
+export const configureFoodIndex = foodIndex.configure;
 
 /** Rebuild and push the single Meili document for a product (no-op if it vanished). */
 export async function syncFoodDocument(id: string): Promise<void> {
@@ -114,7 +109,7 @@ export async function syncFoodDocument(id: string): Promise<void> {
 		product.category,
 	);
 
-	await ensureFoodIndexConfigured();
+	await foodIndex.ensureConfigured();
 	const index = meili.index(FOOD_INDEX_NAME);
 	const task = await index.addDocuments([doc], { primaryKey: "id" });
 	await waitForMeiliTask(task.taskUid);
@@ -127,22 +122,8 @@ export async function removeFoodDocument(id: string): Promise<void> {
 	await waitForMeiliTask(task.taskUid);
 }
 
-/**
- * Run a Meili sync side-effect AFTER a committed DB write. The DB row is the
- * authoritative record, so an index failure must never mask a successful write:
- * log it (the recoverable-drift signal) and swallow. The catalog index reconverges
- * on the next mutation or a `search:reindex` (`--step index`) run.
- */
-async function syncAfterCommit(op: () => Promise<void>, id: string): Promise<void> {
-	try {
-		await op();
-	} catch (err) {
-		logger.error(
-			{ err, id },
-			"Meili sync failed after committed DB write — catalog index stale; recover via search:reindex",
-		);
-	}
-}
+/** The catalog-index reconvergence path, appended to the shared `syncAfterCommit` log line. */
+const FOOD_SYNC_RECOVERY = "catalog index stale; recover via search:reindex";
 
 // ─── Write paths ──────────────────────────────────────────────────────────────
 
@@ -174,6 +155,8 @@ export async function saveFoodProduct(input: SavePayload) {
 					brand: input.brand ?? null,
 					categoryId: input.categoryId ?? null,
 					servingSizeG: input.servingSizeG ?? null,
+					densityGPerMl: input.densityGPerMl ?? null,
+					pieceWeightG: input.pieceWeightG ?? null,
 					imageUrl: input.imageUrl ?? null,
 					imageThumbUrl: input.imageThumbUrl ?? null,
 					imageIngredientsUrl: input.imageIngredientsUrl ?? null,
@@ -204,10 +187,14 @@ export async function saveFoodProduct(input: SavePayload) {
 			});
 			throw new FoodProductConflictError(conflict?.id ?? sourceId);
 		}
+		// A nutrientId that isn't a seeded Nutrient tag trips the FK (P2003).
+		if (isForeignKeyConstraintError(err)) {
+			throw new UnknownNutrientError();
+		}
 		throw err;
 	}
 
-	await syncAfterCommit(() => syncFoodDocument(product.id), product.id);
+	await syncAfterCommit(() => syncFoodDocument(product.id), product.id, FOOD_SYNC_RECOVERY);
 	return product;
 }
 
@@ -228,38 +215,51 @@ export async function updateFoodProduct(id: string, input: PatchPayload) {
 	const { present, removed } = partitionNutrients(input.nutrients);
 	const flagModified = shouldFlagUserModified(existing.source);
 
-	await prisma.$transaction(async (tx) => {
-		await tx.foodProduct.update({
-			where: { id },
-			data: {
-				nameEn: input.nameEn,
-				namePl: input.namePl ?? null,
-				brand: input.brand ?? null,
-				categoryId: input.categoryId ?? null,
-				servingSizeG: input.servingSizeG ?? null,
-				imageUrl: input.imageUrl ?? null,
-				imageThumbUrl: input.imageThumbUrl ?? null,
-				imageIngredientsUrl: input.imageIngredientsUrl ?? null,
-				imageNutritionUrl: input.imageNutritionUrl ?? null,
-				...(flagModified ? { userModified: true } : {}),
-			},
+	try {
+		await prisma.$transaction(async (tx) => {
+			await tx.foodProduct.update({
+				where: { id },
+				data: {
+					nameEn: input.nameEn,
+					namePl: input.namePl ?? null,
+					brand: input.brand ?? null,
+					categoryId: input.categoryId ?? null,
+					servingSizeG: input.servingSizeG ?? null,
+					densityGPerMl: input.densityGPerMl ?? null,
+					pieceWeightG: input.pieceWeightG ?? null,
+					imageUrl: input.imageUrl ?? null,
+					imageThumbUrl: input.imageThumbUrl ?? null,
+					imageIngredientsUrl: input.imageIngredientsUrl ?? null,
+					imageNutritionUrl: input.imageNutritionUrl ?? null,
+					...(flagModified ? { userModified: true } : {}),
+				},
+			});
+
+			if (removed.length > 0) {
+				await tx.foodNutrient.deleteMany({
+					where: { foodId: id, nutrientId: { in: removed } },
+				});
+			}
+			for (const n of present) {
+				await tx.foodNutrient.upsert({
+					where: { foodId_nutrientId: { foodId: id, nutrientId: n.nutrientId } },
+					create: { foodId: id, nutrientId: n.nutrientId, amountPer100g: n.amountPer100g },
+					update: { amountPer100g: n.amountPer100g },
+				});
+			}
 		});
-
-		if (removed.length > 0) {
-			await tx.foodNutrient.deleteMany({
-				where: { foodId: id, nutrientId: { in: removed } },
-			});
+	} catch (err) {
+		// A nutrientId that isn't a seeded Nutrient tag trips the FK (P2003).
+		if (isForeignKeyConstraintError(err)) {
+			throw new UnknownNutrientError();
 		}
-		for (const n of present) {
-			await tx.foodNutrient.upsert({
-				where: { foodId_nutrientId: { foodId: id, nutrientId: n.nutrientId } },
-				create: { foodId: id, nutrientId: n.nutrientId, amountPer100g: n.amountPer100g },
-				update: { amountPer100g: n.amountPer100g },
-			});
-		}
-	});
+		throw err;
+	}
 
-	await syncAfterCommit(() => syncFoodDocument(id), id);
+	await syncAfterCommit(() => syncFoodDocument(id), id, FOOD_SYNC_RECOVERY);
+	// A product's macros changed → recompute every recipe that maps an ingredient to it,
+	// up the sub-recipe graph. CORRECTNESS (cached recipe nutrition): surfaced, not swallowed.
+	await recomputeDependents({ productId: id });
 	return prisma.foodProduct.findUnique({ where: { id } });
 }
 
@@ -285,6 +285,8 @@ export async function getFoodProductDraft(id: string): Promise<DraftProduct | nu
 		brand: product.brand,
 		categoryId: product.categoryId,
 		servingSizeG: product.servingSizeG,
+		densityGPerMl: product.densityGPerMl,
+		pieceWeightG: product.pieceWeightG,
 		imageUrl: product.imageUrl,
 		imageThumbUrl: product.imageThumbUrl,
 		imageIngredientsUrl: product.imageIngredientsUrl,
@@ -295,14 +297,26 @@ export async function getFoodProductDraft(id: string): Promise<DraftProduct | nu
 	};
 }
 
-/** Delete a product (FoodNutrient cascades) and remove its Meili document. */
+/**
+ * Delete a product (FoodNutrient cascades) and remove its Meili document. Blocked
+ * (throws `FoodProductInUseError`) when any recipe maps an ingredient to it — the
+ * live-FK integrity rule that keeps recipe nutrition from referencing a deleted product.
+ */
 export async function deleteFoodProduct(id: string): Promise<void> {
 	const existing = await prisma.foodProduct.findUnique({ where: { id }, select: { id: true } });
 	if (!existing) {
 		throw new FoodProductNotFoundError(id);
 	}
+	const refs = await prisma.recipeComponent.findMany({
+		where: { productId: id },
+		select: { recipeId: true },
+		distinct: ["recipeId"],
+	});
+	if (refs.length > 0) {
+		throw new FoodProductInUseError(refs.map((r) => r.recipeId));
+	}
 	await prisma.foodProduct.delete({ where: { id } });
-	await syncAfterCommit(() => removeFoodDocument(id), id);
+	await syncAfterCommit(() => removeFoodDocument(id), id, FOOD_SYNC_RECOVERY);
 }
 
 // ─── Nutrient registry ────────────────────────────────────────────────────────
@@ -314,19 +328,11 @@ export async function deleteFoodProduct(id: string): Promise<void> {
  */
 type NutrientRegistry = { groups: NutrientRegistryGroup[] };
 
-// Reference data that never changes during S-01 (the Nutrient registry is read-only;
-// categories have no mutation path in this slice). Memoize the in-flight promise so the
-// per-navigation catalog load doesn't re-query on every facet/sort/page change; reset on
+// Reference data that never changes during S-01 (the Nutrient registry is read-only; categories
+// have no mutation path in this slice). `memoizeAsync` shares one in-flight promise so the
+// per-navigation catalog load doesn't re-query on every facet/sort/page change, resetting on
 // rejection so a failed first load can retry. Treat the cached values as read-only.
-let registryCache: Promise<NutrientRegistry> | null = null;
-let categoriesCache: Promise<FoodCategoryMeta[]> | null = null;
-
-export function getNutrientRegistry(): Promise<NutrientRegistry> {
-	return (registryCache ??= loadNutrientRegistry().catch((err) => {
-		registryCache = null;
-		throw err;
-	}));
-}
+export const getNutrientRegistry = memoizeAsync(loadNutrientRegistry);
 
 async function loadNutrientRegistry(): Promise<NutrientRegistry> {
 	const rows = await prisma.nutrient.findMany({
@@ -370,12 +376,7 @@ async function loadNutrientRegistry(): Promise<NutrientRegistry> {
  * from the current page of hits — the search facet distribution only carries
  * `slug → count`, so the names come from here.
  */
-export function getFoodCategories(): Promise<FoodCategoryMeta[]> {
-	return (categoriesCache ??= loadFoodCategories().catch((err) => {
-		categoriesCache = null;
-		throw err;
-	}));
-}
+export const getFoodCategories = memoizeAsync(loadFoodCategories);
 
 async function loadFoodCategories(): Promise<FoodCategoryMeta[]> {
 	return prisma.foodCategory.findMany({
@@ -426,19 +427,7 @@ export async function buildOffPreview(query: string): Promise<PreviewResult[]> {
 	return results;
 }
 
-// ─── Read path: index config + search ──────────────────────────────────────────
-
-/**
- * Apply the shared `FOOD_INDEX_SETTINGS` to the runtime singleton index. Mirrors the
- * batch step's `updateSettings` (which applies the SAME constant to its own injected
- * client) so search/facet/sort behavior is identical whether the index was last
- * touched by a reseed or a live mutation. Idempotent.
- */
-export async function configureFoodIndex(): Promise<void> {
-	const index = meili.index(FOOD_INDEX_NAME);
-	const task = await index.updateSettings(FOOD_INDEX_SETTINGS);
-	await waitForMeiliTask(task.taskUid);
-}
+// ─── Read path: search ──────────────────────────────────────────────────────────
 
 /**
  * The single typed catalog search, used by both the SSR page load and the thin GET

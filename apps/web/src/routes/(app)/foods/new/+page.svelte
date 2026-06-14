@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
-	import { IconButton } from "$lib/components/ui/icon-button";
+	import { FormHeader } from "$lib/components/ui/form-header";
+	import { DetailPlaceholder } from "$lib/components/ui/detail-placeholder";
 	import { toast } from "$lib/components/ui/sonner";
 	import OffFinder from "$lib/components/catalog/OffFinder.svelte";
 	import ProductForm from "$lib/components/catalog/ProductForm.svelte";
@@ -74,20 +75,14 @@
 	<title>{t("add.title")} — {t("common.appName")}</title>
 </svelte:head>
 
-<div class="addscreen">
-	<div class="addtop">
-		<IconButton onclick={toCatalog} aria-label={t("add.close")}>
-			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M12.7 4.3a1 1 0 0 1 0 1.4L8.42 10l4.3 4.3a1 1 0 1 1-1.42 1.4l-5-5a1 1 0 0 1 0-1.4l5-5a1 1 0 0 1 1.4 0Z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-		</IconButton>
-		<h1>{t("add.title")}</h1>
-		<button type="button" class="cancel" onclick={toCatalog}>{t("common.cancel")}</button>
-	</div>
+<div class="min-h-svh">
+	<FormHeader
+		title={t("add.title")}
+		onBack={toCatalog}
+		backLabel={t("add.close")}
+		onCancel={toCatalog}
+		cancelLabel={t("common.cancel")}
+	/>
 
 	<div class="flow">
 		<div class="src">
@@ -110,62 +105,16 @@
 					/>
 				{/key}
 			{:else}
-				<div class="pvhint">
-					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-						<path
-							fill-rule="evenodd"
-							d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-					<p>{t("add.previewHint")}</p>
-				</div>
+				<DetailPlaceholder text={t("add.previewHint")} />
 			{/if}
 		</div>
 	</div>
 </div>
 
 <style>
-	.addscreen {
-		min-height: 100svh;
-	}
-
-	.addtop {
-		position: sticky;
-		top: 0;
-		z-index: 6;
-		display: flex;
-		align-items: center;
-		gap: 16px;
-		padding: 16px 24px;
-		background: var(--glass-fill-thick);
-		backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		border-bottom: 1px solid var(--hairline);
-	}
-	.addtop h1 {
-		font-size: 1.25rem;
-		font-weight: 600;
-		letter-spacing: -0.015em;
-		color: var(--foreground);
-	}
-	.addtop .cancel {
-		margin-left: auto;
-		border: 0;
-		background: transparent;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		cursor: pointer;
-		padding: 8px 10px;
-		border-radius: var(--radius-sm);
-	}
-	.addtop .cancel:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-
+	/* Page-unique two-column flow (OFF finder + editable preview); collapses to one
+	   column below the detail breakpoint. Shared chrome (header, preview placeholder)
+	   is composed from the ui/ components above. */
 	.flow {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 540px;
@@ -175,44 +124,6 @@
 		padding: 18px 24px 48px;
 		align-items: start;
 	}
-
-	.pvhint {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 12px;
-		min-height: 320px;
-		padding: 32px;
-		text-align: center;
-		color: var(--muted-foreground);
-		border: 1px dashed var(--hairline);
-		border-radius: var(--radius);
-	}
-	.pvhint svg {
-		width: 30px;
-		height: 30px;
-		opacity: 0.6;
-	}
-	.pvhint p {
-		font-size: 0.875rem;
-		max-width: 26ch;
-	}
-
-	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-		.addtop {
-			background: var(--card);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.addtop {
-			backdrop-filter: none;
-			-webkit-backdrop-filter: none;
-			background: var(--card);
-		}
-	}
-
-	/* Single column below the detail breakpoint: finder first, then the preview. */
 	@media (max-width: 1199px) {
 		.flow {
 			grid-template-columns: minmax(0, 1fr);
@@ -220,9 +131,6 @@
 		}
 	}
 	@media (max-width: 768px) {
-		.addtop {
-			padding: 12px 16px;
-		}
 		.flow {
 			padding: 14px 16px 64px;
 		}

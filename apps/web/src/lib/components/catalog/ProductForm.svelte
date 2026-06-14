@@ -4,11 +4,13 @@
 	import { Button } from "$lib/components/ui/button";
 	import { Gauge } from "$lib/components/ui/gauge";
 	import { Panel } from "$lib/components/ui/panel";
-	import type { DraftNutrientValue, DraftProduct, NutrientRegistryGroup } from "$lib/food/schema";
+	import type { DraftProduct, NutrientRegistryGroup } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
 	import CategoryIcon from "./CategoryIcon.svelte";
 	import NutrientGroupSection from "./NutrientGroupSection.svelte";
+	import NutrientRow from "./NutrientRow.svelte";
 	import { formatAmount, macroGauges, macroPct, nutrientGroupLabels, sourceBadgeKey } from "./meta";
+	import { parseAmount, seedFields, buildDraftProduct, type AmountField } from "./product-form";
 
 	// The shared editable product surface — the DESIGN.md "AI suggestion surface /
 	// editable preview", realizing the locked off-add.html. One form for OFF preview,
@@ -44,56 +46,27 @@
 		cancelLabel,
 	}: Props = $props();
 
-	// ─── Editable state, seeded ONCE from the draft. The parent remounts the form via
-	// {#key} when the selected draft changes, so a one-time snapshot is intended;
-	// `untrack` takes that snapshot without subscribing this seed to later draft churn.
-	// Nutrient values are raw input strings keyed by nutrientId — "" = NULL (no data),
-	// distinct from "0"; seeded only with present (non-null) amounts.
-	// `bind:value` on a `type="number"` input yields a NUMBER (or `null` when the field is
-	// emptied), not a string — so these slots hold `number | string | null` at runtime, and
-	// `parseAmount` must tolerate all three. An empty number field binds to `null` = NULL,
-	// distinct from a typed `0` (NULL≠0 preserved). Seed only present values; absent = NULL.
-	type AmountField = string | number | null;
-	const init = untrack(() => {
-		const values: Record<string, AmountField> = {};
-		for (const n of draft.nutrients) {
-			if (n.amountPer100g !== null) values[n.nutrientId] = n.amountPer100g;
-		}
-		return {
-			nameEn: draft.nameEn,
-			namePl: draft.namePl ?? "",
-			brand: draft.brand ?? "",
-			categoryId: draft.categoryId ?? "",
-			servingSizeG: (draft.servingSizeG ?? null) as AmountField,
-			values,
-		};
-	});
+	// Editable state, seeded ONCE from the draft via the pure `seedFields`. The parent remounts
+	// the form via {#key} when the selected draft changes, so a one-time snapshot is intended;
+	// `untrack` takes that snapshot without subscribing this seed to later draft churn. Nutrient
+	// values are raw inputs keyed by nutrientId — "" / null = NULL (no data), distinct from a
+	// typed 0; seeded only with present (non-null) amounts. A `type="number"` `bind:value` yields
+	// a number (or null when emptied), so these slots hold `number | string | null` at runtime.
+	const init = untrack(() => seedFields(draft));
 
 	let nameEn = $state(init.nameEn);
 	let namePl = $state(init.namePl);
 	let brand = $state(init.brand);
 	let categoryId = $state(init.categoryId);
 	let servingSizeG = $state<AmountField>(init.servingSizeG);
+	let densityGPerMl = $state<AmountField>(init.densityGPerMl);
+	let pieceWeightG = $state<AmountField>(init.pieceWeightG);
 	let values = $state<Record<string, AmountField>>(init.values);
 
 	// Group expand/collapse — default every group open (the locked probe shows them expanded).
 	let collapsed = $state<Record<string, boolean>>({});
 	function toggleGroup(category: string) {
 		collapsed[category] = !collapsed[category];
-	}
-
-	/**
-	 * Parse a raw field into a canonical amount. A number input binds as a number (or null
-	 * when empty); the initial seed and any text fallback bind as a string. Empty/blank/null
-	 * → null (NULL≠0); a typed `0` stays `0`. Accepts comma decimals for the string path.
-	 */
-	function parseAmount(raw: AmountField | undefined): number | null {
-		if (raw === null || raw === undefined) return null;
-		if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
-		const trimmed = raw.trim();
-		if (trimmed === "") return null;
-		const n = Number(trimmed.replace(",", "."));
-		return Number.isFinite(n) ? n : null;
 	}
 
 	const GROUP_LABEL = nutrientGroupLabels();
@@ -131,40 +104,24 @@
 	const canSave = $derived((nameEn.trim() !== "" || namePl.trim() !== "") && !saving);
 
 	function submit() {
-		// Emit every registry nutrient: present values keep their amount, empties become
-		// null. The parent normalizes — create drops nulls (draftToSavePayload), edit keeps
-		// them (draftToPatchPayload) so the server removes their rows. Both honor NULL≠0.
-		const nutrients: DraftNutrientValue[] = [];
-		for (const group of registry) {
-			for (const n of group.nutrients) {
-				nutrients.push({ nutrientId: n.id, amountPer100g: parseAmount(values[n.id]) });
-			}
-		}
-		const updated: DraftProduct = {
-			source: draft.source,
-			sourceId: draft.sourceId,
-			// nameEn is required by the schema; fall back to the Polish name when only it is filled.
-			nameEn: nameEn.trim() || namePl.trim(),
-			namePl: namePl.trim() || null,
-			brand: brand.trim() || null,
-			categoryId: categoryId || null,
-			servingSizeG: parseAmount(servingSizeG),
-			// Image URLs aren't edited in the form — carry them through from the source draft
-			// so saving/editing an OFF product preserves its photos.
-			imageUrl: draft.imageUrl ?? null,
-			imageThumbUrl: draft.imageThumbUrl ?? null,
-			imageIngredientsUrl: draft.imageIngredientsUrl ?? null,
-			imageNutritionUrl: draft.imageNutritionUrl ?? null,
-			nutrients,
-		};
-		onSubmit(updated);
+		// Assemble the canonical draft from the current fields (NULL≠0, nameEn fallback, image
+		// passthrough, every-registry-nutrient emission all live in the pure `buildDraftProduct`).
+		onSubmit(
+			buildDraftProduct(
+				{ nameEn, namePl, brand, categoryId, servingSizeG, densityGPerMl, pieceWeightG, values },
+				draft,
+				registry,
+			),
+		);
 	}
 </script>
 
 <Panel variant="thick" class="pf flex flex-col overflow-hidden rounded-lg p-0">
 	<div class="flex items-start gap-[14px] px-[22px] pt-[18px] max-md:px-4">
 		<div class="min-w-0 flex-1">
-			<div class="text-[0.5625rem] font-semibold uppercase tracking-[0.09em] text-muted-foreground">{eyebrow.title}</div>
+			<div class="text-[0.5625rem] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
+				{eyebrow.title}
+			</div>
 			<div class="mt-[3px] text-[0.8125rem] leading-[1.4] text-muted-foreground">{eyebrow.sub}</div>
 		</div>
 		{#if mode === "create"}
@@ -181,7 +138,12 @@
 		{#if draft.imageThumbUrl ?? draft.imageUrl}
 			<!-- OFF preview photo — contained on a neutral tile; fixed height reserves space so the form doesn't jump on load. -->
 			<div class="mb-[14px] grid h-[200px] place-items-center rounded-lg bg-secondary p-3">
-				<img class="max-h-full max-w-full rounded-sm object-contain" src={draft.imageThumbUrl ?? draft.imageUrl} alt={t("catalog.photoAlt")} loading="lazy" />
+				<img
+					class="max-h-full max-w-full rounded-sm object-contain"
+					src={draft.imageThumbUrl ?? draft.imageUrl}
+					alt={t("catalog.photoAlt")}
+					loading="lazy"
+				/>
 			</div>
 		{/if}
 
@@ -192,7 +154,11 @@
 			{/if}
 			<!-- Editable category select styled as a chip with a leading glyph + chevron. -->
 			<span class="relative inline-flex items-center">
-				<CategoryIcon slug={selectedCategorySlug} size={13} class="pointer-events-none absolute left-[9px]" />
+				<CategoryIcon
+					slug={selectedCategorySlug}
+					size={13}
+					class="pointer-events-none absolute left-[9px]"
+				/>
 				<select
 					class="cursor-pointer appearance-none rounded-pill border-0 bg-card px-[26px] py-[5px] text-[0.625rem] font-semibold uppercase tracking-[0.07em] text-foreground shadow-soft outline-none focus:shadow-[var(--shadow-soft),var(--focus)]"
 					aria-label={t("add.categoryLabel")}
@@ -203,7 +169,12 @@
 						<option value={c.id}>{c.namePl}</option>
 					{/each}
 				</select>
-				<svg class="pointer-events-none absolute right-2 h-[13px] w-[13px] text-muted-foreground" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+				<svg
+					class="pointer-events-none absolute right-2 h-[13px] w-[13px] text-muted-foreground"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+					aria-hidden="true"
+				>
 					<path d="M10 13.5l-4.5-5h9z" />
 				</svg>
 			</span>
@@ -218,7 +189,10 @@
 					aria-label={t("add.namePlLabel")}
 					placeholder={t("add.namePlLabel")}
 				/>
-				<span class="pointer-events-none absolute right-[9px] top-1/2 -translate-y-1/2 text-[0.5625rem] font-semibold tracking-[0.08em] text-muted-foreground">PL</span>
+				<span
+					class="pointer-events-none absolute right-[9px] top-1/2 -translate-y-1/2 text-[0.5625rem] font-semibold tracking-[0.08em] text-muted-foreground"
+					>PL</span
+				>
 			</div>
 			<div class="relative">
 				<input
@@ -228,11 +202,18 @@
 					aria-label={t("add.nameEnLabel")}
 					placeholder={t("add.nameEnLabel")}
 				/>
-				<span class="pointer-events-none absolute right-[9px] top-1/2 -translate-y-1/2 text-[0.5625rem] font-semibold tracking-[0.08em] text-muted-foreground">EN</span>
+				<span
+					class="pointer-events-none absolute right-[9px] top-1/2 -translate-y-1/2 text-[0.5625rem] font-semibold tracking-[0.08em] text-muted-foreground"
+					>EN</span
+				>
 			</div>
 		</div>
 
-		<div class="mb-[11px] mt-[18px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("add.profileBasis")}</div>
+		<div
+			class="mb-[11px] mt-[18px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+		>
+			{t("add.profileBasis")}
+		</div>
 		<div class="grid grid-cols-4 gap-2.5">
 			{#each gauges as g (g.macro)}
 				<Gauge
@@ -267,17 +248,66 @@
 						bind:value={servingSizeG}
 						aria-label={t("add.servingSize")}
 					/>
-					<span class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground">g</span>
+					<span
+						class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground"
+						>g</span
+					>
 				</span>
 			</label>
+			<label class="flex items-center justify-between gap-3">
+				<span class="text-[0.8125rem] text-muted-foreground">{t("add.density")}</span>
+				<span class="relative flex items-center">
+					<input
+						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[36px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
+						type="number"
+						inputmode="decimal"
+						min="0"
+						step="any"
+						bind:value={densityGPerMl}
+						aria-label={t("add.density")}
+					/>
+					<span
+						class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground"
+						>g/ml</span
+					>
+				</span>
+			</label>
+			<label class="flex items-center justify-between gap-3">
+				<span class="text-[0.8125rem] text-muted-foreground">{t("add.pieceWeight")}</span>
+				<span class="relative flex items-center">
+					<input
+						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[26px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
+						type="number"
+						inputmode="decimal"
+						min="0"
+						step="any"
+						bind:value={pieceWeightG}
+						aria-label={t("add.pieceWeight")}
+					/>
+					<span
+						class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground"
+						>g</span
+					>
+				</span>
+			</label>
+			<p class="text-[0.6875rem] leading-[1.4] text-muted-foreground">{t("add.conversionHint")}</p>
 		</div>
 
 		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>
 
-		<div class="mb-1 flex items-center justify-between gap-2.5 text-[0.6875rem] text-muted-foreground">
-			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em]">{t("add.fullProfile")}</span>
+		<div
+			class="mb-1 flex items-center justify-between gap-2.5 text-[0.6875rem] text-muted-foreground"
+		>
+			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em]"
+				>{t("add.fullProfile")}</span
+			>
 			<span class="inline-flex items-center gap-1.5 text-right">
-				<svg class="h-[13px] w-[13px] shrink-0 opacity-60" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+				<svg
+					class="h-[13px] w-[13px] shrink-0 opacity-60"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+					aria-hidden="true"
+				>
 					<path
 						fill-rule="evenodd"
 						d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z"
@@ -298,26 +328,7 @@
 				onToggle={() => toggleGroup(group.category)}
 			>
 				{#each group.nutrients as n (n.id)}
-					{@const empty = parseAmount(values[n.id]) === null}
-					<div class="flex items-center justify-between gap-3 py-1.5 pl-4 pr-0.5">
-						<span class="text-[0.8125rem] text-muted-foreground">{n.namePl || n.nameEn}</span>
-						<span class="flex shrink-0 items-center gap-1.5">
-							<input
-								class={[
-									"numin w-[84px] rounded-sm border bg-card px-[9px] py-[5px] text-right text-[0.8125rem] tabular-nums tracking-[-0.01em] text-foreground outline-none placeholder:italic placeholder:text-muted-foreground placeholder:[font-variant-numeric:normal] focus:border-transparent focus:shadow-[var(--focus)]",
-									empty && "border-dashed",
-								]}
-								type="number"
-								inputmode="decimal"
-								min="0"
-								step="any"
-								bind:value={values[n.id]}
-								placeholder={t("add.noDataPlaceholder")}
-								aria-label={n.namePl || n.nameEn}
-							/>
-							<span class={["w-6 text-left text-[0.6875rem] text-muted-foreground", empty && "opacity-40"]}>{n.unit}</span>
-						</span>
-					</div>
+					<NutrientRow label={n.namePl || n.nameEn} unit={n.unit} bind:value={values[n.id]} />
 				{/each}
 			</NutrientGroupSection>
 		{/each}
@@ -332,7 +343,12 @@
 		>
 			{cancelLabel ?? t("common.cancel")}
 		</button>
-		<span class={["flex-1 text-center text-[0.6875rem] leading-[1.4]", errorMessage ? "text-destructive" : "text-muted-foreground"]}>{errorMessage ?? ""}</span>
+		<span
+			class={[
+				"flex-1 text-center text-[0.6875rem] leading-[1.4]",
+				errorMessage ? "text-destructive" : "text-muted-foreground",
+			]}>{errorMessage ?? ""}</span
+		>
 		<Button onclick={submit} disabled={!canSave}>
 			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 				<path

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Chip } from "$lib/components/ui/chip";
 	import { SegmentedToggle } from "$lib/components/ui/segmented";
 	import type { FoodCategoryMeta } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
@@ -94,34 +95,15 @@
 			<span class="mr-1 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-xl:hidden">
 				{t("catalog.categoryLabel")}
 			</span>
-			<button
-				type="button"
-				class={[
-					"inline-flex items-center gap-1.5 rounded-pill border-0 py-1.5 pl-[9px] pr-3 text-[0.8125rem] font-medium transition-colors duration-[180ms] ease-[var(--ease)] focus-visible:shadow-[var(--focus)] focus-visible:outline-none motion-reduce:transition-none",
-					activeCategory === null
-						? "bg-primary text-primary-foreground"
-						: "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground",
-				]}
-				onclick={() => pick(null)}
-			>
-				<CategoryIcon slug={null} size={15} />
+			<Chip active={activeCategory === null} onclick={() => pick(null)}>
+				{#snippet leading()}<CategoryIcon slug={null} size={15} />{/snippet}
 				{t("catalog.allCategories")}
-			</button>
+			</Chip>
 			{#each visibleCategories as cat (cat.slug)}
-				<button
-					type="button"
-					class={[
-						"inline-flex items-center gap-1.5 rounded-pill border-0 py-1.5 pl-[9px] pr-3 text-[0.8125rem] font-medium transition-colors duration-[180ms] ease-[var(--ease)] focus-visible:shadow-[var(--focus)] focus-visible:outline-none motion-reduce:transition-none",
-						activeCategory === cat.slug
-							? "bg-primary text-primary-foreground"
-							: "bg-secondary text-muted-foreground hover:bg-accent hover:text-foreground",
-					]}
-					onclick={() => pick(cat.slug)}
-				>
-					<CategoryIcon slug={cat.slug} size={15} />
+				<Chip active={activeCategory === cat.slug} count={counts[cat.slug]} onclick={() => pick(cat.slug)}>
+					{#snippet leading()}<CategoryIcon slug={cat.slug} size={15} />{/snippet}
 					{cat.namePl}
-					<span class="ml-1 tabular-nums opacity-60">{counts[cat.slug]}</span>
-				</button>
+				</Chip>
 			{/each}
 		</div>
 	</div>

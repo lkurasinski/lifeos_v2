@@ -9,6 +9,8 @@
  */
 import type { MultiSearchQuery, MultiSearchResult } from "meilisearch";
 import type { FoodDocument, FoodSearchResult, SearchParams, SortKey } from "../food/schema";
+import { orClause } from "./meili-filter";
+import { MACRO_FIELDS } from "../macros";
 
 export const FOOD_INDEX_NAME = "food_products";
 
@@ -25,14 +27,6 @@ export const FOOD_INDEX_SETTINGS = {
 	// understate the catalog count + page count. Raise it well above the catalog size
 	// so the "N produktów" header and pagination reflect the real total.
 	pagination: { maxTotalHits: 50000 },
-};
-
-/** INFOODS tag → the top-level document field promoted for sorting. */
-const MACRO_FIELDS: Record<string, "energyKcal" | "protein" | "fat" | "carbs"> = {
-	ENERC_KCAL: "energyKcal",
-	PROCNT: "protein",
-	FAT: "fat",
-	CHOCDF: "carbs",
 };
 
 interface ProductInput {
@@ -122,15 +116,6 @@ const SORT_FIELD: Record<SortKey, "nameEn" | "energyKcal" | "protein" | "fat" | 
  * an active filter narrows the *other* facets without collapsing its own.
  */
 export const FOOD_QUERY_INDEX = { HITS: 0, SOURCE: 1, CATEGORY: 2 } as const;
-
-/**
- * A disjunctive (OR) clause within one facet dimension, expressed as Meili's
- * nested-array filter form. `null` when the dimension has no active selection.
- */
-function orClause(attribute: string, values: string[] | undefined): string[] | null {
-	if (!values || values.length === 0) return null;
-	return values.map((v) => `${attribute} = "${v}"`);
-}
 
 /**
  * Build the three-query `multiSearch` payload that powers disjunctive faceting:

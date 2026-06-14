@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -9,15 +8,21 @@ datasource db {
 }
 
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  id                String           @id
+  name              String
+  email             String
+  emailVerified     Boolean          @default(false)
+  image             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  sessions          Session[]
+  accounts          Account[]
+  recipes           Recipe[]
+  recipeFavorites   RecipeFavorite[]
+  recipeRatings     RecipeRating[]
+  createdDiets      Diet[]
+  createdTechniques Technique[]
+  createdAllergens  Allergen[]
 
   @@unique([email])
   @@map("user")
@@ -92,18 +97,18 @@ enum NutrientCategory {
 }
 
 model Nutrient {
-  id             String           @id // INFOODS tagname (e.g. ENERC_KCAL) — natural key
-  usdaNutrientId Int?
+  id              String           @id // INFOODS tagname (e.g. ENERC_KCAL) — natural key
+  usdaNutrientId  Int?
   usdaNutrientNbr String?
-  offSlug        String?
-  nameEn         String
-  namePl         String           @default("")
-  unit           String
-  category       NutrientCategory
-  displayRank    Int?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  foodNutrients  FoodNutrient[]
+  offSlug         String?
+  nameEn          String
+  namePl          String           @default("")
+  unit            String
+  category        NutrientCategory
+  displayRank     Int?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  foodNutrients   FoodNutrient[]
 
   @@map("nutrient")
 }
@@ -121,25 +126,31 @@ model FoodCategory {
 }
 
 model FoodProduct {
-  id             String        @id @default(uuid()) @db.Uuid
-  source         FoodSource
-  sourceId       String
-  nameEn         String
-  namePl         String?
-  brand          String?
-  categoryId     String?       @db.Uuid
-  category       FoodCategory? @relation(fields: [categoryId], references: [id])
-  sourceCategory String?
-  servingSizeG   Float?
-  userModified   Boolean       @default(false)
+  id                  String            @id @default(uuid()) @db.Uuid
+  source              FoodSource
+  sourceId            String
+  nameEn              String
+  namePl              String?
+  brand               String?
+  categoryId          String?           @db.Uuid
+  category            FoodCategory?     @relation(fields: [categoryId], references: [id])
+  sourceCategory      String?
+  servingSizeG        Float?
+  // Unit→grams conversion inputs for recipe ingredient resolution (S-03). Both
+  // nullable: null density defaults to 1.0 (water) at resolve time; null piece-weight
+  // makes COUNT units (szt./ząbek) unresolvable for that product (flagged, not zeroed).
+  densityGPerMl       Float?
+  pieceWeightG        Float?
+  userModified        Boolean           @default(false)
   // OFF product photos (CC-BY-SA, attribution required). Nullable; CUSTOM rows leave these null.
   imageUrl            String? // main/display image, full resolution (OFF image_url)
   imageThumbUrl       String? // main/display image, 100px (OFF image_thumb_url) — row thumbnail
   imageIngredientsUrl String? // ingredients photo, full (OFF image_ingredients_url)
   imageNutritionUrl   String? // nutrition-table photo, full (OFF image_nutrition_url)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  foodNutrients  FoodNutrient[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  foodNutrients       FoodNutrient[]
+  recipeComponents    RecipeComponent[]
 
   @@unique([source, sourceId])
   @@index([categoryId])
@@ -157,4 +168,217 @@ model FoodNutrient {
   @@id([foodId, nutrientId])
   @@index([nutrientId])
   @@map("food_nutrient")
+}
+
+// ─── Recipe Domain (S-03) ────────────────────────────────────────────────────────
+
+enum RecipeStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum RecipeVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum RecipeSource {
+  USER_CREATED
+  IMPORTED
+}
+
+enum RecipeDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum UnitKind {
+  MASS
+  VOLUME
+  COUNT
+}
+
+model Recipe {
+  id                   String            @id @default(uuid()) @db.Uuid
+  userId               String
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String
+  description          String?
+  servings             Int               @default(1)
+  prepTimeMin          Int?
+  cookTimeMin          Int?
+  difficulty           RecipeDifficulty?
+  source               RecipeSource      @default(USER_CREATED)
+  status               RecipeStatus      @default(DRAFT)
+  visibility           RecipeVisibility  @default(PUBLIC)
+  tips                 String[]
+  // Array of { kind: 'action' | 'wait', text, imageUrl?, durationMin? } (tagged union).
+  steps                Json              @default("[]")
+  imageUrl             String? // recipe-level cover; upload-ready, not surfaced in the authoring form
+  // Derived & cached, NOT authored — Σ(component gramsResolved), computed by the rollup.
+  yieldWeightG         Float?
+  cuisineId            String?           @db.Uuid
+  cuisine              Cuisine?          @relation(fields: [cuisineId], references: [id])
+  // Cached nutrition — authoritative pair (totals, yieldWeightG); per-serving is a
+  // projection stored for Meili sort. `nutrients` is a clean infoodsTagname→number map.
+  energyKcalTotal      Float?
+  proteinTotal         Float?
+  fatTotal             Float?
+  carbsTotal           Float?
+  energyKcalPerServing Float?
+  proteinPerServing    Float?
+  fatPerServing        Float?
+  carbsPerServing      Float?
+  nutrients            Json              @default("{}")
+  nutritionComplete    Boolean           @default(false)
+  // Provenance for the honest partial-data banner: array of { kind, refId, name }.
+  incompleteComponents Json?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  components       RecipeComponent[] @relation("RecipeComponents")
+  usedInComponents RecipeComponent[] @relation("SubRecipe")
+  diets            Diet[]
+  techniques       Technique[]
+  allergens        Allergen[]
+  mealTypes        MealType[]
+  favorites        RecipeFavorite[]
+  ratings          RecipeRating[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([visibility])
+  @@index([cuisineId])
+  @@map("recipe")
+}
+
+model RecipeComponent {
+  id            String       @id @default(uuid()) @db.Uuid
+  recipeId      String       @db.Uuid
+  recipe        Recipe       @relation("RecipeComponents", fields: [recipeId], references: [id], onDelete: Cascade)
+  orderIndex    Int
+  // Exactly one of productId / subRecipeId is set — enforced by a raw CHECK in the
+  // migration (Prisma can't express it) and asserted in Zod + the server layer.
+  productId     String?      @db.Uuid
+  product       FoodProduct? @relation(fields: [productId], references: [id])
+  subRecipeId   String?      @db.Uuid
+  subRecipe     Recipe?      @relation("SubRecipe", fields: [subRecipeId], references: [id])
+  amount        Float
+  unitId        String       @db.Uuid
+  unit          Unit         @relation(fields: [unitId], references: [id])
+  gramsResolved Float?
+  note          String?
+
+  @@index([recipeId])
+  @@index([productId])
+  @@index([subRecipeId])
+  @@map("recipe_component")
+}
+
+model Unit {
+  id          String            @id @default(uuid()) @db.Uuid
+  slug        String            @unique
+  namePl      String
+  nameEn      String
+  kind        UnitKind
+  // Multiplier to grams (MASS) or to ml (VOLUME); COUNT units use the product's
+  // pieceWeightG and ignore baseFactor.
+  baseFactor  Float
+  displayRank Int?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  components  RecipeComponent[]
+
+  @@map("unit")
+}
+
+model Diet {
+  id              String   @id @default(uuid()) @db.Uuid
+  slug            String   @unique
+  namePl          String
+  nameEn          String
+  // NULL = seeded; set marks a user-created entry (find-or-create by slug on save).
+  createdByUserId String?
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id])
+  recipes         Recipe[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("diet")
+}
+
+model Technique {
+  id              String   @id @default(uuid()) @db.Uuid
+  slug            String   @unique
+  namePl          String
+  nameEn          String
+  createdByUserId String?
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id])
+  recipes         Recipe[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("technique")
+}
+
+model Allergen {
+  id              String   @id @default(uuid()) @db.Uuid
+  slug            String   @unique
+  namePl          String
+  nameEn          String
+  createdByUserId String?
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id])
+  recipes         Recipe[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("allergen")
+}
+
+model MealType {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  namePl    String
+  nameEn    String
+  recipes   Recipe[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("meal_type")
+}
+
+model Cuisine {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  namePl    String
+  nameEn    String
+  recipes   Recipe[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cuisine")
+}
+
+model RecipeFavorite {
+  userId    String
+  recipeId  String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, recipeId])
+  @@map("recipe_favorite")
+}
+
+model RecipeRating {
+  userId    String
+  recipeId  String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  value     Int
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, recipeId])
+  @@map("recipe_rating")
 }

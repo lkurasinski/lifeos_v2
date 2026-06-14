@@ -1,16 +1,17 @@
 /**
  * Shared food-catalog contracts — the client↔server boundary.
  *
- * Depends ONLY on `zod`. Imports nothing from `$lib/server/*` or `$env/*`, so it is
- * safe to import from client components (via `$lib/food/schema`), from server
- * endpoints, and — type-only — from the dependency-free `food-document.ts` used by
- * the tsx batch index chain.
+ * Depends only on `zod` and the zod-only `$lib/search-params` helpers. Imports nothing from
+ * `$lib/server/*` or `$env/*`, so it is safe to import from client components (via
+ * `$lib/food/schema`), from server endpoints, and — type-only — from the dependency-free
+ * `food-document.ts` used by the tsx batch index chain.
  *
  * NULL ≠ 0: a nutrient `amountPer100g` of `null` means "no data" and is distinct
  * from a stored `0`. The schemas below accept `number | null` and the pure adapters
  * preserve the distinction end-to-end.
  */
 import { z } from "zod";
+import { baseSearchParamsShape, listParam, numParam, qParam } from "$lib/search-params";
 
 // ─── Source enum (mirrors the Prisma `FoodSource`) ───────────────────────────
 
@@ -72,6 +73,10 @@ export interface DraftProduct {
 	brand?: string | null;
 	categoryId?: string | null;
 	servingSizeG?: number | null;
+	// Unit→grams conversion inputs (S-03 recipe mapping). Null density → 1.0 at resolve;
+	// null piece-weight makes COUNT units unresolvable (flagged, not zeroed). NULL ≠ 0.
+	densityGPerMl?: number | null;
+	pieceWeightG?: number | null;
 	// OFF product photos (CC-BY-SA), carried through preview → save and edit prefill.
 	imageUrl?: string | null;
 	imageThumbUrl?: string | null;
@@ -126,13 +131,10 @@ export type SortKey = (typeof SORT_KEYS)[number];
 
 /** Normalized catalog search params (the endpoint pre-parses the URL into this). */
 export const searchParamsSchema = z.object({
-	q: z.string().trim().max(200).optional(),
+	...baseSearchParamsShape,
 	sources: z.array(z.enum(FOOD_SOURCES)).optional(),
 	categories: z.array(z.string()).optional(),
 	sort: z.enum(SORT_KEYS).default("name"),
-	dir: z.enum(["asc", "desc"]).default("asc"),
-	page: z.number().int().min(1).default(1),
-	limit: z.number().int().min(1).max(100).default(24),
 });
 export type SearchParams = z.infer<typeof searchParamsSchema>;
 
@@ -162,30 +164,14 @@ export interface FoodSearchResult {
  * throws (a real client error the endpoint surfaces as 400).
  */
 export function parseSearchParams(searchParams: URLSearchParams): SearchParams {
-	const list = (key: string): string[] | undefined => {
-		const values = searchParams
-			.getAll(key)
-			.flatMap((v) => v.split(","))
-			.map((v) => v.trim())
-			.filter(Boolean);
-		return values.length > 0 ? values : undefined;
-	};
-	const num = (key: string): number | undefined => {
-		const raw = searchParams.get(key);
-		if (raw === null || raw.trim() === "") return undefined;
-		const n = Number(raw);
-		return Number.isFinite(n) ? n : undefined;
-	};
-	const q = searchParams.get("q")?.trim();
-
 	return searchParamsSchema.parse({
-		q: q ? q : undefined,
-		sources: list("sources"),
-		categories: list("categories"),
+		q: qParam(searchParams),
+		sources: listParam(searchParams, "sources"),
+		categories: listParam(searchParams, "categories"),
 		sort: searchParams.get("sort") ?? undefined,
 		dir: searchParams.get("dir") ?? undefined,
-		page: num("page"),
-		limit: num("limit"),
+		page: numParam(searchParams, "page"),
+		limit: numParam(searchParams, "limit"),
 	});
 }
 
@@ -221,6 +207,8 @@ export const savePayloadSchema = z.object({
 	brand: z.string().trim().max(200).nullable().optional(),
 	categoryId: z.uuid().nullable().optional(),
 	servingSizeG: z.number().min(0).nullable().optional(),
+	densityGPerMl: z.number().min(0).nullable().optional(),
+	pieceWeightG: z.number().min(0).nullable().optional(),
 	imageUrl: offImageUrlSchema,
 	imageThumbUrl: offImageUrlSchema,
 	imageIngredientsUrl: offImageUrlSchema,
@@ -254,6 +242,8 @@ export function emptyDraft(source: FoodSource): DraftProduct {
 		brand: null,
 		categoryId: null,
 		servingSizeG: null,
+		densityGPerMl: null,
+		pieceWeightG: null,
 		imageUrl: null,
 		imageThumbUrl: null,
 		imageIngredientsUrl: null,
@@ -275,6 +265,8 @@ export function draftToSavePayload(draft: DraftProduct): SavePayload {
 		brand: draft.brand ?? null,
 		categoryId: draft.categoryId ?? null,
 		servingSizeG: draft.servingSizeG ?? null,
+		densityGPerMl: draft.densityGPerMl ?? null,
+		pieceWeightG: draft.pieceWeightG ?? null,
 		imageUrl: draft.imageUrl ?? null,
 		imageThumbUrl: draft.imageThumbUrl ?? null,
 		imageIngredientsUrl: draft.imageIngredientsUrl ?? null,

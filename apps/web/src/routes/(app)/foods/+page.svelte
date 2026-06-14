@@ -7,6 +7,10 @@
 	import { t } from "$lib/i18n";
 	import { Button } from "$lib/components/ui/button";
 	import { Dialog } from "$lib/components/ui/dialog";
+	import { ListHeader } from "$lib/components/ui/list-header";
+	import { EmptyState } from "$lib/components/ui/empty-state";
+	import { DetailPlaceholder } from "$lib/components/ui/detail-placeholder";
+	import { ConfirmDialog } from "$lib/components/ui/confirm-dialog";
 	import { toast } from "$lib/components/ui/sonner";
 	import CatalogSearchBar from "$lib/components/catalog/CatalogSearchBar.svelte";
 	import FacetChips from "$lib/components/catalog/FacetChips.svelte";
@@ -198,22 +202,22 @@
 </svelte:head>
 
 <div class="screen">
-	<div class="topbar">
-		<div class="bar">
-			<div class="brand">
-				<h1>{t("catalog.title")}</h1>
-				<div class="sub">
-					<b>{totalLabel}</b>
-					{t("catalog.productsCount")} · {t("catalog.per100g")}
-				</div>
-			</div>
+	<ListHeader
+		title={t("catalog.title")}
+		count={totalLabel}
+		caption={`${t("catalog.productsCount")} · ${t("catalog.per100g")}`}
+		countMinCh={5.5}
+	>
+		{#snippet search()}
 			<CatalogSearchBar
 				bind:value={searchValue}
 				placeholder={t("catalog.searchPlaceholder")}
 				oninput={onSearchInput}
 				onclear={onClearSearch}
 			/>
-			<Button class="addbtn" onclick={() => goto(resolve("/foods/new"))}>
+		{/snippet}
+		{#snippet actions()}
+			<Button onclick={() => goto(resolve("/foods/new"))}>
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 					<path
 						d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
@@ -221,8 +225,8 @@
 				</svg>
 				{t("add.openButton")}
 			</Button>
-		</div>
-	</div>
+		{/snippet}
+	</ListHeader>
 
 	<div class="toolbar">
 		<FacetChips
@@ -238,10 +242,7 @@
 	<div class="grid">
 		<div class="listcol">
 			{#if data.result.hits.length === 0}
-				<div class="empty">
-					<p class="et">{t("catalog.emptyTitle")}</p>
-					<p class="ed">{t("catalog.emptyHint")}</p>
-				</div>
+				<EmptyState title={t("catalog.emptyTitle")} hint={t("catalog.emptyHint")} />
 			{:else}
 				<ProductTable
 					hits={data.result.hits}
@@ -265,16 +266,7 @@
 						onDelete={onRequestDelete}
 					/>
 				{:else if data.result.hits.length > 0}
-					<div class="detail-empty">
-						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-							<path
-								fill-rule="evenodd"
-								d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-						<p>{t("catalog.selectPrompt")}</p>
-					</div>
+					<DetailPlaceholder text={t("catalog.selectPrompt")} />
 				{/if}
 			</div>
 		{/if}
@@ -300,85 +292,32 @@
 </Dialog>
 
 <!-- Delete confirmation — destructive action gated behind an explicit confirm step. -->
-<Dialog
+<ConfirmDialog
 	open={pendingDelete !== null}
 	onOpenChange={onConfirmOpenChange}
 	title={t("catalog.deleteConfirmTitle")}
-	closeLabel={t("common.cancel")}
->
-	{#if pendingDelete}
-		<div class="confirm">
-			<h2>{t("catalog.deleteConfirmTitle")}</h2>
-			<p class="cmsg">{t("catalog.deleteConfirmBody")}</p>
-			<p class="cname">{pendingDelete.namePl ?? pendingDelete.nameEn}</p>
-			<div class="cactions">
-				<Button variant="secondary" onclick={() => (pendingDelete = null)} disabled={deleting}>
-					{t("common.cancel")}
-				</Button>
-				<Button variant="destructive" onclick={confirmDelete} disabled={deleting}>
-					{deleting ? t("catalog.deleting") : t("common.delete")}
-				</Button>
-			</div>
-		</div>
-	{/if}
-</Dialog>
+	message={t("catalog.deleteConfirmBody")}
+	subject={pendingDelete ? (pendingDelete.namePl ?? pendingDelete.nameEn) : ""}
+	confirmLabel={deleting ? t("catalog.deleting") : t("common.delete")}
+	cancelLabel={t("common.cancel")}
+	onConfirm={confirmDelete}
+	onCancel={() => (pendingDelete = null)}
+	pending={deleting}
+/>
 
 <style>
-	/* Constrain content width so the catalog doesn't sprawl on 4K displays: the glass
-	   topbar spans the viewport, but its content — and the toolbar + grid — center in a
-	   max-width column. */
+	/* Page-unique layout only — shared chrome (header, empty state, detail placeholder,
+	   confirm dialog) is composed from the ui/ components above. Content centers in a
+	   max-width column so the catalog doesn't sprawl on 4K displays. */
 	.screen {
 		--content-max: 1600px;
 		min-height: 100svh;
 	}
-	.topbar {
-		position: sticky;
-		top: 0;
-		z-index: 6;
-		padding: 18px 24px;
-		background: var(--glass-fill-thick);
-		backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		-webkit-backdrop-filter: blur(var(--blur-thick)) saturate(var(--sat));
-		border-bottom: 1px solid var(--hairline);
-	}
-	.bar {
-		display: flex;
-		align-items: center;
-		gap: 20px;
-		max-width: var(--content-max);
-		margin-inline: auto;
-	}
-	.brand {
-		flex-shrink: 0;
-	}
-	:global(.addbtn) {
-		flex-shrink: 0;
-	}
-	.brand h1 {
-		font-size: 1.25rem;
-		font-weight: 600;
-		letter-spacing: -0.015em;
-		color: var(--foreground);
-	}
-	.brand .sub {
-		font-size: 0.8125rem;
-		color: var(--muted-foreground);
-		font-variant-numeric: tabular-nums;
-		margin-top: 1px;
-	}
-	.brand .sub b {
-		display: inline-block;
-		min-width: 5.5ch;
-		color: var(--foreground);
-		font-weight: 500;
-	}
-
 	.toolbar {
 		max-width: var(--content-max);
 		margin-inline: auto;
 		padding: 16px 24px 4px;
 	}
-
 	.grid {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 416px;
@@ -388,101 +327,11 @@
 		padding: 14px 24px 40px;
 		align-items: start;
 	}
-	.listcol {
-		min-width: 0;
-	}
+	.listcol,
 	.detailcol {
 		min-width: 0;
 	}
 
-	/* Placeholder before a product is selected — keeps the detail column from
-	   collapsing on desktop and invites a pick. */
-	.detail-empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: 12px;
-		min-height: 320px;
-		padding: 32px;
-		text-align: center;
-		color: var(--muted-foreground);
-		border: 1px dashed var(--hairline);
-		border-radius: var(--radius);
-	}
-	.detail-empty svg {
-		width: 30px;
-		height: 30px;
-		opacity: 0.6;
-	}
-	.detail-empty p {
-		font-size: 0.875rem;
-		max-width: 24ch;
-	}
-
-	/* Delete-confirmation dialog body. */
-	.confirm {
-		padding: 26px 24px 22px;
-	}
-	.confirm h2 {
-		font-size: 1.125rem;
-		font-weight: 600;
-		letter-spacing: -0.01em;
-		color: var(--foreground);
-	}
-	.confirm .cmsg {
-		font-size: 0.875rem;
-		line-height: 1.5;
-		color: var(--muted-foreground);
-		margin-top: 8px;
-	}
-	.confirm .cname {
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: var(--foreground);
-		margin-top: 12px;
-		padding: 10px 12px;
-		background: var(--secondary);
-		border-radius: var(--radius-sm);
-		word-break: break-word;
-	}
-	.confirm .cactions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 10px;
-		margin-top: 22px;
-	}
-
-	.empty {
-		padding: 64px 24px;
-		text-align: center;
-	}
-	.empty .et {
-		font-size: 1rem;
-		font-weight: 550;
-		color: var(--foreground);
-	}
-	.empty .ed {
-		font-size: 0.875rem;
-		color: var(--muted-foreground);
-		margin-top: 6px;
-	}
-
-	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-		.topbar {
-			background: var(--card);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.topbar {
-			backdrop-filter: none;
-			-webkit-backdrop-filter: none;
-			background: var(--card);
-		}
-	}
-
-	/* Stack to a single column on mobile: the detail panel follows the list and stops
-	   sticking, so a tap on a row scrolls into a full-width profile. */
 	/* Below 1200px the detail is a modal, so the grid is a single full-width column. */
 	@media (max-width: 1199px) {
 		.grid {
@@ -490,11 +339,6 @@
 		}
 	}
 	@media (max-width: 768px) {
-		.bar {
-			flex-direction: column;
-			align-items: stretch;
-			gap: 12px;
-		}
 		.toolbar {
 			padding: 14px 16px 4px;
 		}

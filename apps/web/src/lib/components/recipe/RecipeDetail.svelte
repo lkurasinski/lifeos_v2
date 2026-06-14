@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
 	import { Chip } from "$lib/components/ui/chip";
+	import { ExpandableRow } from "$lib/components/ui/expandable-row";
 	import { Gauge } from "$lib/components/ui/gauge";
 	import { MetadataItem } from "$lib/components/ui/metadata-item";
 	import { Panel } from "$lib/components/ui/panel";
@@ -256,26 +257,22 @@
 	<div class="comp">
 		{#each recipe.components as c (c.id)}
 			{#if c.subRecipe}
+				{@const sub = c.subRecipe}
 				<div class="citem">
-					<button
-						type="button"
-						class="crow shead"
-						class:open={isOpen(c.id)}
-						aria-expanded={isOpen(c.id)}
-						onclick={() => (collapsed[c.id] = isOpen(c.id))}
+					<ExpandableRow
+						open={isOpen(c.id)}
+						onToggle={() => (collapsed[c.id] = isOpen(c.id))}
+						rowClass="px-0.5 py-2"
 					>
-						<svg class="chev2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-							><path d="M10 13.5l-4.5-5h9z" /></svg
-						>
-						<span class="cname">
-							{c.subRecipe.name}
-							<span class="subtag">{@render nestIcon()}{t("recipe.detail.subRecipeTag")}</span>
-						</span>
-						{@render qtyText(c)}
-					</button>
-					{#if isOpen(c.id)}
+						{#snippet header()}
+							<span class="cname">
+								{sub.name}
+								<span class="subtag">{@render nestIcon()}{t("recipe.detail.subRecipeTag")}</span>
+							</span>
+							{@render qtyText(c)}
+						{/snippet}
 						<div class="subitems">
-							{#each c.subRecipe.components as sc (sc.id)}
+							{#each sub.components as sc (sc.id)}
 								{@const sq = qty(sc)}
 								<div class="subrow">
 									<span class="sn">
@@ -290,7 +287,7 @@
 								</div>
 							{/each}
 						</div>
-					{/if}
+					</ExpandableRow>
 				</div>
 			{:else}
 				<div class="crow">
@@ -664,37 +661,6 @@
 	/* sub-recipe expandable header + nested rows */
 	.citem {
 		border-bottom: 1px solid var(--hairline);
-	}
-	.crow.shead {
-		border-bottom: 0;
-		cursor: pointer;
-		background: transparent;
-		border-left: 0;
-		border-right: 0;
-		border-top: 0;
-		font-family: inherit;
-		align-items: center;
-	}
-	.crow.shead:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-		border-radius: var(--radius-sm);
-	}
-	.chev2 {
-		width: 16px;
-		height: 16px;
-		color: var(--muted-foreground);
-		flex-shrink: 0;
-		transform: rotate(-90deg);
-		transition: transform 0.2s var(--ease);
-	}
-	.crow.shead.open .chev2 {
-		transform: none;
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.chev2 {
-			transition: none;
-		}
 	}
 	.subitems {
 		display: flex;

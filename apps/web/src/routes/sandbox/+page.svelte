@@ -10,6 +10,7 @@
 	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
 	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
 	import { MetadataItem } from "$lib/components/ui/metadata-item";
+	import { ExpandableRow } from "$lib/components/ui/expandable-row";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -27,6 +28,7 @@
 	let view = $state("day");
 	let search = $state("");
 	let sectionOpen = $state(true);
+	let rowOpen = $state(false);
 	const macros: { macro: Macro; label: string; pct: number; val: string }[] = [
 		{ macro: "kcal", label: "Energia", pct: 72, val: "2 140" },
 		{ macro: "pro", label: "Białko", pct: 48, val: "112" },
@@ -151,6 +153,10 @@
 					</MetadataItem>
 					<MetadataItem label="porcje">4</MetadataItem>
 				</div>
+				<ExpandableRow open={rowOpen} onToggle={() => (rowOpen = !rowOpen)} rowClass="px-0.5 py-2">
+					{#snippet header()}<span class="flex-1 text-[0.875rem]">Sos pomidorowy</span><span class="text-[0.875rem] tabular-nums">200 g</span>{/snippet}
+					<div class="px-6 py-1 text-[0.8125rem] text-muted-foreground">Pomidory · czosnek · oliwa</div>
+				</ExpandableRow>
 			</CardContent>
 		</Card>
 

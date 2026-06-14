@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { RecipeDocument } from "$lib/recipe/schema";
 	import { Chip } from "$lib/components/ui/chip";
+	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
 	import { t } from "$lib/i18n";
 	import { CARD_MACROS, formatMacro, formatMinutes, difficultyLabel } from "./meta";
 
@@ -73,7 +74,7 @@
 			{/each}
 			{#if isDraft}
 				<Chip variant="badge-outline" class="px-2 py-[3px] tracking-[0.05em] text-foreground">
-					{#snippet leading()}<span class="pd"></span>{/snippet}
+					{#snippet leading()}<PulsingDot tone="muted" />{/snippet}
 					{t("recipe.card.draft")}
 				</Chip>
 			{/if}
@@ -215,27 +216,6 @@
 		gap: 6px;
 		margin-top: 8px;
 		flex-wrap: wrap;
-	}
-	/* Draft pill's pulsing dot (passed into the Chip's `leading` slot). */
-	.pd {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--muted-foreground);
-	}
-	@media (prefers-reduced-motion: no-preference) {
-		.pd {
-			animation: pulse 2s var(--ease) infinite;
-		}
-	}
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 0.35;
-		}
-		50% {
-			opacity: 0.9;
-		}
 	}
 	/* Partial-data marker — NEUTRAL graphite (a data state, not a result). */
 	.np {

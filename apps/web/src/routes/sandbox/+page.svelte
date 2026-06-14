@@ -8,6 +8,7 @@
 	import { SelectField } from "$lib/components/ui/select-field";
 	import { SearchInput } from "$lib/components/ui/search-input";
 	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
+	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -139,6 +140,8 @@
 					<IconButton variant="ghost" aria-label="Zamknij">
 						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" /></svg>
 					</IconButton>
+					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="positive" />Live</span>
+					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="muted" />Szkic</span>
 				</div>
 			</CardContent>
 		</Card>

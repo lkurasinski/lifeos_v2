@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Gauge } from "$lib/components/ui/gauge";
 	import { Panel } from "$lib/components/ui/panel";
+	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
 	import { SegmentedToggle } from "$lib/components/ui/segmented";
 	import {
 		rollupRecipe,
@@ -123,7 +124,7 @@
 <Panel variant="solid" class="rollup">
 	<div class="ru-h">
 		<span class="ti">{t("recipe.form.nutritionTitle")}</span>
-		<span class="live"><span class="d"></span>{t("recipe.form.live")}</span>
+		<span class="live"><PulsingDot tone="positive" />{t("recipe.form.live")}</span>
 		<SegmentedToggle
 			class="ru-seg"
 			items={basisItems}
@@ -218,26 +219,6 @@
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 		color: var(--muted-foreground);
-	}
-	.ru-h .live .d {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--positive, oklch(0.62 0.13 152));
-	}
-	@media (prefers-reduced-motion: no-preference) {
-		.ru-h .live .d {
-			animation: blink 1.6s var(--ease) infinite;
-		}
-	}
-	@keyframes blink {
-		0%,
-		100% {
-			opacity: 0.4;
-		}
-		50% {
-			opacity: 1;
-		}
 	}
 	.ru-h :global(.ru-seg) {
 		margin-left: auto;

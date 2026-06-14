@@ -1,6 +1,6 @@
-import { error } from "@sveltejs/kit";
 import { parseRecipeSearchParams } from "$lib/recipe/schema";
 import { searchRecipes } from "$lib/server/recipes";
+import { requireUserId } from "$lib/server/http";
 import type { PageServerLoad } from "./$types";
 
 /**
@@ -15,8 +15,7 @@ import type { PageServerLoad } from "./$types";
  * indexed).
  */
 export const load: PageServerLoad = async ({ url, locals }) => {
-	const viewerId = locals.user?.id;
-	if (!viewerId) error(401, "Unauthorized");
+	const viewerId = requireUserId(locals);
 
 	const params = parseRecipeSearchParams(url.searchParams);
 	const result = await searchRecipes(params, viewerId);

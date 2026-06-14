@@ -1,12 +1,7 @@
-import { error, json } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import { patchPayloadSchema } from "$lib/food/schema";
-import {
-	updateFoodProduct,
-	deleteFoodProduct,
-	FoodProductNotFoundError,
-	FoodProductInUseError,
-	UnknownNutrientError,
-} from "$lib/server/food-products";
+import { updateFoodProduct, deleteFoodProduct } from "$lib/server/food-products";
+import { requireUser, parseJsonBody, mapServiceError } from "$lib/server/http";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -17,28 +12,14 @@ import type { RequestHandler } from "./$types";
  * Meili. 404 when the id is unknown.
  */
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
-	if (!locals.session) {
-		error(401, "Unauthorized");
-	}
-
-	let payload;
-	try {
-		payload = patchPayloadSchema.parse(await request.json());
-	} catch {
-		error(400, "Nieprawidłowe dane produktu");
-	}
+	requireUser(locals);
+	const payload = await parseJsonBody(request, patchPayloadSchema, "Nieprawidłowe dane produktu");
 
 	try {
 		const product = await updateFoodProduct(params.id, payload);
 		return json({ id: product?.id ?? params.id });
 	} catch (err) {
-		if (err instanceof FoodProductNotFoundError) {
-			error(404, "Nie znaleziono produktu");
-		}
-		if (err instanceof UnknownNutrientError) {
-			error(400, "Nieprawidłowy składnik odżywczy");
-		}
-		throw err;
+		return mapServiceError(err);
 	}
 };
 
@@ -47,23 +28,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
  * step). FoodNutrient rows cascade. 404 when the id is unknown.
  */
 export const DELETE: RequestHandler = async ({ params, locals }) => {
-	if (!locals.session) {
-		error(401, "Unauthorized");
-	}
+	requireUser(locals);
 
 	try {
 		await deleteFoodProduct(params.id);
 	} catch (err) {
-		if (err instanceof FoodProductNotFoundError) {
-			error(404, "Nie znaleziono produktu");
-		}
-		if (err instanceof FoodProductInUseError) {
-			return json(
-				{ error: "in_use", referencingIds: err.referencingRecipeIds },
-				{ status: 409 },
-			);
-		}
-		throw err;
+		return mapServiceError(err);
 	}
 
 	return new Response(null, { status: 204 });

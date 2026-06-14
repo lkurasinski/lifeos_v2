@@ -1,6 +1,7 @@
-import { error, json } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import { recipeSavePayloadSchema } from "$lib/recipe/schema";
-import { createRecipe, RecipeCycleError, RecipeDepthError } from "$lib/server/recipes";
+import { createRecipe } from "$lib/server/recipes";
+import { requireUser, parseJsonBody, mapServiceError } from "$lib/server/http";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -11,27 +12,17 @@ import type { RequestHandler } from "./$types";
  * visibility filter); this collection route ships `POST` in Phase 3.
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.session || !locals.user) {
-		error(401, "Unauthorized");
-	}
-
-	let payload;
-	try {
-		payload = recipeSavePayloadSchema.parse(await request.json());
-	} catch {
-		error(400, "Nieprawidłowe dane przepisu");
-	}
+	const user = requireUser(locals);
+	const payload = await parseJsonBody(
+		request,
+		recipeSavePayloadSchema,
+		"Nieprawidłowe dane przepisu",
+	);
 
 	try {
-		const recipe = await createRecipe(locals.user.id, payload);
+		const recipe = await createRecipe(user.id, payload);
 		return json({ id: recipe.id }, { status: 201 });
 	} catch (err) {
-		if (err instanceof RecipeCycleError) {
-			return json({ error: "cycle" }, { status: 409 });
-		}
-		if (err instanceof RecipeDepthError) {
-			return json({ error: "depth", max: err.max }, { status: 409 });
-		}
-		throw err;
+		return mapServiceError(err);
 	}
 };

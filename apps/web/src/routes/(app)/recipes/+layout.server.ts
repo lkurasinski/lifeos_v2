@@ -1,6 +1,6 @@
-import { error } from "@sveltejs/kit";
 import { getNutrientRegistry } from "$lib/server/food-products";
 import { getRecipeTaxonomies, countOwnDrafts } from "$lib/server/recipes";
+import { requireUserId } from "$lib/server/http";
 import type { LayoutServerLoad } from "./$types";
 
 /**
@@ -14,8 +14,7 @@ import type { LayoutServerLoad } from "./$types";
  * draft). The `(app)` layout already gates auth.
  */
 export const load: LayoutServerLoad = async ({ locals }) => {
-	const viewerId = locals.user?.id;
-	if (!viewerId) error(401, "Unauthorized");
+	const viewerId = requireUserId(locals);
 
 	const [taxonomies, registry, draftCount] = await Promise.all([
 		getRecipeTaxonomies(),

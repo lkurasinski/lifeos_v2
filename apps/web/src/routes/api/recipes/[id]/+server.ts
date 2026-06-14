@@ -1,24 +1,14 @@
 import { error, json } from "@sveltejs/kit";
 import { recipePatchPayloadSchema } from "$lib/recipe/schema";
-import {
-	getRecipeForView,
-	updateRecipe,
-	deleteRecipe,
-	RecipeNotFoundError,
-	RecipeForbiddenError,
-	RecipeInUseError,
-	RecipeCycleError,
-	RecipeDepthError,
-} from "$lib/server/recipes";
+import { getRecipeForView, updateRecipe, deleteRecipe } from "$lib/server/recipes";
+import { requireUser, parseJsonBody, mapServiceError } from "$lib/server/http";
 import type { RequestHandler } from "./$types";
 
 /** View a recipe (cached nutrition + components from Postgres). 404 when not visible. */
 export const GET: RequestHandler = async ({ params, locals }) => {
-	if (!locals.session || !locals.user) {
-		error(401, "Unauthorized");
-	}
+	const user = requireUser(locals);
 
-	const recipe = await getRecipeForView(locals.user.id, params.id);
+	const recipe = await getRecipeForView(user.id, params.id);
 	if (!recipe) {
 		error(404, "Nie znaleziono przepisu");
 	}
@@ -27,38 +17,22 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 /**
  * Edit a recipe (owner-only, full content replacement). `updateRecipe` recomputes the
- * cache, fans out to dependents, and re-syncs Meili. Maps the typed integrity errors:
- * 403 not-owner, 404 missing, 409 cycle/depth.
+ * cache, fans out to dependents, and re-syncs Meili. The typed integrity errors map to
+ * 403 not-owner, 404 missing, 409 cycle/depth (see `mapServiceError`).
  */
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
-	if (!locals.session || !locals.user) {
-		error(401, "Unauthorized");
-	}
-
-	let payload;
-	try {
-		payload = recipePatchPayloadSchema.parse(await request.json());
-	} catch {
-		error(400, "Nieprawidłowe dane przepisu");
-	}
+	const user = requireUser(locals);
+	const payload = await parseJsonBody(
+		request,
+		recipePatchPayloadSchema,
+		"Nieprawidłowe dane przepisu",
+	);
 
 	try {
-		const recipe = await updateRecipe(locals.user.id, params.id, payload);
+		const recipe = await updateRecipe(user.id, params.id, payload);
 		return json({ id: recipe.id });
 	} catch (err) {
-		if (err instanceof RecipeNotFoundError) {
-			error(404, "Nie znaleziono przepisu");
-		}
-		if (err instanceof RecipeForbiddenError) {
-			error(403, "Brak uprawnień do tego przepisu");
-		}
-		if (err instanceof RecipeCycleError) {
-			return json({ error: "cycle" }, { status: 409 });
-		}
-		if (err instanceof RecipeDepthError) {
-			return json({ error: "depth", max: err.max }, { status: 409 });
-		}
-		throw err;
+		return mapServiceError(err);
 	}
 };
 
@@ -67,23 +41,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
  * is used as a sub-recipe in another recipe. 204 on success.
  */
 export const DELETE: RequestHandler = async ({ params, locals }) => {
-	if (!locals.session || !locals.user) {
-		error(401, "Unauthorized");
-	}
+	const user = requireUser(locals);
 
 	try {
-		await deleteRecipe(locals.user.id, params.id);
+		await deleteRecipe(user.id, params.id);
 	} catch (err) {
-		if (err instanceof RecipeNotFoundError) {
-			error(404, "Nie znaleziono przepisu");
-		}
-		if (err instanceof RecipeForbiddenError) {
-			error(403, "Brak uprawnień do tego przepisu");
-		}
-		if (err instanceof RecipeInUseError) {
-			return json({ error: "in_use", referencingIds: err.referencingIds }, { status: 409 });
-		}
-		throw err;
+		return mapServiceError(err);
 	}
 
 	return new Response(null, { status: 204 });

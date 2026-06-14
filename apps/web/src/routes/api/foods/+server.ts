@@ -1,11 +1,7 @@
-import { error, json } from "@sveltejs/kit";
+import { json } from "@sveltejs/kit";
 import { parseSearchParams, savePayloadSchema } from "$lib/food/schema";
-import {
-	searchFoodProducts,
-	saveFoodProduct,
-	FoodProductConflictError,
-	UnknownNutrientError,
-} from "$lib/server/food-products";
+import { searchFoodProducts, saveFoodProduct } from "$lib/server/food-products";
+import { requireUser, parseJsonBody, parseOr400, mapServiceError } from "$lib/server/http";
 import type { RequestHandler } from "./$types";
 
 /**
@@ -14,17 +10,11 @@ import type { RequestHandler } from "./$types";
  * `searchFoodProducts` service, so client-driven and server-rendered results agree.
  */
 export const GET: RequestHandler = async ({ url, locals }) => {
-	if (!locals.session) {
-		error(401, "Unauthorized");
-	}
-
-	let params;
-	try {
-		params = parseSearchParams(url.searchParams);
-	} catch {
-		error(400, "Nieprawidłowe parametry wyszukiwania");
-	}
-
+	requireUser(locals);
+	const params = parseOr400(
+		() => parseSearchParams(url.searchParams),
+		"Nieprawidłowe parametry wyszukiwania",
+	);
 	const result = await searchFoodProducts(params);
 	return json(result);
 };
@@ -36,27 +26,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
  * to that product instead of creating a duplicate.
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.session) {
-		error(401, "Unauthorized");
-	}
-
-	let payload;
-	try {
-		payload = savePayloadSchema.parse(await request.json());
-	} catch {
-		error(400, "Nieprawidłowe dane produktu");
-	}
+	requireUser(locals);
+	const payload = await parseJsonBody(request, savePayloadSchema, "Nieprawidłowe dane produktu");
 
 	try {
 		const product = await saveFoodProduct(payload);
 		return json({ id: product.id }, { status: 201 });
 	} catch (err) {
-		if (err instanceof FoodProductConflictError) {
-			return json({ error: "conflict", existingId: err.existingId }, { status: 409 });
-		}
-		if (err instanceof UnknownNutrientError) {
-			error(400, "Nieprawidłowy składnik odżywczy");
-		}
-		throw err;
+		return mapServiceError(err);
 	}
 };

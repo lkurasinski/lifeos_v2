@@ -6,6 +6,7 @@ import {
 	RecipeNotFoundError,
 	RecipeForbiddenError,
 } from "$lib/server/recipes";
+import { requireUserId } from "$lib/server/http";
 import type { PageServerLoad } from "./$types";
 
 /**
@@ -15,8 +16,7 @@ import type { PageServerLoad } from "./$types";
  * `+layout.server.ts`. Unknown id → 404; not the owner → 403.
  */
 export const load: PageServerLoad = async ({ params, locals }) => {
-	const userId = locals.user?.id;
-	if (!userId) error(401, "Unauthorized");
+	const userId = requireUserId(locals);
 
 	try {
 		const [draft, units, categories] = await Promise.all([

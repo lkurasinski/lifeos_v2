@@ -276,14 +276,20 @@
 						</IconButton>
 					</div>
 				{/each}
-				<button type="button" class="addbtn" onclick={() => (data.tips = [...data.tips, ""])}>
+				<Button
+					type="button"
+					variant="secondary"
+					size="sm"
+					class="mt-1 self-start"
+					onclick={() => (data.tips = [...data.tips, ""])}
+				>
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 						><path
 							d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
 						/></svg
 					>
 					{t("recipe.form.tipPlaceholder")}
-				</button>
+				</Button>
 			</div>
 		</Panel>
 	</div>
@@ -590,31 +596,6 @@
 		box-shadow: var(--focus);
 	}
 	.tipe input::placeholder {
-		color: var(--muted-foreground);
-	}
-	.addbtn {
-		display: inline-flex;
-		align-self: flex-start;
-		align-items: center;
-		gap: 7px;
-		border: 0;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--foreground);
-		background: var(--card);
-		box-shadow: var(--shadow-soft);
-		border-radius: var(--radius-sm);
-		padding: 9px 13px;
-		cursor: pointer;
-		margin-top: 4px;
-	}
-	.addbtn:hover {
-		background: var(--accent);
-	}
-	.addbtn svg {
-		width: 15px;
-		height: 15px;
 		color: var(--muted-foreground);
 	}
 

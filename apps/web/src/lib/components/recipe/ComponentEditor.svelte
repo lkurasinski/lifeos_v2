@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button } from "$lib/components/ui/button";
 	import { Dialog } from "$lib/components/ui/dialog";
 	import ProductForm from "$lib/components/catalog/ProductForm.svelte";
 	import {
@@ -113,10 +114,16 @@
 		c.subRecipeId = null;
 		c.name = hit.namePl ?? hit.nameEn;
 		c.categorySlug = hit.categorySlug;
-		// Per-100g nutrients come straight off the hit (tagname-keyed, no remap). Density/piece-
-		// weight aren't in the search doc, so VOLUME falls back to 1.0 and COUNT reads as partial
-		// in the LIVE preview until the save recompute (which loads them) makes it authoritative.
-		c.preview = { nutrientsPer100g: hit.nutrients };
+		// Per-100g nutrients + the conversion inputs all come straight off the hit (tagname-keyed,
+		// no remap). The search doc now carries density/piece-weight (omitted when null, which the
+		// `?? null` preserves), so the LIVE preview resolves grams with the SAME inputs the server
+		// caches on save — a VOLUME row no longer shows a confident density-1.0 figure that the
+		// save then silently overwrites, and a COUNT row resolves whenever a piece-weight exists.
+		c.preview = {
+			nutrientsPer100g: hit.nutrients,
+			densityGPerMl: hit.densityGPerMl ?? null,
+			pieceWeightG: hit.pieceWeightG ?? null,
+		};
 	}
 
 	// Per-row monotonic token: a fast re-pick into the same row fires a second fetch; only the
@@ -269,15 +276,15 @@
 </div>
 
 <div class="addbtns">
-	<button type="button" class="addbtn" onclick={() => addRow("products")}>
+	<Button type="button" variant="secondary" size="sm" onclick={() => addRow("products")}>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 			><path
 				d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
 			/></svg
 		>
 		{t("recipe.form.addIngredient")}
-	</button>
-	<button type="button" class="addbtn" onclick={() => addRow("subRecipes")}>
+	</Button>
+	<Button type="button" variant="secondary" size="sm" onclick={() => addRow("subRecipes")}>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 			<path
 				d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z"
@@ -287,7 +294,7 @@
 			/>
 		</svg>
 		{t("recipe.form.addSubRecipe")}
-	</button>
+	</Button>
 </div>
 
 <Dialog
@@ -327,28 +334,5 @@
 		gap: 8px;
 		margin-top: 13px;
 		flex-wrap: wrap;
-	}
-	.addbtn {
-		display: inline-flex;
-		align-items: center;
-		gap: 7px;
-		border: 0;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--foreground);
-		background: var(--card);
-		box-shadow: var(--shadow-soft);
-		border-radius: var(--radius-sm);
-		padding: 9px 13px;
-		cursor: pointer;
-	}
-	.addbtn:hover {
-		background: var(--accent);
-	}
-	.addbtn svg {
-		width: 15px;
-		height: 15px;
-		color: var(--muted-foreground);
 	}
 </style>

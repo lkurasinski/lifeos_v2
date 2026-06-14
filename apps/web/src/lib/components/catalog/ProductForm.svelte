@@ -336,13 +336,9 @@
 
 	<!-- Sticky glass action bar — the weightier action (Save) sits on the right. -->
 	<div class="pf-bar">
-		<button
-			type="button"
-			class="rounded-sm border-0 bg-transparent p-2.5 text-[0.875rem] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-			onclick={() => onCancel?.()}
-		>
+		<Button type="button" variant="ghost" onclick={() => onCancel?.()}>
 			{cancelLabel ?? t("common.cancel")}
-		</button>
+		</Button>
 		<span
 			class={[
 				"flex-1 text-center text-[0.6875rem] leading-[1.4]",

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from "svelte";
 	import type { RecipeStep } from "$lib/recipe/schema";
+	import { Button } from "$lib/components/ui/button";
 	import { IconButton } from "$lib/components/ui/icon-button";
 	import { t } from "$lib/i18n";
 
@@ -139,10 +140,10 @@
 								</IconButton>
 							</span>
 						{:else}
-							<button type="button" class="simg-add" onclick={() => (item.imageUrl = "")}>
+							<Button type="button" variant="ghost" size="sm" onclick={() => (item.imageUrl = "")}>
 								<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4 3.5A1.5 1.5 0 0 0 2.5 5v10A1.5 1.5 0 0 0 4 16.5h12A1.5 1.5 0 0 0 17.5 15V5A1.5 1.5 0 0 0 16 3.5H4Zm0 11 3.5-4 2.2 2.6L12.5 9l3.5 4.5H4Z" clip-rule="evenodd" /><circle cx="7" cy="7.5" r="1.4" /></svg>
 								{t("recipe.form.addStepImage")}
-							</button>
+							</Button>
 						{/if}
 					</div>
 				</div>
@@ -155,14 +156,14 @@
 </div>
 
 <div class="addbtns">
-	<button type="button" class="addbtn" onclick={addAction}>
+	<Button type="button" variant="secondary" size="sm" onclick={addAction}>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z" /></svg>
 		{t("recipe.form.addStep")}
-	</button>
-	<button type="button" class="addbtn" onclick={addWait}>
+	</Button>
+	<Button type="button" variant="secondary" size="sm" onclick={addWait}>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.5 2.5h9a1 1 0 0 1 0 2H14c0 2.5-1.3 3.8-3.2 5.5C12.7 11.7 14 13 14 15.5h.5a1 1 0 0 1 0 2h-9a1 1 0 0 1 0-2H6c0-2.5 1.3-3.8 3.2-5.5C7.3 8.3 6 7 6 4.5h-.5a1 1 0 0 1 0-2Z" /></svg>
 		{t("recipe.form.addWait")}
-	</button>
+	</Button>
 </div>
 
 <style>
@@ -239,26 +240,6 @@
 	}
 	.simg {
 		margin-top: 7px;
-	}
-	.simg-add {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		border: 0;
-		background: transparent;
-		font-family: inherit;
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		cursor: pointer;
-		padding: 4px 2px;
-	}
-	.simg-add:hover {
-		color: var(--foreground);
-	}
-	.simg-add svg {
-		width: 14px;
-		height: 14px;
 	}
 	.simg-row {
 		display: flex;
@@ -360,28 +341,5 @@
 		gap: 8px;
 		margin-top: 13px;
 		flex-wrap: wrap;
-	}
-	.addbtn {
-		display: inline-flex;
-		align-items: center;
-		gap: 7px;
-		border: 0;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--foreground);
-		background: var(--card);
-		box-shadow: var(--shadow-soft);
-		border-radius: var(--radius-sm);
-		padding: 9px 13px;
-		cursor: pointer;
-	}
-	.addbtn:hover {
-		background: var(--accent);
-	}
-	.addbtn svg {
-		width: 15px;
-		height: 15px;
-		color: var(--muted-foreground);
 	}
 </style>

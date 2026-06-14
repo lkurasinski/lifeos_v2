@@ -4,7 +4,8 @@
 	import type { FoodDocument } from "$lib/food/schema";
 	import type { RecipeDocument } from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
-	import { formatAmount } from "./meta";
+	import PickerResult from "./PickerResult.svelte";
+	import { productMeta, recipeMeta } from "./picker-meta";
 
 	// The combobox for one component row (locked by `form.html`): a picker button that, when
 	// open, drops a popover with `Produkty`/`Pod-przepisy` tabs, a typeahead, results, and a
@@ -83,7 +84,9 @@
 					const data = res.ok ? ((await res.json()) as { hits: FoodDocument[] }) : { hits: [] };
 					if (mine === token) products = data.hits;
 				} else {
-					const res = await fetch(`/api/recipes?q=${encodeURIComponent(q)}&limit=8&scope=wszystkie`);
+					const res = await fetch(
+						`/api/recipes?q=${encodeURIComponent(q)}&limit=8&scope=wszystkie`,
+					);
 					const data = res.ok ? ((await res.json()) as { hits: RecipeDocument[] }) : { hits: [] };
 					if (mine === token) recipes = data.hits.filter((r) => r.id !== excludeRecipeId);
 				}
@@ -116,27 +119,6 @@
 		};
 	});
 
-	const SOURCE_LABEL: Record<string, string> = {
-		USDA_SR: "USDA",
-		USDA_FOUNDATION: "USDA",
-		OFF: "OFF",
-		CUSTOM: t("catalog.sourceBadge.custom"),
-	};
-
-	function productMeta(hit: FoodDocument): string {
-		const parts = [SOURCE_LABEL[hit.source] ?? hit.source];
-		if (hit.energyKcal !== undefined) parts.push(`${formatAmount(hit.energyKcal)} kcal / 100 g`);
-		if (hit.brand) parts.push(hit.brand);
-		return parts.join(" · ");
-	}
-	function recipeMeta(hit: RecipeDocument): string {
-		const parts: string[] = [];
-		if (hit.energyKcalPerServing !== undefined)
-			parts.push(`${formatAmount(hit.energyKcalPerServing)} ${t("recipe.form.kcalPerServing")}`);
-		parts.push(`${hit.servings} ${t("recipe.detail.servings")}`);
-		return parts.join(" · ");
-	}
-
 	function pickProduct(hit: FoodDocument) {
 		onSelectProduct(hit);
 		open = false;
@@ -159,8 +141,13 @@
 			<span class="pic">
 				{#if selection.isSubRecipe}
 					<svg class="nest" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-						<path d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z" />
-						<path d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z" opacity=".5" />
+						<path
+							d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z"
+						/>
+						<path
+							d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z"
+							opacity=".5"
+						/>
 					</svg>
 				{:else}
 					<CategoryIcon slug={selection.categorySlug} size={14} />
@@ -173,28 +160,48 @@
 		{:else}
 			<span class="pic">
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-					<path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd" />
+					<path
+						fill-rule="evenodd"
+						d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+						clip-rule="evenodd"
+					/>
 				</svg>
 			</span>
 			<span class="pn ph">{t("recipe.form.pickerPlaceholder")}</span>
 		{/if}
-		<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 13.5l-4.5-5h9z" /></svg>
+		<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+			><path d="M10 13.5l-4.5-5h9z" /></svg
+		>
 	</button>
 
 	{#if open}
 		<div class="picker-pop">
 			<div class="pp-tabs">
-				<button type="button" class:on={tab === "products"} onclick={() => (tab = "products")}>{t("recipe.form.tabProducts")}</button>
-				<button type="button" class:on={tab === "subRecipes"} onclick={() => (tab = "subRecipes")}>{t("recipe.form.tabSubRecipes")}</button>
+				<button type="button" class:on={tab === "products"} onclick={() => (tab = "products")}
+					>{t("recipe.form.tabProducts")}</button
+				>
+				<button type="button" class:on={tab === "subRecipes"} onclick={() => (tab = "subRecipes")}
+					>{t("recipe.form.tabSubRecipes")}</button
+				>
 			</div>
 			<div class="pp-search">
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z" clip-rule="evenodd" /></svg>
+				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+					><path
+						fill-rule="evenodd"
+						d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+						clip-rule="evenodd"
+					/></svg
+				>
 				<input
 					bind:this={searchEl}
 					bind:value={query}
 					type="text"
-					placeholder={tab === "products" ? t("recipe.form.pickerSearchProduct") : t("recipe.form.pickerSearchSubRecipe")}
-					aria-label={tab === "products" ? t("recipe.form.pickerSearchProduct") : t("recipe.form.pickerSearchSubRecipe")}
+					placeholder={tab === "products"
+						? t("recipe.form.pickerSearchProduct")
+						: t("recipe.form.pickerSearchSubRecipe")}
+					aria-label={tab === "products"
+						? t("recipe.form.pickerSearchProduct")
+						: t("recipe.form.pickerSearchSubRecipe")}
 				/>
 			</div>
 
@@ -204,13 +211,13 @@
 					<div class="pp-empty">{t("recipe.form.pickerSearching")}</div>
 				{:else}
 					{#each products as hit (hit.id)}
-						<button type="button" class="pp-res" onclick={() => pickProduct(hit)}>
-							<span class="ri"><CategoryIcon slug={hit.categorySlug} size={17} /></span>
-							<span class="rb">
-								<span class="rn">{hit.namePl ?? hit.nameEn}</span>
-								<span class="rm2">{productMeta(hit)}</span>
-							</span>
-						</button>
+						<PickerResult
+							kind="product"
+							categorySlug={hit.categorySlug}
+							name={hit.namePl ?? hit.nameEn}
+							meta={productMeta(hit)}
+							onSelect={() => pickProduct(hit)}
+						/>
 					{:else}
 						{#if query.trim()}<div class="pp-empty">{t("recipe.form.pickerEmpty")}</div>{/if}
 					{/each}
@@ -219,7 +226,11 @@
 					<div class="pp-div"></div>
 					<button type="button" class="pp-create" onclick={create}>
 						<span class="ci">
-							<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z" /></svg>
+							<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+								><path
+									d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
+								/></svg
+							>
 						</span>
 						<span class="cc">
 							<span class="ct">{t("recipe.form.createProduct")} „{query.trim()}"</span>
@@ -233,18 +244,12 @@
 					<div class="pp-empty">{t("recipe.form.pickerSearching")}</div>
 				{:else}
 					{#each recipes as hit (hit.id)}
-						<button type="button" class="pp-res" onclick={() => pickRecipe(hit)}>
-							<span class="ri">
-								<svg class="nest" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-									<path d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z" />
-									<path d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z" opacity=".5" />
-								</svg>
-							</span>
-							<span class="rb">
-								<span class="rn">{hit.name}</span>
-								<span class="rm2">{recipeMeta(hit)}</span>
-							</span>
-						</button>
+						<PickerResult
+							kind="subRecipe"
+							name={hit.name}
+							meta={recipeMeta(hit)}
+							onSelect={() => pickRecipe(hit)}
+						/>
 					{:else}
 						{#if query.trim()}<div class="pp-empty">{t("recipe.form.pickerEmpty")}</div>{/if}
 					{/each}
@@ -401,59 +406,6 @@
 		font-size: 0.8125rem;
 		color: var(--muted-foreground);
 		padding: 8px 9px;
-	}
-	.pp-res {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		width: 100%;
-		text-align: left;
-		border: 0;
-		background: transparent;
-		border-radius: var(--radius-sm);
-		padding: 8px 9px;
-		cursor: pointer;
-	}
-	.pp-res:hover {
-		background: var(--accent);
-	}
-	.pp-res .ri {
-		width: 30px;
-		height: 30px;
-		border-radius: 8px;
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: var(--secondary);
-		color: var(--muted-foreground);
-	}
-	.pp-res .ri .nest {
-		width: 17px;
-		height: 17px;
-	}
-	.pp-res .rb {
-		flex: 1;
-		min-width: 0;
-	}
-	.pp-res .rn {
-		display: block;
-		font-size: 0.875rem;
-		font-weight: 550;
-		letter-spacing: -0.005em;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	.pp-res .rm2 {
-		display: block;
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		font-variant-numeric: tabular-nums;
-		margin-top: 1px;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 	.pp-div {
 		height: 1px;

@@ -98,6 +98,12 @@
 					<IconButton aria-label="Dodaj">
 						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
 					</IconButton>
+					<IconButton variant="subtle" aria-label="Dodaj">
+						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
+					</IconButton>
+					<IconButton variant="ghost" aria-label="Zamknij">
+						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" /></svg>
+					</IconButton>
 				</div>
 			</CardContent>
 		</Card>

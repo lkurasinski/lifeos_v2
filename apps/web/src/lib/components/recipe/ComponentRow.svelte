@@ -2,6 +2,7 @@
 	import type { FoodDocument } from "$lib/food/schema";
 	import type { DraftComponent, RecipeDocument, UnitOption } from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
+	import { IconButton } from "$lib/components/ui/icon-button";
 	import ProductPicker from "./ProductPicker.svelte";
 	import { formatAmount } from "./meta";
 	import { rowInfo } from "./component-row";
@@ -134,13 +135,20 @@
 			><path d="M10 13.5l-4.5-5h9z" /></svg
 		>
 	</span>
-	<button type="button" class="rm" aria-label={t("recipe.form.removeRow")} onclick={onRemove}>
+	<IconButton
+		type="button"
+		variant="ghost"
+		size="sm"
+		class="size-[30px]"
+		aria-label={t("recipe.form.removeRow")}
+		onclick={onRemove}
+	>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 			><path
 				d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z"
 			/></svg
 		>
-	</button>
+	</IconButton>
 
 	{#if info && ((info.grams != null && !info.direct) || info.kcal != null || info.partial)}
 		<div class="ing-sub">
@@ -240,26 +248,6 @@
 		height: 13px;
 		color: var(--muted-foreground);
 		pointer-events: none;
-	}
-	.rm {
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-sm);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.rm:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.rm svg {
-		width: 16px;
-		height: 16px;
 	}
 	.ing-sub {
 		grid-column: 2 / 4;

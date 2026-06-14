@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from "svelte";
 	import type { RecipeStep } from "$lib/recipe/schema";
+	import { IconButton } from "$lib/components/ui/icon-button";
 	import { t } from "$lib/i18n";
 
 	// The steps editor (locked by `form.html`): an ordered list of `action` steps (numbered,
@@ -119,9 +120,9 @@
 						<span class="wuu">{t("recipe.form.minUnit")}</span>
 					</span>
 				</div>
-				<button type="button" class="rm" aria-label={t("recipe.form.removeStep")} onclick={() => remove(item.key)}>
+				<IconButton type="button" variant="ghost" size="sm" class="size-[30px]" aria-label={t("recipe.form.removeStep")} onclick={() => remove(item.key)}>
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z" /></svg>
-				</button>
+				</IconButton>
 			</div>
 		{:else}
 			<div class="stepe" class:dragging={dragKey === item.key} role="listitem" ondragover={(e) => e.preventDefault()} ondrop={(e) => { e.preventDefault(); onDrop(item.key); }}>
@@ -133,9 +134,9 @@
 						{#if item.imageUrl !== null}
 							<span class="simg-row">
 								<input type="url" bind:value={item.imageUrl} placeholder={t("recipe.form.stepImagePlaceholder")} aria-label={t("recipe.form.addStepImage")} />
-								<button type="button" class="simg-x" aria-label={t("recipe.form.removeRow")} onclick={() => (item.imageUrl = null)}>
+								<IconButton type="button" variant="ghost" size="sm" class="size-[30px]" aria-label={t("recipe.form.removeRow")} onclick={() => (item.imageUrl = null)}>
 									<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z" /></svg>
-								</button>
+								</IconButton>
 							</span>
 						{:else}
 							<button type="button" class="simg-add" onclick={() => (item.imageUrl = "")}>
@@ -145,9 +146,9 @@
 						{/if}
 					</div>
 				</div>
-				<button type="button" class="rm" aria-label={t("recipe.form.removeStep")} onclick={() => remove(item.key)}>
+				<IconButton type="button" variant="ghost" size="sm" class="mt-1 size-[30px]" aria-label={t("recipe.form.removeStep")} onclick={() => remove(item.key)}>
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z" /></svg>
-				</button>
+				</IconButton>
 			</div>
 		{/if}
 	{/each}
@@ -280,24 +281,6 @@
 		border-color: transparent;
 		box-shadow: var(--focus);
 	}
-	.simg-x {
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		display: flex;
-		padding: 4px;
-		border-radius: var(--radius-sm);
-	}
-	.simg-x:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.simg-x svg {
-		width: 14px;
-		height: 14px;
-	}
-
 	.waite {
 		display: grid;
 		grid-template-columns: 18px 26px minmax(0, 1fr) 30px;
@@ -370,30 +353,6 @@
 	.wdur .wuu {
 		font-size: 0.6875rem;
 		color: var(--muted-foreground);
-	}
-
-	.rm {
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-sm);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.rm:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.rm svg {
-		width: 16px;
-		height: 16px;
-	}
-	.stepe .rm {
-		margin-top: 4px;
 	}
 
 	.addbtns {

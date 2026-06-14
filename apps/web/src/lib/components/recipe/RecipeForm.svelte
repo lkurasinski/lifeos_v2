@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack, type Snippet } from "svelte";
 	import { Button } from "$lib/components/ui/button";
+	import { IconButton } from "$lib/components/ui/icon-button";
 	import { Panel } from "$lib/components/ui/panel";
 	import { SegmentedToggle } from "$lib/components/ui/segmented";
 	import type { FoodCategoryMeta, NutrientRegistryGroup } from "$lib/food/schema";
@@ -259,9 +260,11 @@
 							oninput={(e) => (data.tips[i] = e.currentTarget.value)}
 							aria-label={t("recipe.form.tipsTitle")}
 						/>
-						<button
+						<IconButton
 							type="button"
-							class="rm"
+							variant="ghost"
+							size="sm"
+							class="size-[30px]"
 							aria-label={t("recipe.form.removeRow")}
 							onclick={() => (data.tips = data.tips.filter((_, j) => j !== i))}
 						>
@@ -270,7 +273,7 @@
 									d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z"
 								/></svg
 							>
-						</button>
+						</IconButton>
 					</div>
 				{/each}
 				<button type="button" class="addbtn" onclick={() => (data.tips = [...data.tips, ""])}>
@@ -588,26 +591,6 @@
 	}
 	.tipe input::placeholder {
 		color: var(--muted-foreground);
-	}
-	.rm {
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-sm);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.rm:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.rm svg {
-		width: 16px;
-		height: 16px;
 	}
 	.addbtn {
 		display: inline-flex;

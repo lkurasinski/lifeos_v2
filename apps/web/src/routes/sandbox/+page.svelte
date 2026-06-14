@@ -7,6 +7,7 @@
 	import { NumberField } from "$lib/components/ui/number-field";
 	import { SelectField } from "$lib/components/ui/select-field";
 	import { SearchInput } from "$lib/components/ui/search-input";
+	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -23,6 +24,7 @@
 	let dark = $state(false);
 	let view = $state("day");
 	let search = $state("");
+	let sectionOpen = $state(true);
 	const macros: { macro: Macro; label: string; pct: number; val: string }[] = [
 		{ macro: "kcal", label: "Energia", pct: 72, val: "2 140" },
 		{ macro: "pro", label: "Białko", pct: 48, val: "112" },
@@ -30,6 +32,11 @@
 		{ macro: "fat", label: "Tłuszcze", pct: 86, val: "78" },
 	];
 </script>
+
+{#snippet sectionHeader()}
+	<span class="text-[0.8125rem] font-semibold text-foreground">Makroskładniki</span>
+	<span class="ml-auto text-[0.8125rem] tabular-nums text-muted-foreground">3/8</span>
+{/snippet}
 
 <div class:dark class="relative min-h-screen bg-background text-foreground">
 	<Env class="absolute" />
@@ -109,6 +116,14 @@
 					<option>Tajska</option>
 				</SelectField>
 				<SearchInput bind:value={search} placeholder="Szukaj…" onclear={() => (search = "")} clearLabel="Wyczyść" />
+				<CollapsibleSection
+					open={sectionOpen}
+					onToggle={() => (sectionOpen = !sectionOpen)}
+					buttonClass="border-b border-[color:var(--hairline)] px-0.5 py-[9px]"
+					header={sectionHeader}
+				>
+					<p class="py-2 text-[0.8125rem] text-muted-foreground">Zawartość sekcji…</p>
+				</CollapsibleSection>
 				<div class="flex flex-wrap gap-2">
 					<Button>Zapisz</Button>
 					<Button variant="secondary">Anuluj</Button>

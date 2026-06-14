@@ -6,6 +6,7 @@
 	import type { FoodDocument, NutrientRegistryGroup } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
 	import CategoryIcon from "./CategoryIcon.svelte";
+	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
 	import NutrientGroupSection from "./NutrientGroupSection.svelte";
 	import { formatAmount, groupRegistryRows, macroGauges, macroPct, sourceBadgeKey } from "./meta";
 
@@ -132,26 +133,18 @@
 	{#if totalCount > 0}
 		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>
 
-		<button
-			type="button"
-			class="flex w-full items-center gap-2 border-0 bg-transparent p-0.5 focus-visible:rounded-sm focus-visible:shadow-[var(--focus)] focus-visible:outline-none"
-			onclick={() => (open = !open)}
-		>
+		{#snippet fullProfileHeader()}
 			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("catalog.fullProfile")}</span>
 			<span class="text-[0.6875rem] tabular-nums text-muted-foreground">{totalCount} {t("catalog.nutrientsCount")}</span>
-			<svg
-				class="ml-auto h-[17px] w-[17px] text-muted-foreground transition-transform duration-200 ease-[var(--ease)] motion-reduce:transition-none {open
-					? 'rotate-180'
-					: ''}"
-				viewBox="0 0 20 20"
-				fill="currentColor"
-				aria-hidden="true"
-			>
-				<path d="M10 13.5l-4.5-5h9z" />
-			</svg>
-		</button>
+		{/snippet}
 
-		{#if open}
+		<CollapsibleSection
+			{open}
+			onToggle={() => (open = !open)}
+			buttonClass="p-0.5"
+			chevronClass="ml-auto size-[17px]"
+			header={fullProfileHeader}
+		>
 			{#each groups as group (group.label)}
 				<NutrientGroupSection label={group.label} count={`${group.rows.length} ${t("catalog.itemsCount")}`}>
 					{#each group.rows as row (row.id)}
@@ -162,7 +155,7 @@
 					{/each}
 				</NutrientGroupSection>
 			{/each}
-		{/if}
+		</CollapsibleSection>
 	{/if}
 
 	{#if onEdit || onDelete}

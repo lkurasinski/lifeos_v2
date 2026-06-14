@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Badge } from "$lib/components/ui/badge";
 	import { Button } from "$lib/components/ui/button";
+	import { Chip } from "$lib/components/ui/chip";
 	import { Gauge } from "$lib/components/ui/gauge";
 	import { Panel } from "$lib/components/ui/panel";
 	import NutrientGroupSection from "$lib/components/catalog/NutrientGroupSection.svelte";
@@ -174,7 +175,7 @@
 		<div class="dtech">
 			<span class="tl">{t("recipe.facets.technique")}</span>
 			{#each recipe.techniques as tech (tech.id)}
-				<span class="techchip">{tech.namePl}</span>
+				<Chip variant="tag">{tech.namePl}</Chip>
 			{/each}
 		</div>
 	{/if}
@@ -183,7 +184,7 @@
 		<div class="dtech">
 			<span class="tl">{t("recipe.facets.diet")}</span>
 			{#each recipe.diets as diet (diet.id)}
-				<span class="techchip">{diet.namePl}</span>
+				<Chip variant="tag">{diet.namePl}</Chip>
 			{/each}
 		</div>
 	{/if}
@@ -192,7 +193,7 @@
 		<div class="dtech">
 			<span class="tl">{t("recipe.facets.allergen")}</span>
 			{#each recipe.allergens as allergen (allergen.id)}
-				<span class="techchip">{allergen.namePl}</span>
+				<Chip variant="tag">{allergen.namePl}</Chip>
 			{/each}
 		</div>
 	{/if}
@@ -522,17 +523,6 @@
 		text-transform: uppercase;
 		color: var(--muted-foreground);
 		margin-right: 2px;
-	}
-	.techchip {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		background: var(--secondary);
-		padding: 4px 10px;
-		border-radius: var(--radius-pill);
 	}
 
 	.basis {

@@ -14,6 +14,7 @@
 	// placeholder until its slice lands (S-02+).
 	let productsActive = $derived(page.url.pathname.startsWith("/foods"));
 	let recipesActive = $derived(page.url.pathname.startsWith("/recipes"));
+	let profileActive = $derived(page.url.pathname.startsWith("/profile"));
 
 	function initials(name?: string | null): string {
 		if (!name) return "?";
@@ -76,7 +77,9 @@
 				aria-current={recipesActive ? "page" : undefined}
 			>
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-					><path d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z" /><path
+					><path
+						d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z"
+					/><path
 						d="M16 3.6A1.6 1.6 0 0 0 14.4 2H10v15.4l.9-.5a3 3 0 0 1 1.5-.4h2A1.6 1.6 0 0 0 16 14.9V3.6Z"
 						opacity=".5"
 					/></svg
@@ -104,12 +107,18 @@
 		</div>
 
 		<div class="railfoot">
-			<div class="user">
-				<span class="av">{initials(data.user?.name)}</span>
-				<span class="uinfo">
-					<span class="un">{data.user?.name}</span>
-					<span class="ue">{data.user?.email}</span>
-				</span>
+			<div class="user" class:active={profileActive}>
+				<a
+					class="uprofile"
+					href={resolve("/profile")}
+					aria-current={profileActive ? "page" : undefined}
+				>
+					<span class="av">{initials(data.user?.name)}</span>
+					<span class="uinfo">
+						<span class="un">{data.user?.name}</span>
+						<span class="ue">{data.user?.email}</span>
+					</span>
+				</a>
 				<div class="uactions">
 					<IconButton variant="subtle" size="sm" disabled aria-label={t("nav.settings")}>
 						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
@@ -120,7 +129,12 @@
 							/></svg
 						>
 					</IconButton>
-					<IconButton variant="subtle" size="sm" onclick={handleLogout} aria-label={t("auth.logout")}>
+					<IconButton
+						variant="subtle"
+						size="sm"
+						onclick={handleLogout}
+						aria-label={t("auth.logout")}
+					>
 						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 							><path
 								fill-rule="evenodd"
@@ -238,7 +252,9 @@
 		color: var(--muted-foreground);
 		background: transparent;
 		text-decoration: none;
-		transition: background-color 180ms var(--ease), color 180ms var(--ease);
+		transition:
+			background-color 180ms var(--ease),
+			color 180ms var(--ease);
 	}
 	.navitem svg {
 		width: 20px;
@@ -271,6 +287,36 @@
 		gap: 10px;
 		padding: 6px 8px;
 		border-radius: var(--radius-sm, 0.625rem);
+		transition:
+			background-color 180ms var(--ease),
+			box-shadow 180ms var(--ease);
+	}
+	/* The avatar + name/email are the link into the Profil screen; the trailing
+	   gear/logout actions stay outside the anchor (buttons can't nest in an <a>). */
+	.uprofile {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex: 1;
+		min-width: 0;
+		border-radius: var(--radius-sm, 0.625rem);
+		text-decoration: none;
+		color: inherit;
+		outline: none;
+		transition: background-color 180ms var(--ease);
+	}
+	.uprofile:hover {
+		background: var(--accent);
+	}
+	.uprofile:focus-visible {
+		box-shadow: var(--focus);
+	}
+	.user.active {
+		background: var(--card);
+		box-shadow: var(--shadow-soft);
+	}
+	.user.active .uprofile:hover {
+		background: transparent;
 	}
 	.user .av {
 		width: 32px;
@@ -367,6 +413,10 @@
 		}
 		.user {
 			padding: 0;
+		}
+		.user.active {
+			background: transparent;
+			box-shadow: none;
 		}
 		.user .av {
 			display: none;

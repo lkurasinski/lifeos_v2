@@ -6,7 +6,11 @@
 	// (--trk) so an empty ring still reads coloured. Values from lifeos-kit.css.
 	export type Macro = "kcal" | "pro" | "carb" | "fat";
 
-	const MACRO: Record<Macro, string> = {
+	// Macro → its identity-hue CSS custom properties. Exported so other surfaces that carry
+	// the same WHICH-macro identity colour (e.g. the nutrition-targets dots/segments) reuse
+	// the one source of truth instead of re-declaring hues. Apply as an inline `style` and
+	// read `--gc` (full tone) / `--gc-s` (sweep) / `--trk` (faint track).
+	export const MACRO: Record<Macro, string> = {
 		kcal: "--gc:oklch(0.64 0.15 30);--gc-s:oklch(0.76 0.115 34);--trk:oklch(0.915 0.034 32)",
 		pro: "--gc:oklch(0.6 0.12 245);--gc-s:oklch(0.74 0.095 244);--trk:oklch(0.912 0.028 244)",
 		carb: "--gc:oklch(0.66 0.1 182);--gc-s:oklch(0.79 0.08 184);--trk:oklch(0.918 0.026 183)",
@@ -55,7 +59,9 @@
 		<span class="gdisc"></span>
 		{#if pct > 0}<span class="cap"></span>{/if}
 		{#if display !== undefined}
-			<span class="gv">{display}{#if unit}<span class="unit">{unit}</span>{/if}</span>
+			<span class="gv"
+				>{display}{#if unit}<span class="unit">{unit}</span>{/if}</span
+			>
 		{/if}
 	</div>
 	{#if label}

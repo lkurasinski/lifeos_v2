@@ -7,6 +7,9 @@ import {
 	taxonomyRefSchema,
 	parseRecipeSearchParams,
 	normalizeTaxonomySlug,
+	emptyRecipeDraft,
+	recipeDraftToSavePayload,
+	type RecipeDraft,
 } from "./schema.js";
 
 describe("recipeComponentSchema — exactly-one(productId, subRecipeId)", () => {
@@ -47,7 +50,9 @@ describe("recipeComponentSchema — exactly-one(productId, subRecipeId)", () => 
 
 describe("recipeStepSchema — tagged union", () => {
 	it("accepts an action step with text only", () => {
-		expect(recipeStepSchema.safeParse({ kind: "action", text: "Pokrój cebulę" }).success).toBe(true);
+		expect(recipeStepSchema.safeParse({ kind: "action", text: "Pokrój cebulę" }).success).toBe(
+			true,
+		);
 	});
 
 	it("accepts an action step with an optional http(s) image", () => {
@@ -76,12 +81,12 @@ describe("recipeStepSchema — tagged union", () => {
 	});
 
 	it("rejects a non-positive or non-integer durationMin", () => {
-		expect(
-			recipeStepSchema.safeParse({ kind: "wait", text: "x", durationMin: 0 }).success,
-		).toBe(false);
-		expect(
-			recipeStepSchema.safeParse({ kind: "wait", text: "x", durationMin: 1.5 }).success,
-		).toBe(false);
+		expect(recipeStepSchema.safeParse({ kind: "wait", text: "x", durationMin: 0 }).success).toBe(
+			false,
+		);
+		expect(recipeStepSchema.safeParse({ kind: "wait", text: "x", durationMin: 1.5 }).success).toBe(
+			false,
+		);
 	});
 
 	it("rejects an unknown step kind", () => {
@@ -122,6 +127,44 @@ describe("recipeSavePayloadSchema", () => {
 
 	it("rejects an empty name", () => {
 		expect(recipeSavePayloadSchema.safeParse({ name: "" }).success).toBe(false);
+	});
+});
+
+describe("recipeDraftToSavePayload — number-input null coercion", () => {
+	// A cleared `<input type="number">` binds `null` into the draft (Svelte `bind:value`), so the
+	// draft can carry `null` where the type says `number`; the normalizer must coerce, not pass it
+	// straight to a schema whose `.default()` only fills `undefined`. Regression guard for the
+	// "cleared servings / wait-duration 400s the whole save" blocker.
+	const base = (): RecipeDraft => ({ ...emptyRecipeDraft(), name: "Zupa" });
+
+	it("coerces a cleared (null) servings to 1 and the payload re-validates", () => {
+		const draft = { ...base(), servings: null as unknown as number };
+		const payload = recipeDraftToSavePayload(draft);
+		expect(payload.servings).toBe(1);
+		expect(recipeSavePayloadSchema.safeParse(payload).success).toBe(true);
+	});
+
+	it("preserves a valid servings and truncates a fractional one", () => {
+		expect(recipeDraftToSavePayload({ ...base(), servings: 4 }).servings).toBe(4);
+		expect(recipeDraftToSavePayload({ ...base(), servings: 2.7 }).servings).toBe(2);
+	});
+
+	it("coerces a wait step's cleared (null) durationMin to 1 and re-validates", () => {
+		const draft: RecipeDraft = {
+			...base(),
+			steps: [{ kind: "wait", text: "Odstaw", durationMin: null as unknown as number }],
+		};
+		const payload = recipeDraftToSavePayload(draft);
+		expect(payload.steps[0]).toEqual({ kind: "wait", text: "Odstaw", durationMin: 1 });
+		expect(recipeSavePayloadSchema.safeParse(payload).success).toBe(true);
+	});
+
+	it("keeps a valid wait duration", () => {
+		const draft: RecipeDraft = {
+			...base(),
+			steps: [{ kind: "wait", text: "Studź", durationMin: 30 }],
+		};
+		expect(recipeDraftToSavePayload(draft).steps[0]).toMatchObject({ durationMin: 30 });
 	});
 });
 

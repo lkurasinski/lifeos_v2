@@ -46,7 +46,6 @@ function component(
 		categorySlug: null,
 		amount: 100,
 		unitId: gram.id,
-		note: null,
 		preview: {},
 		...over,
 	};

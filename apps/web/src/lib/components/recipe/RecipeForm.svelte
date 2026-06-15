@@ -61,6 +61,10 @@
 	let data = $state<RecipeDraft>(untrack(() => structuredClone(draft)));
 	let localError = $state<string | null>(null);
 
+	// `StepsEditor` owns the keyed step model and exposes its projection on demand (no per-keystroke
+	// write-back); we pull the current steps into the payload at submit.
+	let stepsEditor = $state<StepsEditor>();
+
 	// The ingredient picker's popover overflows its glass section; each glass `Panel` is its own
 	// stacking context (backdrop-filter), so a trapped `z-index` paints behind the next section.
 	// Lift the ingredients section above its siblings while a picker is open.
@@ -87,7 +91,10 @@
 		}
 		localError = null;
 		data.status = status;
-		onSubmit($state.snapshot(data) as RecipeDraft);
+		const payload = $state.snapshot(data) as RecipeDraft;
+		// Steps live in StepsEditor's keyed model; project them in at submit (see its `currentSteps`).
+		if (stepsEditor) payload.steps = stepsEditor.currentSteps();
+		onSubmit(payload);
 	}
 
 	const barError = $derived(errorMessage ?? localError);
@@ -199,7 +206,8 @@
 							min="0"
 							step="1"
 							oninput={(e) =>
-								(data.prepTimeMin = e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
+								(data.prepTimeMin =
+									e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
 							aria-label={t("recipe.form.prepLabel")}
 						/>
 					</label>
@@ -213,7 +221,8 @@
 							min="0"
 							step="1"
 							oninput={(e) =>
-								(data.cookTimeMin = e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
+								(data.cookTimeMin =
+									e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
 							aria-label={t("recipe.form.cookLabel")}
 						/>
 					</label>
@@ -242,7 +251,7 @@
 
 		<Panel variant="thick" class="sect">
 			{@render sectHead(stepsIcon, t("recipe.form.stepsTitle"), null)}
-			<StepsEditor bind:steps={data.steps} />
+			<StepsEditor bind:this={stepsEditor} steps={data.steps} />
 		</Panel>
 
 		<Panel variant="thick" class="sect">

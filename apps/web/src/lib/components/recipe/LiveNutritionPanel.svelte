@@ -12,6 +12,7 @@
 	} from "$lib/recipe/nutrition";
 	import type { UnitConversion } from "$lib/recipe/units";
 	import type { DraftComponent, UnitOption } from "$lib/recipe/schema";
+	import { debounced } from "$lib/debounced.svelte";
 	import { t } from "$lib/i18n";
 	import { RECIPE_MACRO_REFERENCE, formatAmount, macroPct } from "./meta";
 
@@ -36,11 +37,23 @@
 
 	let basis = $state<"perServing" | "total">("perServing");
 
+	// Debounce the rollup recompute (the full ~74-nutrient engine): the amount field writes
+	// `c.amount` per keystroke, so without this, typing "125" into one row re-runs the whole
+	// engine across every component on each event. Mirror the rollup inputs into a 220ms
+	// snapshot (matching the picker's typeahead) and roll up off that — the math is unchanged,
+	// only the recompute cadence is throttled. The amount input itself stays responsive: its
+	// raw text buffer lives in `ComponentEditor`, independent of this panel.
+	const rollupInput = debounced(
+		() => ({ components: $state.snapshot(components) as DraftComponent[], servings }),
+		220,
+	);
+
 	const rollup = $derived.by(() => {
+		const { components: rows, servings: divisor } = rollupInput.current;
 		const productMap: Record<string, ProductNutrition> = {};
 		const subMap: Record<string, SubRecipeNutrition> = {};
 		const comps: RollupComponent[] = [];
-		for (const c of components) {
+		for (const c of rows) {
 			const u = unitById[c.unitId];
 			if (!u || c.amount == null || c.amount <= 0) continue;
 			const unit: UnitConversion = { kind: u.kind, baseFactor: u.baseFactor };
@@ -68,7 +81,7 @@
 		}
 		return rollupRecipe(
 			comps,
-			servings,
+			divisor,
 			(id) => productMap[id] ?? null,
 			(id) => subMap[id] ?? null,
 		);

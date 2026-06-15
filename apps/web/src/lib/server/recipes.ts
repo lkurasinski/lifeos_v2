@@ -869,9 +869,10 @@ export function listUnits(): Promise<UnitOption[]> {
 
 /**
  * The include the EDIT draft projection needs: ordered components with their unit, the product's
- * display name + conversion inputs + category slug (row glyph) + per-100g nutrients (live panel),
- * and the sub-recipe's cached `(totals, yieldWeightG)` pair + completeness (its weight-share
- * contribution to the live panel). Taxonomies + cuisine come as ids (the form toggles by id).
+ * display name + conversion inputs + category slug (row glyph) + per-100g MACRO nutrients (live
+ * panel gauges), and the sub-recipe's cached `(totals, yieldWeightG)` pair + completeness (its
+ * weight-share contribution to the live panel). Taxonomies + cuisine come as ids (the form
+ * toggles by id).
  */
 const RECIPE_DRAFT_INCLUDE = {
 	components: {
@@ -886,7 +887,16 @@ const RECIPE_DRAFT_INCLUDE = {
 					densityGPerMl: true,
 					pieceWeightG: true,
 					category: { select: { slug: true } },
-					foodNutrients: { select: { nutrientId: true, amountPer100g: true } },
+					// Only the four macro tags the live panel renders as gauges — NOT the full
+					// ~74-row profile. `select` narrows columns; `where` narrows rows. Without it a
+					// 20-product recipe ships ~1,480 nutrient rows into the SSR payload for a 4-gauge
+					// display. The save path recomputes the authoritative cache from each product's
+					// FULL profile (`ROLLUP_INCLUDE`), so the four macros are all the draft needs to
+					// make the live preview match the cached figures on first paint.
+					foodNutrients: {
+						where: { nutrientId: { in: Object.values(MACRO_TAGS) } },
+						select: { nutrientId: true, amountPer100g: true },
+					},
 				},
 			},
 			subRecipe: {
@@ -933,7 +943,6 @@ export async function getRecipeDraftForEdit(userId: string, id: string): Promise
 				categorySlug: c.product.category?.slug ?? null,
 				amount: c.amount,
 				unitId: c.unitId,
-				note: c.note,
 				preview: {
 					nutrientsPer100g: per100,
 					densityGPerMl: c.product.densityGPerMl,
@@ -949,7 +958,6 @@ export async function getRecipeDraftForEdit(userId: string, id: string): Promise
 			categorySlug: null,
 			amount: c.amount,
 			unitId: c.unitId,
-			note: c.note,
 			preview: {
 				totals: (c.subRecipe?.nutrients ?? {}) as Record<string, number>,
 				yieldWeightG: c.subRecipe?.yieldWeightG ?? null,

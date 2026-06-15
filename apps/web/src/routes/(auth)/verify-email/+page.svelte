@@ -76,10 +76,6 @@
 			{loading ? t("common.loading") : t("auth.resendVerification")}
 		</Button>
 
-		<AuthFooterLink
-			text={t("auth.hasAccount")}
-			linkText={t("auth.login")}
-			href={resolve("/login")}
-		/>
+		<AuthFooterLink text={t("auth.hasAccount")} linkText={t("auth.login")} href="/login" />
 	</form>
 </div>

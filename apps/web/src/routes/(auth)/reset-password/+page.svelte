@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from "$app/state";
-	import { resolve } from "$app/paths";
 	import { authClient } from "$lib/auth-client";
 	import { t } from "$lib/i18n";
 	import { z } from "zod";
@@ -73,14 +72,14 @@
 			<Alert>
 				<AlertDescription>{t("auth.resetPasswordSuccess")}</AlertDescription>
 			</Alert>
-			<AuthFooterLink linkText={t("auth.backToLogin")} href={resolve("/login")} />
+			<AuthFooterLink linkText={t("auth.backToLogin")} href="/login" />
 		</div>
 	{:else if urlError || !token}
 		<div class="flex flex-col gap-5">
 			<Alert variant="destructive">
 				<AlertDescription>{t("auth.invalidOrExpiredToken")}</AlertDescription>
 			</Alert>
-			<AuthFooterLink linkText={t("auth.forgotPassword")} href={resolve("/forgot-password")} />
+			<AuthFooterLink linkText={t("auth.forgotPassword")} href="/forgot-password" />
 		</div>
 	{:else}
 		<form onsubmit={handleSubmit} class="flex flex-col gap-5">
@@ -118,7 +117,7 @@
 				{loading ? t("common.loading") : t("auth.resetPassword")}
 			</Button>
 
-			<AuthFooterLink linkText={t("auth.backToLogin")} href={resolve("/login")} />
+			<AuthFooterLink linkText={t("auth.backToLogin")} href="/login" />
 		</form>
 	{/if}
 </div>

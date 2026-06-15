@@ -3,6 +3,10 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 export default defineConfig({
 	plugins: [svelte()],
+	// Resolve the `browser` entry points even though Vitest runs in Node, so the Svelte
+	// client runtime (where `$effect` actually runs) is used instead of the SSR build.
+	// Without this, runes effects are no-ops and `*.svelte.test.ts` timing tests can't fire.
+	resolve: { conditions: ["browser"] },
 	test: {
 		environment: "jsdom",
 		include: ["src/**/*.test.ts"],

@@ -146,7 +146,7 @@
 			style="--hd: 600ms"
 			text={t("auth.hasAccount")}
 			linkText={t("auth.login")}
-			href={resolve("/login")}
+			href="/login"
 		/>
 	</form>
 </div>

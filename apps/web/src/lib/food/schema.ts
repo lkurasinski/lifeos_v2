@@ -40,6 +40,12 @@ export interface FoodDocument {
 	categorySlug: string | null;
 	categoryNamePl: string | null;
 	servingSizeG: number | null;
+	// Unit→grams conversion inputs, carried so a search-picked component resolves grams with the
+	// SAME density/piece-weight the server caches on save (not the density-1.0 fallback). NULL ≠ 0
+	// and absent ⇒ OMITTED: a missing density legitimately resolves as water (1.0), matching the
+	// server, and a missing piece-weight keeps a COUNT unit honestly unresolved.
+	densityGPerMl?: number;
+	pieceWeightG?: number;
 	energyKcal?: number;
 	protein?: number;
 	fat?: number;

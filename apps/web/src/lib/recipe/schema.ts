@@ -14,6 +14,7 @@
  */
 import { z } from "zod";
 import { baseSearchParamsShape, listParam, numParam, qParam } from "$lib/search-params";
+import { parseDecimalPl } from "$lib/decimal";
 import type { UnitKind } from "./units";
 import type { IncompleteComponent } from "./nutrition";
 
@@ -148,7 +149,9 @@ export function parseRecipeSearchParams(searchParams: URLSearchParams): RecipeSe
  * (`"1,5"` → `1.5`) and must be strictly positive (a 0-gram component is meaningless).
  */
 const amountSchema = z.preprocess(
-	(v) => (typeof v === "string" ? Number(v.replace(",", ".")) : v),
+	// Shared pl-PL comma-decimal parse (see `$lib/decimal`); the strict-positive guard stays here,
+	// in this server-trust-boundary schema, distinct from the previews' non-negative tolerance.
+	(v) => parseDecimalPl(v),
 	z.number().positive().max(1_000_000),
 );
 
@@ -461,7 +464,6 @@ export interface DraftComponent {
 	categorySlug: string | null;
 	amount: number | null;
 	unitId: string;
-	note: string | null;
 	preview: DraftComponentPreview;
 }
 
@@ -514,6 +516,19 @@ export function emptyRecipeDraft(): RecipeDraft {
 }
 
 /**
+ * Coerce a value bound to a `<input type="number">` into a positive integer, falling back to
+ * `fallback` when it is null/NaN/non-positive. Svelte's `bind:value` writes `null` into the
+ * bound field the moment the input is cleared, so a `number`-typed draft field can hold `null`
+ * at runtime; the bare value would then fail `z.number()` server-side (a `.default()` only fills
+ * `undefined`, never `null`). Used for `servings` and a `wait` step's `durationMin`.
+ */
+function positiveIntOr(value: number | null | undefined, fallback: number): number {
+	return typeof value === "number" && Number.isFinite(value) && value >= 1
+		? Math.trunc(value)
+		: fallback;
+}
+
+/**
  * Normalize an editable `RecipeDraft` into the create/patch payload (the save + patch shapes
  * are identical — a recipe edit is a full content replacement). Trims text, drops blank tips,
  * and includes only COMPLETE component rows (a picked ref + a positive amount) so an in-progress
@@ -524,7 +539,9 @@ export function recipeDraftToSavePayload(draft: RecipeDraft): RecipeSavePayload 
 	return {
 		name: draft.name.trim(),
 		description: draft.description?.trim() || null,
-		servings: draft.servings,
+		// A cleared servings field binds `null`; fall back to 1 serving so the save never 400s
+		// (and the per-serving live panel never divides by a null-coerced 1 mislabeled as totals).
+		servings: positiveIntOr(draft.servings, 1),
 		prepTimeMin: draft.prepTimeMin ?? null,
 		cookTimeMin: draft.cookTimeMin ?? null,
 		difficulty: draft.difficulty ?? null,
@@ -533,13 +550,14 @@ export function recipeDraftToSavePayload(draft: RecipeDraft): RecipeSavePayload 
 		tips: draft.tips.map((tip) => tip.trim()).filter(Boolean),
 		// Drop blank-text steps (a half-added trailing row), trim text, and normalize an action
 		// step's image URL: a blank/whitespace value becomes absent (the schema requires an
-		// http(s) URL or null, never "").
+		// http(s) URL or null, never ""). A `wait` step whose duration was cleared binds `null`;
+		// fall back to 1 min so a single empty field can't 400 the whole recipe save.
 		steps: draft.steps
 			.filter((s) => s.text.trim() !== "")
 			.map(
 				(s): RecipeStep =>
 					s.kind === "wait"
-						? { kind: "wait", text: s.text.trim(), durationMin: s.durationMin }
+						? { kind: "wait", text: s.text.trim(), durationMin: positiveIntOr(s.durationMin, 1) }
 						: {
 								kind: "action",
 								text: s.text.trim(),
@@ -560,7 +578,6 @@ export function recipeDraftToSavePayload(draft: RecipeDraft): RecipeSavePayload 
 				subRecipeId: c.subRecipeId,
 				amount: c.amount as number,
 				unitId: c.unitId,
-				note: c.note?.trim() || null,
 			})),
 	};
 }

@@ -57,7 +57,7 @@
 				style="--hd: 180ms"
 				text=""
 				linkText={t("auth.backToLogin")}
-				href={resolve("/login")}
+				href="/login"
 			/>
 		</div>
 	{:else}
@@ -94,7 +94,7 @@
 				style="--hd: 340ms"
 				text=""
 				linkText={t("auth.backToLogin")}
-				href={resolve("/login")}
+				href="/login"
 			/>
 		</form>
 	{/if}

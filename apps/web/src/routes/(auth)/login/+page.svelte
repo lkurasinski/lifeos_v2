@@ -96,7 +96,7 @@
 			style="--hd: 440ms"
 			text={t("auth.noAccount")}
 			linkText={t("auth.register")}
-			href={resolve("/register")}
+			href="/register"
 		/>
 	</form>
 </div>

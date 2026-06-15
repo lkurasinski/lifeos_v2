@@ -17,6 +17,7 @@
 		UnitOption,
 	} from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
+	import { formatDecimalPl } from "$lib/decimal";
 	import ComponentRow from "./ComponentRow.svelte";
 	import { parseAmount } from "./component-row";
 
@@ -74,7 +75,7 @@
 
 	function amountDisplay(c: DraftComponent): string {
 		if (amountRaw[c.key] !== undefined) return amountRaw[c.key];
-		return c.amount != null ? String(c.amount).replace(".", ",") : "";
+		return c.amount != null ? formatDecimalPl(c.amount) : "";
 	}
 
 	function onAmountInput(key: string, raw: string) {
@@ -95,7 +96,6 @@
 			categorySlug: null,
 			amount: null,
 			unitId: defaultUnitId,
-			note: null,
 			preview: {},
 		});
 	}
@@ -143,23 +143,38 @@
 		const mine = (subRecipeFetchToken[key] ?? 0) + 1;
 		subRecipeFetchToken[key] = mine;
 		// Fetch the cached (totals, yieldWeightG) pair so the live panel can apportion the
-		// sub-recipe's contribution by weight share (mirrors the server rollup).
-		try {
-			const res = await fetch(`/api/recipes/${hit.id}`);
-			if (res.ok) {
-				const d = (await res.json()) as RecipeDetailView;
-				const cur = components.find((x) => x.key === key);
-				if (cur && cur.subRecipeId === hit.id && subRecipeFetchToken[key] === mine) {
-					cur.preview = {
-						totals: d.nutrients,
-						yieldWeightG: d.yieldWeightG,
-						nutritionComplete: d.nutritionComplete,
-					};
+		// sub-recipe's contribution by weight share (mirrors the server rollup). On a TRANSIENT
+		// failure (network blip / 5xx) the preview would otherwise stay empty until a manual
+		// re-pick: the rollup still flags the row incomplete (so the total is never shown as a
+		// confident number), but it understates the live figure, so retry a few times with
+		// backoff. A 4xx is permanent (don't retry); a newer pick into this row (token bump)
+		// supersedes and aborts; the save recompute is authoritative regardless.
+		for (let attempt = 0; attempt < 3; attempt++) {
+			if (subRecipeFetchToken[key] !== mine) return; // superseded by a newer pick
+			try {
+				const res = await fetch(`/api/recipes/${hit.id}`);
+				if (res.ok) {
+					const d = (await res.json()) as RecipeDetailView;
+					const cur = components.find((x) => x.key === key);
+					if (cur && cur.subRecipeId === hit.id && subRecipeFetchToken[key] === mine) {
+						cur.preview = {
+							totals: d.nutrients,
+							yieldWeightG: d.yieldWeightG,
+							nutritionComplete: d.nutritionComplete,
+						};
+					}
+					return;
 				}
+				if (res.status < 500) return; // 4xx is permanent — re-picking won't help
+			} catch {
+				// network error — fall through to retry
 			}
-		} catch {
-			// Leave preview empty — the row still saves; the server recompute is authoritative.
+			// Backoff before the next attempt (none after the last); skip if superseded meanwhile.
+			if (attempt < 2 && subRecipeFetchToken[key] === mine) {
+				await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+			}
 		}
+		// Retries exhausted — leave preview empty; the live panel flags the row incomplete.
 	}
 
 	// ─── Inline "create product" dialog (embeds the foods ProductForm) ───────────────

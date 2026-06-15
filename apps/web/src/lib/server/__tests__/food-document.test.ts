@@ -89,6 +89,35 @@ describe("buildFoodDocument", () => {
 		expect("imageThumbUrl" in without).toBe(false);
 	});
 
+	it("carries conversion inputs when present, omits them when null/absent (NULL ≠ 0)", () => {
+		// Present → the search-picked component resolves grams with the same density/piece-weight
+		// the server caches on save (no density-1.0 divergence for VOLUME units).
+		const withConv = buildFoodDocument(
+			{ ...product, densityGPerMl: 0.91, pieceWeightG: 50 },
+			[],
+			null,
+		);
+		expect(withConv.densityGPerMl).toBe(0.91);
+		expect(withConv.pieceWeightG).toBe(50);
+
+		// Absent/null → omitted, so the client preview's `?? 1` fallback matches the server resolve.
+		const without = buildFoodDocument(product, [], null);
+		expect("densityGPerMl" in without).toBe(false);
+		expect("pieceWeightG" in without).toBe(false);
+		const nulled = buildFoodDocument(
+			{ ...product, densityGPerMl: null, pieceWeightG: null },
+			[],
+			null,
+		);
+		expect("densityGPerMl" in nulled).toBe(false);
+		expect("pieceWeightG" in nulled).toBe(false);
+
+		// A stored 0 is a real value, not absent.
+		const zero = buildFoodDocument({ ...product, densityGPerMl: 0, pieceWeightG: 0 }, [], null);
+		expect(zero.densityGPerMl).toBe(0);
+		expect(zero.pieceWeightG).toBe(0);
+	});
+
 	it("nulls category fields when no category is given", () => {
 		const doc = buildFoodDocument(product, [], null);
 		expect(doc.categorySlug).toBeNull();

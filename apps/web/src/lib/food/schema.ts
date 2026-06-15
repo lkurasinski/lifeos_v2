@@ -40,6 +40,12 @@ export interface FoodDocument {
 	categorySlug: string | null;
 	categoryNamePl: string | null;
 	servingSizeG: number | null;
+	// Unit→grams conversion inputs, carried so a search-picked component resolves grams with the
+	// SAME density/piece-weight the server caches on save (not the density-1.0 fallback). NULL ≠ 0
+	// and absent ⇒ OMITTED: a missing density legitimately resolves as water (1.0), matching the
+	// server, and a missing piece-weight keeps a COUNT unit honestly unresolved.
+	densityGPerMl?: number;
+	pieceWeightG?: number;
 	energyKcal?: number;
 	protein?: number;
 	fat?: number;
@@ -220,6 +226,12 @@ export type SavePayload = z.infer<typeof savePayloadSchema>;
 /** Edit payload — the save payload minus the immutable identity fields. */
 export const patchPayloadSchema = savePayloadSchema.omit({ source: true, sourceId: true });
 export type PatchPayload = z.infer<typeof patchPayloadSchema>;
+
+/** Batch-delete payload — a non-empty, de-dupable list of product ids (capped to bound work). */
+export const bulkDeletePayloadSchema = z.object({
+	ids: z.array(z.string().min(1)).min(1).max(200),
+});
+export type BulkDeletePayload = z.infer<typeof bulkDeletePayloadSchema>;
 
 // ─── Pure adapters (no I/O) ───────────────────────────────────────────────────
 

@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { untrack, type Snippet } from "svelte";
 	import { Button } from "$lib/components/ui/button";
+	import { IconButton } from "$lib/components/ui/icon-button";
+	import { Input } from "$lib/components/ui/input";
+	import { NumberField } from "$lib/components/ui/number-field";
 	import { Panel } from "$lib/components/ui/panel";
 	import { SegmentedToggle } from "$lib/components/ui/segmented";
 	import type { FoodCategoryMeta, NutrientRegistryGroup } from "$lib/food/schema";
@@ -58,6 +61,10 @@
 	let data = $state<RecipeDraft>(untrack(() => structuredClone(draft)));
 	let localError = $state<string | null>(null);
 
+	// `StepsEditor` owns the keyed step model and exposes its projection on demand (no per-keystroke
+	// write-back); we pull the current steps into the payload at submit.
+	let stepsEditor = $state<StepsEditor>();
+
 	// The ingredient picker's popover overflows its glass section; each glass `Panel` is its own
 	// stacking context (backdrop-filter), so a trapped `z-index` paints behind the next section.
 	// Lift the ingredients section above its siblings while a picker is open.
@@ -84,7 +91,10 @@
 		}
 		localError = null;
 		data.status = status;
-		onSubmit($state.snapshot(data) as RecipeDraft);
+		const payload = $state.snapshot(data) as RecipeDraft;
+		// Steps live in StepsEditor's keyed model; project them in at submit (see its `currentSteps`).
+		if (stepsEditor) payload.steps = stepsEditor.currentSteps();
+		onSubmit(payload);
 	}
 
 	const barError = $derived(errorMessage ?? localError);
@@ -139,8 +149,8 @@
 	<!-- ── LEFT: editors ── -->
 	<div class="col-main">
 		<Panel variant="thick" class="sect">
-			<input
-				class="namebig"
+			<Input
+				class="h-auto py-3 text-2xl font-semibold leading-[1.2] tracking-[-0.02em] placeholder:font-medium placeholder:text-muted-foreground"
 				type="text"
 				bind:value={data.name}
 				placeholder={t("recipe.form.namePlaceholder")}
@@ -176,42 +186,45 @@
 				<div class="nums">
 					<label class="numf">
 						<span class="flab">{t("recipe.form.servingsLabel")}</span>
-						<span class="numwrap"
-							><input
-								type="number"
-								inputmode="numeric"
-								min="1"
-								step="1"
-								bind:value={data.servings}
-								aria-label={t("recipe.form.servingsLabel")}
-							/></span
-						>
+						<NumberField
+							value={data.servings}
+							inputClass="px-3 py-[10px] text-left text-[0.9375rem]"
+							inputmode="numeric"
+							min="1"
+							step="1"
+							oninput={(e) => (data.servings = e.currentTarget.valueAsNumber)}
+							aria-label={t("recipe.form.servingsLabel")}
+						/>
 					</label>
 					<label class="numf">
 						<span class="flab">{t("recipe.form.prepLabel")}</span>
-						<span class="numwrap"
-							><input
-								type="number"
-								inputmode="numeric"
-								min="0"
-								step="1"
-								bind:value={data.prepTimeMin}
-								aria-label={t("recipe.form.prepLabel")}
-							/><span class="nu">{t("recipe.form.minUnit")}</span></span
-						>
+						<NumberField
+							value={data.prepTimeMin}
+							unit={t("recipe.form.minUnit")}
+							inputClass="py-[10px] pl-3 pr-[38px] text-left text-[0.9375rem]"
+							inputmode="numeric"
+							min="0"
+							step="1"
+							oninput={(e) =>
+								(data.prepTimeMin =
+									e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
+							aria-label={t("recipe.form.prepLabel")}
+						/>
 					</label>
 					<label class="numf">
 						<span class="flab">{t("recipe.form.cookLabel")}</span>
-						<span class="numwrap"
-							><input
-								type="number"
-								inputmode="numeric"
-								min="0"
-								step="1"
-								bind:value={data.cookTimeMin}
-								aria-label={t("recipe.form.cookLabel")}
-							/><span class="nu">{t("recipe.form.minUnit")}</span></span
-						>
+						<NumberField
+							value={data.cookTimeMin}
+							unit={t("recipe.form.minUnit")}
+							inputClass="py-[10px] pl-3 pr-[38px] text-left text-[0.9375rem]"
+							inputmode="numeric"
+							min="0"
+							step="1"
+							oninput={(e) =>
+								(data.cookTimeMin =
+									e.currentTarget.value === "" ? null : e.currentTarget.valueAsNumber)}
+							aria-label={t("recipe.form.cookLabel")}
+						/>
 					</label>
 				</div>
 
@@ -238,7 +251,7 @@
 
 		<Panel variant="thick" class="sect">
 			{@render sectHead(stepsIcon, t("recipe.form.stepsTitle"), null)}
-			<StepsEditor bind:steps={data.steps} />
+			<StepsEditor bind:this={stepsEditor} steps={data.steps} />
 		</Panel>
 
 		<Panel variant="thick" class="sect">
@@ -259,9 +272,11 @@
 							oninput={(e) => (data.tips[i] = e.currentTarget.value)}
 							aria-label={t("recipe.form.tipsTitle")}
 						/>
-						<button
+						<IconButton
 							type="button"
-							class="rm"
+							variant="ghost"
+							size="sm"
+							class="size-[30px]"
 							aria-label={t("recipe.form.removeRow")}
 							onclick={() => (data.tips = data.tips.filter((_, j) => j !== i))}
 						>
@@ -270,17 +285,23 @@
 									d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z"
 								/></svg
 							>
-						</button>
+						</IconButton>
 					</div>
 				{/each}
-				<button type="button" class="addbtn" onclick={() => (data.tips = [...data.tips, ""])}>
+				<Button
+					type="button"
+					variant="secondary"
+					size="sm"
+					class="mt-1 self-start"
+					onclick={() => (data.tips = [...data.tips, ""])}
+				>
 					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 						><path
 							d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
 						/></svg
 					>
 					{t("recipe.form.tipPlaceholder")}
-				</button>
+				</Button>
 			</div>
 		</Panel>
 	</div>
@@ -444,28 +465,6 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	.namebig {
-		width: 100%;
-		font-family: inherit;
-		font-size: 1.5rem;
-		font-weight: 600;
-		letter-spacing: -0.02em;
-		line-height: 1.2;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 12px 14px;
-		outline: none;
-	}
-	.namebig:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.namebig::placeholder {
-		color: var(--muted-foreground);
-		font-weight: 500;
-	}
 	.descbox {
 		width: 100%;
 		margin-top: 10px;
@@ -515,41 +514,6 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.numwrap {
-		position: relative;
-		display: flex;
-		align-items: center;
-	}
-	.numwrap input {
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.9375rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 10px 38px 10px 12px;
-		outline: none;
-		-moz-appearance: textfield;
-		appearance: textfield;
-	}
-	.numwrap input::-webkit-outer-spin-button,
-	.numwrap input::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-	.numwrap input:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.numwrap .nu {
-		position: absolute;
-		right: 11px;
-		font-size: 0.6875rem;
-		color: var(--muted-foreground);
-		pointer-events: none;
-	}
 
 	.tipslist {
 		display: flex;
@@ -587,51 +551,6 @@
 		box-shadow: var(--focus);
 	}
 	.tipe input::placeholder {
-		color: var(--muted-foreground);
-	}
-	.rm {
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-sm);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.rm:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.rm svg {
-		width: 16px;
-		height: 16px;
-	}
-	.addbtn {
-		display: inline-flex;
-		align-self: flex-start;
-		align-items: center;
-		gap: 7px;
-		border: 0;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--foreground);
-		background: var(--card);
-		box-shadow: var(--shadow-soft);
-		border-radius: var(--radius-sm);
-		padding: 9px 13px;
-		cursor: pointer;
-		margin-top: 4px;
-	}
-	.addbtn:hover {
-		background: var(--accent);
-	}
-	.addbtn svg {
-		width: 15px;
-		height: 15px;
 		color: var(--muted-foreground);
 	}
 
@@ -730,14 +649,16 @@
 		}
 	}
 
-	/* Collapse to a single column below the two-column breakpoint (Phase 7 refines mobile). */
+	/* Collapse to a single column below the two-column breakpoint. The side panel (live
+	   nutrition + publication) drops to natural document order — below the content it
+	   summarises and just above the sticky save bar — instead of sitting empty above the
+	   name field, which is the correct mobile authoring flow (name → ingredients → … → publish). */
 	@media (max-width: 960px) {
 		.flow {
 			grid-template-columns: minmax(0, 1fr);
 		}
 		.col-side {
 			position: static;
-			order: -1;
 		}
 	}
 	@media (max-width: 768px) {

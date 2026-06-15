@@ -2,6 +2,9 @@
 	import type { FoodDocument } from "$lib/food/schema";
 	import type { DraftComponent, RecipeDocument, UnitOption } from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
+	import { IconButton } from "$lib/components/ui/icon-button";
+	import { NumberField } from "$lib/components/ui/number-field";
+	import { SelectField } from "$lib/components/ui/select-field";
 	import ProductPicker from "./ProductPicker.svelte";
 	import { formatAmount } from "./meta";
 	import { rowInfo } from "./component-row";
@@ -110,37 +113,39 @@
 		onOpenChange={(o) => onPickerOpenChange(o)}
 	/>
 
-	<span class="amt">
-		<input
-			type="text"
-			inputmode="decimal"
-			value={amountValue}
-			oninput={(e) => onAmountInput(e.currentTarget.value)}
-			placeholder="—"
-			aria-label={t("recipe.form.amountLabel")}
-		/>
-	</span>
-	<span class="unit">
-		<select
-			value={component.unitId}
-			onchange={(e) => onUnitChange(e.currentTarget.value)}
-			aria-label={t("recipe.form.unitLabel")}
-		>
-			{#each units as u (u.id)}
-				<option value={u.id}>{u.namePl}</option>
-			{/each}
-		</select>
-		<svg class="uchev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-			><path d="M10 13.5l-4.5-5h9z" /></svg
-		>
-	</span>
-	<button type="button" class="rm" aria-label={t("recipe.form.removeRow")} onclick={onRemove}>
+	<NumberField
+		type="text"
+		inputmode="decimal"
+		inputClass="px-2.5 py-[9px] text-[0.875rem]"
+		value={amountValue}
+		oninput={(e) => onAmountInput(e.currentTarget.value)}
+		placeholder="—"
+		aria-label={t("recipe.form.amountLabel")}
+	/>
+	<SelectField
+		selectClass="py-[9px] pl-2.5 pr-[26px] text-[0.875rem] tabular-nums"
+		value={component.unitId}
+		onchange={(e) => onUnitChange(e.currentTarget.value)}
+		aria-label={t("recipe.form.unitLabel")}
+	>
+		{#each units as u (u.id)}
+			<option value={u.id}>{u.namePl}</option>
+		{/each}
+	</SelectField>
+	<IconButton
+		type="button"
+		variant="ghost"
+		size="sm"
+		class="size-[30px]"
+		aria-label={t("recipe.form.removeRow")}
+		onclick={onRemove}
+	>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 			><path
 				d="M5.7 5.7a1 1 0 0 1 1.4 0L10 8.6l2.9-2.9a1 1 0 1 1 1.4 1.4L11.4 10l2.9 2.9a1 1 0 0 1-1.4 1.4L10 11.4l-2.9 2.9a1 1 0 0 1-1.4-1.4L8.6 10 5.7 7.1a1 1 0 0 1 0-1.4Z"
 			/></svg
 		>
-	</button>
+	</IconButton>
 
 	{#if info && ((info.grams != null && !info.direct) || info.kcal != null || info.partial)}
 		<div class="ing-sub">
@@ -193,73 +198,6 @@
 	.grip svg {
 		width: 15px;
 		height: 15px;
-	}
-	.amt input,
-	.unit select {
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.875rem;
-		font-variant-numeric: tabular-nums;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 9px 10px;
-		outline: none;
-		-moz-appearance: textfield;
-		appearance: textfield;
-	}
-	.amt input::-webkit-outer-spin-button,
-	.amt input::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-	.amt input {
-		text-align: right;
-	}
-	.amt input:focus,
-	.unit select:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.unit {
-		position: relative;
-	}
-	.unit select {
-		appearance: none;
-		-webkit-appearance: none;
-		padding-right: 26px;
-		cursor: pointer;
-	}
-	.unit .uchev {
-		position: absolute;
-		right: 9px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 13px;
-		height: 13px;
-		color: var(--muted-foreground);
-		pointer-events: none;
-	}
-	.rm {
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		width: 30px;
-		height: 30px;
-		border-radius: var(--radius-sm);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.rm:hover {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.rm svg {
-		width: 16px;
-		height: 16px;
 	}
 	.ing-sub {
 		grid-column: 2 / 4;

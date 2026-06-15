@@ -4,8 +4,9 @@
 	import { t } from "$lib/i18n";
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
-	import { Label } from "$lib/components/ui/label";
+	import { Field } from "$lib/components/ui/field";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
+	import { AuthHeader, AuthFooterLink } from "$lib/components/auth";
 
 	let email = $state("");
 	let sent = $state(false);
@@ -39,10 +40,7 @@
 </svelte:head>
 
 <div>
-	<header>
-		<p class="auth-sys-label">{t("auth.verifyEmailTitle")}</p>
-		<h1 class="auth-page-title">{t("auth.verifyEmailTitle")}</h1>
-	</header>
+	<AuthHeader label={t("auth.verifyEmailTitle")} title={t("auth.verifyEmailTitle")} />
 
 	<form onsubmit={resendEmail} class="flex flex-col gap-5">
 		{#if error}
@@ -61,8 +59,7 @@
 			{t("auth.verifyEmailDescription")}
 		</p>
 
-		<div class="flex flex-col gap-1.5">
-			<Label for="email">{t("auth.email")}</Label>
+		<Field label={t("auth.email")} for="email">
 			<div class="auth-field">
 				<Input
 					id="email"
@@ -73,17 +70,12 @@
 					placeholder="ty@przyklad.pl"
 				/>
 			</div>
-		</div>
+		</Field>
 
 		<Button size="lg" type="submit" disabled={loading} class="mt-2 w-full">
 			{loading ? t("common.loading") : t("auth.resendVerification")}
 		</Button>
 
-		<p class="auth-sys-label text-center">
-			{t("auth.hasAccount")}
-			<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
-				{t("auth.login")}
-			</a>
-		</p>
+		<AuthFooterLink text={t("auth.hasAccount")} linkText={t("auth.login")} href="/login" />
 	</form>
 </div>

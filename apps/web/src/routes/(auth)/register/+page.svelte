@@ -6,8 +6,9 @@
 	import { z } from "zod";
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
-	import { Label } from "$lib/components/ui/label";
+	import { Field } from "$lib/components/ui/field";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
+	import { AuthHeader, AuthFooterLink } from "$lib/components/auth";
 
 	const registerSchema = z
 		.object({
@@ -68,10 +69,7 @@
 </svelte:head>
 
 <div>
-	<header class="auth-holo" style="--hd: 0ms">
-		<p class="auth-sys-label">{t("auth.register")}</p>
-		<h1 class="auth-page-title">{t("auth.registerTitle")}</h1>
-	</header>
+	<AuthHeader holo style="--hd: 0ms" label={t("auth.register")} title={t("auth.registerTitle")} />
 
 	<form onsubmit={handleSubmit} class="flex flex-col gap-5">
 		{#if error}
@@ -82,8 +80,7 @@
 			</div>
 		{/if}
 
-		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 160ms">
-			<Label for="name">{t("auth.name")}</Label>
+		<Field class="auth-holo" style="--hd: 160ms" label={t("auth.name")} for="name">
 			<div class="auth-field">
 				<Input
 					id="name"
@@ -94,10 +91,9 @@
 					placeholder="Jan"
 				/>
 			</div>
-		</div>
+		</Field>
 
-		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 250ms">
-			<Label for="email">{t("auth.email")}</Label>
+		<Field class="auth-holo" style="--hd: 250ms" label={t("auth.email")} for="email">
 			<div class="auth-field">
 				<Input
 					id="email"
@@ -108,10 +104,9 @@
 					placeholder="ty@przyklad.pl"
 				/>
 			</div>
-		</div>
+		</Field>
 
-		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 340ms">
-			<Label for="password">{t("auth.password")}</Label>
+		<Field class="auth-holo" style="--hd: 340ms" label={t("auth.password")} for="password">
 			<div class="auth-field">
 				<Input
 					id="password"
@@ -121,10 +116,14 @@
 					autocomplete="new-password"
 				/>
 			</div>
-		</div>
+		</Field>
 
-		<div class="auth-holo flex flex-col gap-1.5" style="--hd: 430ms">
-			<Label for="confirm-password">{t("auth.confirmPassword")}</Label>
+		<Field
+			class="auth-holo"
+			style="--hd: 430ms"
+			label={t("auth.confirmPassword")}
+			for="confirm-password"
+		>
 			<div class="auth-field">
 				<Input
 					id="confirm-password"
@@ -134,7 +133,7 @@
 					autocomplete="new-password"
 				/>
 			</div>
-		</div>
+		</Field>
 
 		<div class="auth-holo" style="--hd: 520ms">
 			<Button size="lg" type="submit" disabled={loading} class="mt-1 w-full">
@@ -142,11 +141,12 @@
 			</Button>
 		</div>
 
-		<p class="auth-holo auth-sys-label text-center" style="--hd: 600ms">
-			{t("auth.hasAccount")}
-			<a href={resolve("/login")} class="text-foreground transition-colors hover:text-primary">
-				{t("auth.login")}
-			</a>
-		</p>
+		<AuthFooterLink
+			holo
+			style="--hd: 600ms"
+			text={t("auth.hasAccount")}
+			linkText={t("auth.login")}
+			href="/login"
+		/>
 	</form>
 </div>

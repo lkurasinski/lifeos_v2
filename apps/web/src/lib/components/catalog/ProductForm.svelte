@@ -2,7 +2,10 @@
 	import { untrack } from "svelte";
 	import { Badge } from "$lib/components/ui/badge";
 	import { Button } from "$lib/components/ui/button";
+	import { Field } from "$lib/components/ui/field";
 	import { Gauge } from "$lib/components/ui/gauge";
+	import { Input } from "$lib/components/ui/input";
+	import { NumberField } from "$lib/components/ui/number-field";
 	import { Panel } from "$lib/components/ui/panel";
 	import type { DraftProduct, NutrientRegistryGroup } from "$lib/food/schema";
 	import { t } from "$lib/i18n";
@@ -182,8 +185,9 @@
 
 		<div class="flex flex-col gap-1.5">
 			<div class="relative">
-				<input
-					class="w-full rounded-sm border border-transparent bg-transparent py-[5px] pl-[9px] pr-8 text-2xl font-semibold leading-[1.15] tracking-[-0.02em] text-foreground outline-none hover:border-[color:var(--border)] focus:border-transparent focus:bg-card focus:shadow-[var(--focus)] max-md:text-[1.375rem]"
+				<Input
+					variant="seamless"
+					class="py-[5px] pl-[9px] pr-8 text-2xl font-semibold leading-[1.15] tracking-[-0.02em] max-md:text-[1.375rem]"
 					type="text"
 					bind:value={namePl}
 					aria-label={t("add.namePlLabel")}
@@ -195,8 +199,9 @@
 				>
 			</div>
 			<div class="relative">
-				<input
-					class="w-full rounded-sm border border-transparent bg-transparent py-[5px] pl-[9px] pr-8 text-[0.875rem] text-muted-foreground outline-none hover:border-[color:var(--border)] focus:border-transparent focus:bg-card focus:shadow-[var(--focus)]"
+				<Input
+					variant="seamless"
+					class="py-[5px] pl-[9px] pr-8 text-[0.875rem] text-muted-foreground"
 					type="text"
 					bind:value={nameEn}
 					aria-label={t("add.nameEnLabel")}
@@ -227,8 +232,7 @@
 		</div>
 
 		<div class="mt-4 flex flex-col gap-2.5">
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.brandLabel")}</span>
+			<Field orientation="horizontal" label={t("add.brandLabel")}>
 				<input
 					class="min-w-0 max-w-[260px] flex-1 rounded-sm border bg-card px-[9px] py-[7px] text-right text-[0.8125rem] text-foreground outline-none placeholder:text-muted-foreground focus:border-transparent focus:shadow-[var(--focus)]"
 					type="text"
@@ -236,60 +240,40 @@
 					placeholder={t("add.brandPlaceholder")}
 					aria-label={t("add.brandLabel")}
 				/>
-			</label>
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.servingSize")}</span>
-				<span class="relative flex items-center">
-					<input
-						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[26px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
-						type="number"
-						inputmode="decimal"
-						min="0"
-						bind:value={servingSizeG}
-						aria-label={t("add.servingSize")}
-					/>
-					<span
-						class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground"
-						>g</span
-					>
-				</span>
-			</label>
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.density")}</span>
-				<span class="relative flex items-center">
-					<input
-						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[36px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
-						type="number"
-						inputmode="decimal"
-						min="0"
-						step="any"
-						bind:value={densityGPerMl}
-						aria-label={t("add.density")}
-					/>
-					<span
-						class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground"
-						>g/ml</span
-					>
-				</span>
-			</label>
-			<label class="flex items-center justify-between gap-3">
-				<span class="text-[0.8125rem] text-muted-foreground">{t("add.pieceWeight")}</span>
-				<span class="relative flex items-center">
-					<input
-						class="numin w-24 rounded-sm border bg-card py-[7px] pl-[9px] pr-[26px] text-right text-[0.8125rem] tabular-nums text-foreground outline-none focus:border-transparent focus:shadow-[var(--focus)]"
-						type="number"
-						inputmode="decimal"
-						min="0"
-						step="any"
-						bind:value={pieceWeightG}
-						aria-label={t("add.pieceWeight")}
-					/>
-					<span
-						class="pointer-events-none absolute right-[9px] text-[0.6875rem] text-muted-foreground"
-						>g</span
-					>
-				</span>
-			</label>
+			</Field>
+			<Field orientation="horizontal" label={t("add.servingSize")}>
+				<NumberField
+					bind:value={servingSizeG}
+					class="w-24"
+					unit="g"
+					inputmode="decimal"
+					min="0"
+					aria-label={t("add.servingSize")}
+				/>
+			</Field>
+			<Field orientation="horizontal" label={t("add.density")}>
+				<NumberField
+					bind:value={densityGPerMl}
+					class="w-24"
+					unit="g/ml"
+					inputClass="pr-[36px]"
+					inputmode="decimal"
+					min="0"
+					step="any"
+					aria-label={t("add.density")}
+				/>
+			</Field>
+			<Field orientation="horizontal" label={t("add.pieceWeight")}>
+				<NumberField
+					bind:value={pieceWeightG}
+					class="w-24"
+					unit="g"
+					inputmode="decimal"
+					min="0"
+					step="any"
+					aria-label={t("add.pieceWeight")}
+				/>
+			</Field>
 			<p class="text-[0.6875rem] leading-[1.4] text-muted-foreground">{t("add.conversionHint")}</p>
 		</div>
 
@@ -336,13 +320,9 @@
 
 	<!-- Sticky glass action bar — the weightier action (Save) sits on the right. -->
 	<div class="pf-bar">
-		<button
-			type="button"
-			class="rounded-sm border-0 bg-transparent p-2.5 text-[0.875rem] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-			onclick={() => onCancel?.()}
-		>
+		<Button type="button" variant="ghost" onclick={() => onCancel?.()}>
 			{cancelLabel ?? t("common.cancel")}
-		</button>
+		</Button>
 		<span
 			class={[
 				"flex-1 text-center text-[0.6875rem] leading-[1.4]",
@@ -405,17 +385,6 @@
 		.pulse::after {
 			animation: none;
 		}
-	}
-
-	/* Number inputs: suppress the native spinners (no utility for the webkit pseudo-elements). */
-	.numin {
-		-moz-appearance: textfield;
-		appearance: textfield;
-	}
-	.numin::-webkit-outer-spin-button,
-	.numin::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
 	}
 
 	/* Sticky glass action bar — frosted material with a solid fallback. */

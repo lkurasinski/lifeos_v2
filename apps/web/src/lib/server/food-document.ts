@@ -37,6 +37,8 @@ interface ProductInput {
 	namePl: string | null;
 	brand?: string | null;
 	servingSizeG: number | null;
+	densityGPerMl?: number | null;
+	pieceWeightG?: number | null;
 	userModified: boolean;
 	imageUrl?: string | null;
 	imageThumbUrl?: string | null;
@@ -88,6 +90,11 @@ export function buildFoodDocument(
 		const macro = MACRO_FIELDS[fn.nutrientId];
 		if (macro) doc[macro] = fn.amountPer100g;
 	}
+
+	// Conversion inputs — included only when present (NULL ≠ 0: a stored 0 is kept; null/absent
+	// is omitted so the client preview's `?? 1` density fallback matches the server's resolve).
+	if (product.densityGPerMl != null) doc.densityGPerMl = product.densityGPerMl;
+	if (product.pieceWeightG != null) doc.pieceWeightG = product.pieceWeightG;
 
 	// Image URLs are display metadata — included only when present (absent ⇒ omitted).
 	if (product.imageUrl) doc.imageUrl = product.imageUrl;

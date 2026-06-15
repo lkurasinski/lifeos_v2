@@ -5,6 +5,7 @@
  * carry the NULL ≠ 0 integrity rule end-to-end (an empty field is "no data", distinct from a
  * typed 0), so they are tested directly rather than only through the UI.
  */
+import { parseDecimalPl } from "$lib/decimal";
 import type { DraftNutrientValue, DraftProduct, NutrientRegistryGroup } from "$lib/food/schema";
 
 /**
@@ -29,15 +30,11 @@ export type ProductFormFields = {
 /**
  * Parse a raw field into a canonical amount. A number input binds as a number (or null when
  * empty); the seed and text fallback bind as a string. Empty/blank/null → null (NULL ≠ 0); a
- * typed `0` stays `0`. Accepts comma decimals for the string path.
+ * typed `0` stays `0`. Accepts comma decimals for the string path. The product domain keeps no
+ * sign guard (the shared {@link parseDecimalPl} kernel is used as-is).
  */
 export function parseAmount(raw: AmountField | undefined): number | null {
-	if (raw === null || raw === undefined) return null;
-	if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
-	const trimmed = raw.trim();
-	if (trimmed === "") return null;
-	const n = Number(trimmed.replace(",", "."));
-	return Number.isFinite(n) ? n : null;
+	return parseDecimalPl(raw);
 }
 
 /**

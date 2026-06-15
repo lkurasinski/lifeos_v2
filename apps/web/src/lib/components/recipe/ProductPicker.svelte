@@ -3,6 +3,8 @@
 	import CategoryIcon from "$lib/components/catalog/CategoryIcon.svelte";
 	import type { FoodDocument } from "$lib/food/schema";
 	import type { RecipeDocument } from "$lib/recipe/schema";
+	import { PickerPopover } from "$lib/components/ui/picker-popover";
+	import { SearchInput } from "$lib/components/ui/search-input";
 	import { t } from "$lib/i18n";
 	import PickerResult from "./PickerResult.svelte";
 	import { productMeta, recipeMeta } from "./picker-meta";
@@ -46,12 +48,17 @@
 		onOpenChange?.(open);
 	});
 	let tab = $state<"products" | "subRecipes">(untrack(() => initialTab));
+
+	const pickerTabs = [
+		{ value: "products", label: t("recipe.form.tabProducts") },
+		{ value: "subRecipes", label: t("recipe.form.tabSubRecipes") },
+	];
 	let query = $state("");
 	let products = $state<FoodDocument[]>([]);
 	let recipes = $state<RecipeDocument[]>([]);
 	let loading = $state(false);
 	let rootEl: HTMLElement | undefined = $state();
-	let searchEl: HTMLInputElement | undefined = $state();
+	let searchEl = $state<HTMLInputElement | null>(null);
 
 	function toggle() {
 		open = !open;
@@ -174,36 +181,38 @@
 		>
 	</button>
 
-	{#if open}
-		<div class="picker-pop">
-			<div class="pp-tabs">
-				<button type="button" class:on={tab === "products"} onclick={() => (tab = "products")}
-					>{t("recipe.form.tabProducts")}</button
-				>
-				<button type="button" class:on={tab === "subRecipes"} onclick={() => (tab = "subRecipes")}
-					>{t("recipe.form.tabSubRecipes")}</button
-				>
-			</div>
-			<div class="pp-search">
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-					><path
-						fill-rule="evenodd"
-						d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
-						clip-rule="evenodd"
-					/></svg
-				>
-				<input
-					bind:this={searchEl}
-					bind:value={query}
-					type="text"
-					placeholder={tab === "products"
-						? t("recipe.form.pickerSearchProduct")
-						: t("recipe.form.pickerSearchSubRecipe")}
-					aria-label={tab === "products"
-						? t("recipe.form.pickerSearchProduct")
-						: t("recipe.form.pickerSearchSubRecipe")}
-				/>
-			</div>
+	{#snippet ppSearchIcon()}
+		<svg
+			class="pointer-events-none absolute left-[11px] top-1/2 size-[15px] -translate-y-1/2 text-muted-foreground"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+			aria-hidden="true"
+			><path
+				fill-rule="evenodd"
+				d="M9 3.5a5.5 5.5 0 1 0 3.4 9.82l3.64 3.64a.75.75 0 1 0 1.06-1.06l-3.64-3.64A5.5 5.5 0 0 0 9 3.5ZM5 9a4 4 0 1 1 8 0 4 4 0 0 1-8 0Z"
+				clip-rule="evenodd"
+			/></svg
+		>
+	{/snippet}
+
+	<PickerPopover
+		{open}
+		tabs={pickerTabs}
+		activeTab={tab}
+		onTabChange={(v) => (tab = v as "products" | "subRecipes")}
+	>
+		<SearchInput
+				bind:inputEl={searchEl}
+				bind:value={query}
+				inputClass="h-auto py-[9px] pl-[33px] pr-3 text-[0.875rem]"
+				leading={ppSearchIcon}
+				placeholder={tab === "products"
+					? t("recipe.form.pickerSearchProduct")
+					: t("recipe.form.pickerSearchSubRecipe")}
+				aria-label={tab === "products"
+					? t("recipe.form.pickerSearchProduct")
+					: t("recipe.form.pickerSearchSubRecipe")}
+			/>
 
 			{#if tab === "products"}
 				<div class="pp-lab">{t("recipe.form.matchingProducts")}</div>
@@ -255,8 +264,7 @@
 					{/each}
 				{/if}
 			{/if}
-		</div>
-	{/if}
+	</PickerPopover>
 </span>
 
 <style>
@@ -330,70 +338,6 @@
 		flex-shrink: 0;
 	}
 
-	.picker-pop {
-		position: absolute;
-		left: 0;
-		right: 0;
-		top: calc(100% + 7px);
-		z-index: 40;
-		border-radius: var(--radius);
-		padding: 9px;
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		background: var(--card);
-		box-shadow: var(--shadow-lift);
-	}
-	.pp-tabs {
-		display: flex;
-		background: var(--accent);
-		border-radius: var(--radius-pill);
-		padding: 3px;
-	}
-	.pp-tabs button {
-		flex: 1;
-		border: 0;
-		background: transparent;
-		font-family: inherit;
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: var(--muted-foreground);
-		padding: 5px 12px;
-		border-radius: var(--radius-pill);
-		cursor: pointer;
-	}
-	.pp-tabs button.on {
-		background: var(--card);
-		color: var(--foreground);
-		box-shadow: var(--shadow-soft);
-	}
-	.pp-search {
-		position: relative;
-	}
-	.pp-search svg {
-		position: absolute;
-		left: 11px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 15px;
-		height: 15px;
-		color: var(--muted-foreground);
-	}
-	.pp-search input {
-		width: 100%;
-		font-family: inherit;
-		font-size: 0.875rem;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 9px 12px 9px 33px;
-		outline: none;
-	}
-	.pp-search input:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
 	.pp-lab {
 		font-size: 0.5625rem;
 		font-weight: 500;

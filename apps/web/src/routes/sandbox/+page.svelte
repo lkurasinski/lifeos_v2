@@ -2,7 +2,16 @@
 	// Dev-only kit sandbox: every Phase-2 generic component in light + dark.
 	// Not a product screen — copy here isn't routed through i18n.
 	import { Button } from "$lib/components/ui/button";
+	import { Field } from "$lib/components/ui/field";
 	import { Input } from "$lib/components/ui/input";
+	import { NumberField } from "$lib/components/ui/number-field";
+	import { SelectField } from "$lib/components/ui/select-field";
+	import { SearchInput } from "$lib/components/ui/search-input";
+	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
+	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
+	import { MetadataItem } from "$lib/components/ui/metadata-item";
+	import { ExpandableRow } from "$lib/components/ui/expandable-row";
+	import { TintedBadge } from "$lib/components/ui/tinted-badge";
 	import { Label } from "$lib/components/ui/label";
 	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
@@ -18,6 +27,9 @@
 
 	let dark = $state(false);
 	let view = $state("day");
+	let search = $state("");
+	let sectionOpen = $state(true);
+	let rowOpen = $state(false);
 	const macros: { macro: Macro; label: string; pct: number; val: string }[] = [
 		{ macro: "kcal", label: "Energia", pct: 72, val: "2 140" },
 		{ macro: "pro", label: "Białko", pct: 48, val: "112" },
@@ -25,6 +37,11 @@
 		{ macro: "fat", label: "Tłuszcze", pct: 86, val: "78" },
 	];
 </script>
+
+{#snippet sectionHeader()}
+	<span class="text-[0.8125rem] font-semibold text-foreground">Makroskładniki</span>
+	<span class="ml-auto text-[0.8125rem] tabular-nums text-muted-foreground">3/8</span>
+{/snippet}
 
 <div class:dark class="relative min-h-screen bg-background text-foreground">
 	<Env class="absolute" />
@@ -89,6 +106,29 @@
 					<Label for="e">E-mail</Label>
 					<Input id="e" type="email" placeholder="ty@przyklad.pl" />
 				</div>
+				<Input variant="seamless" class="py-1.5 text-xl font-semibold" placeholder="Tytuł (seamless)" />
+				<div class="flex items-center gap-2">
+					<NumberField class="w-24" unit="g" placeholder="0" />
+					<NumberField class="w-28" unit="g/ml" inputClass="pr-[36px]" placeholder="0" />
+				</div>
+				<Field label="Nazwa" for="fld"><Input id="fld" placeholder="Wpisz nazwę" /></Field>
+				<Field orientation="horizontal" label="Porcja">
+					<NumberField class="w-24" unit="g" placeholder="0" />
+				</Field>
+				<SelectField aria-label="Kuchnia">
+					<option>Polska</option>
+					<option>Włoska</option>
+					<option>Tajska</option>
+				</SelectField>
+				<SearchInput bind:value={search} placeholder="Szukaj…" onclear={() => (search = "")} clearLabel="Wyczyść" />
+				<CollapsibleSection
+					open={sectionOpen}
+					onToggle={() => (sectionOpen = !sectionOpen)}
+					buttonClass="border-b border-[color:var(--hairline)] px-0.5 py-[9px]"
+					header={sectionHeader}
+				>
+					<p class="py-2 text-[0.8125rem] text-muted-foreground">Zawartość sekcji…</p>
+				</CollapsibleSection>
 				<div class="flex flex-wrap gap-2">
 					<Button>Zapisz</Button>
 					<Button variant="secondary">Anuluj</Button>
@@ -98,7 +138,28 @@
 					<IconButton aria-label="Dodaj">
 						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
 					</IconButton>
+					<IconButton variant="subtle" aria-label="Dodaj">
+						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
+					</IconButton>
+					<IconButton variant="ghost" aria-label="Zamknij">
+						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" /></svg>
+					</IconButton>
+					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="positive" />Live</span>
+					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="muted" />Szkic</span>
+					<TintedBadge tone="amber"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg></TintedBadge>
+					<TintedBadge tone="positive"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg></TintedBadge>
 				</div>
+				<div class="flex flex-wrap gap-x-[18px] gap-y-2">
+					<MetadataItem label="czas">
+						{#snippet icon()}<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="7" /></svg>{/snippet}
+						45 min
+					</MetadataItem>
+					<MetadataItem label="porcje">4</MetadataItem>
+				</div>
+				<ExpandableRow open={rowOpen} onToggle={() => (rowOpen = !rowOpen)} rowClass="px-0.5 py-2">
+					{#snippet header()}<span class="flex-1 text-[0.875rem]">Sos pomidorowy</span><span class="text-[0.875rem] tabular-nums">200 g</span>{/snippet}
+					<div class="px-6 py-1 text-[0.8125rem] text-muted-foreground">Pomidory · czosnek · oliwa</div>
+				</ExpandableRow>
 			</CardContent>
 		</Card>
 

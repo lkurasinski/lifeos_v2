@@ -5,6 +5,7 @@
  */
 import { resolveGrams } from "$lib/recipe/units";
 import { MACRO_TAGS } from "$lib/recipe/nutrition";
+import { parseDecimalPl } from "$lib/decimal";
 import type { DraftComponent, UnitOption } from "$lib/recipe/schema";
 
 /** Metric "direct" units: the amount + unit already reads precisely, so no gram clarifier. */
@@ -51,13 +52,12 @@ export function rowInfo(c: DraftComponent, unit: UnitOption | undefined): RowInf
 }
 
 /**
- * Parse a pl-PL amount string to a non-negative number, or null. Accepts comma OR dot decimals
- * (`"1,5"` → 1.5) so a mid-typing comma reaches the live preview; the server re-validates via
- * `amountSchema` regardless. Mirrors ProductForm's parser.
+ * Parse a pl-PL amount string to a NON-NEGATIVE number, or null — the recipe-domain guard on top
+ * of the shared {@link parseDecimalPl} kernel (a negative ingredient amount is meaningless; a
+ * typed 0 is tolerated by the preview and dropped by `recipeDraftToSavePayload`'s `> 0` filter).
+ * The server re-validates via `amountSchema` (`.positive()`) regardless.
  */
 export function parseAmount(raw: string): number | null {
-	const trimmed = raw.trim();
-	if (trimmed === "") return null;
-	const n = Number(trimmed.replace(",", "."));
-	return Number.isFinite(n) && n >= 0 ? n : null;
+	const n = parseDecimalPl(raw);
+	return n !== null && n >= 0 ? n : null;
 }

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { RecipeTaxonomies, TaxonomyRef } from "$lib/recipe/schema";
+	import { Chip } from "$lib/components/ui/chip";
+	import { SelectField } from "$lib/components/ui/select-field";
 	import { t } from "$lib/i18n";
 	import { compareMealTypes } from "./meta";
 
@@ -97,48 +99,44 @@
 	}
 </script>
 
+{#snippet check()}
+	<svg class="size-[13px]" viewBox="0 0 20 20" aria-hidden="true"
+		><path
+			d="M4.5 10.5l3.2 3.2 7-7"
+			fill="none"
+			stroke="currentColor"
+			stroke-width="2.2"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/></svg
+	>
+{/snippet}
+
+{#snippet plus()}
+	<svg class="size-[13px]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+		><path
+			d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
+		/></svg
+	>
+{/snippet}
+
 {#snippet taxChips(label: string, kind: TaxKind)}
 	<div class="metafield">
 		<span class="flab">{label}</span>
 		<div class="mchips">
 			{#each taxonomies[kind] as row (row.id)}
-				<button
-					type="button"
-					class="mchip"
-					class:on={isTaxSelected(kind, row.id)}
+				<Chip
+					active={isTaxSelected(kind, row.id)}
+					leading={isTaxSelected(kind, row.id) ? check : undefined}
 					onclick={() => toggleTax(kind, row.id)}
 				>
-					{#if isTaxSelected(kind, row.id)}<svg
-							class="ck"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-							aria-hidden="true"
-							><path
-								d="M4.5 10.5l3.2 3.2 7-7"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2.2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/></svg
-						>{/if}
 					{row.namePl}
-				</button>
+				</Chip>
 			{/each}
 			{#each customNames(kind) as name (name)}
-				<button type="button" class="mchip on" onclick={() => removeCustom(kind, name)}>
-					<svg class="ck" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-						><path
-							d="M4.5 10.5l3.2 3.2 7-7"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2.2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/></svg
-					>
+				<Chip active leading={check} onclick={() => removeCustom(kind, name)}>
 					{name}
-				</button>
+				</Chip>
 			{/each}
 			{#if addingKind === kind}
 				<input
@@ -158,14 +156,9 @@
 					onblur={commitAdd}
 				/>
 			{:else}
-				<button type="button" class="mchip mchip--add" onclick={() => openAdd(kind)}>
-					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-						><path
-							d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
-						/></svg
-					>
+				<Chip variant="add" leading={plus} onclick={() => openAdd(kind)}>
 					{t("recipe.form.addChip")}
-				</button>
+				</Chip>
 			{/if}
 		</div>
 	</div>
@@ -175,28 +168,13 @@
 	<span class="flab">{t("recipe.form.mealLabel")}</span>
 	<div class="mchips">
 		{#each mealTypesSorted as mt (mt.id)}
-			<button
-				type="button"
-				class="mchip"
-				class:on={mealTypeIds.includes(mt.id)}
+			<Chip
+				active={mealTypeIds.includes(mt.id)}
+				leading={mealTypeIds.includes(mt.id) ? check : undefined}
 				onclick={() => toggleMeal(mt.id)}
 			>
-				{#if mealTypeIds.includes(mt.id)}<svg
-						class="ck"
-						viewBox="0 0 20 20"
-						fill="currentColor"
-						aria-hidden="true"
-						><path
-							d="M4.5 10.5l3.2 3.2 7-7"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2.2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/></svg
-					>{/if}
 				{mt.namePl}
-			</button>
+			</Chip>
 		{/each}
 	</div>
 </div>
@@ -207,21 +185,16 @@
 
 <div class="metafield">
 	<span class="flab">{t("recipe.form.cuisineLabel")}</span>
-	<span class="selwrap">
-		<select
-			value={cuisineId ?? ""}
-			onchange={onCuisineChange}
-			aria-label={t("recipe.form.cuisineLabel")}
-		>
-			<option value="">{t("recipe.form.cuisineNone")}</option>
-			{#each taxonomies.cuisines as c (c.id)}
-				<option value={c.id}>{c.namePl}</option>
-			{/each}
-		</select>
-		<svg class="schev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-			><path d="M10 13.5l-4.5-5h9z" /></svg
-		>
-	</span>
+	<SelectField
+		value={cuisineId ?? ""}
+		onchange={onCuisineChange}
+		aria-label={t("recipe.form.cuisineLabel")}
+	>
+		<option value="">{t("recipe.form.cuisineNone")}</option>
+		{#each taxonomies.cuisines as c (c.id)}
+			<option value={c.id}>{c.namePl}</option>
+		{/each}
+	</SelectField>
 </div>
 
 <style>
@@ -244,48 +217,6 @@
 		flex-wrap: wrap;
 		gap: 6px;
 	}
-	.mchip {
-		font-size: 0.75rem;
-		font-weight: 500;
-		padding: 6px 12px;
-		border-radius: var(--radius-pill);
-		border: 0;
-		cursor: pointer;
-		background: var(--secondary);
-		color: var(--muted-foreground);
-		font-family: inherit;
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-	}
-	.mchip:hover:not(.on) {
-		background: var(--accent);
-		color: var(--foreground);
-	}
-	.mchip.on {
-		background: var(--primary);
-		color: var(--primary-foreground);
-	}
-	.mchip.on .ck {
-		width: 13px;
-		height: 13px;
-		margin-left: -2px;
-	}
-	.mchip--add {
-		background: transparent;
-		box-shadow: inset 0 0 0 1px var(--border);
-		color: var(--muted-foreground);
-	}
-	.mchip--add:hover {
-		background: transparent;
-		box-shadow: inset 0 0 0 1px var(--muted-foreground);
-		color: var(--foreground);
-	}
-	.mchip--add svg {
-		width: 13px;
-		height: 13px;
-		margin-left: -1px;
-	}
 	.mchip-input {
 		font-family: inherit;
 		font-size: 0.75rem;
@@ -300,37 +231,5 @@
 	}
 	.mchip-input::placeholder {
 		color: var(--muted-foreground);
-	}
-
-	.selwrap {
-		position: relative;
-	}
-	.selwrap select {
-		width: 100%;
-		appearance: none;
-		-webkit-appearance: none;
-		font-family: inherit;
-		font-size: 0.9375rem;
-		color: var(--foreground);
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-sm);
-		padding: 10px 34px 10px 12px;
-		outline: none;
-		cursor: pointer;
-	}
-	.selwrap select:focus {
-		border-color: transparent;
-		box-shadow: var(--focus);
-	}
-	.selwrap .schev {
-		position: absolute;
-		right: 11px;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 14px;
-		height: 14px;
-		color: var(--muted-foreground);
-		pointer-events: none;
 	}
 </style>

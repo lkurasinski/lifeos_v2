@@ -319,6 +319,30 @@ export async function deleteFoodProduct(id: string): Promise<void> {
 	await syncAfterCommit(() => removeFoodDocument(id), id, FOOD_SYNC_RECOVERY);
 }
 
+/** Per-id outcome of a batch delete: `notFound` is folded into "removed" by callers (already gone). */
+export type BulkDeleteResult = { deleted: string[]; inUse: string[]; notFound: string[] };
+
+/**
+ * Delete several products in one call, best-effort: each id is attempted independently so an
+ * in-use product (referenced by a recipe) is skipped and reported rather than aborting the whole
+ * batch. Reuses `deleteFoodProduct`, so the per-product recipe-reference guard and Meili de-index
+ * still apply. Ids are de-duplicated first. Unexpected errors propagate (→ 500).
+ */
+export async function deleteFoodProducts(ids: string[]): Promise<BulkDeleteResult> {
+	const result: BulkDeleteResult = { deleted: [], inUse: [], notFound: [] };
+	for (const id of [...new Set(ids)]) {
+		try {
+			await deleteFoodProduct(id);
+			result.deleted.push(id);
+		} catch (err) {
+			if (err instanceof FoodProductNotFoundError) result.notFound.push(id);
+			else if (err instanceof FoodProductInUseError) result.inUse.push(id);
+			else throw err;
+		}
+	}
+	return result;
+}
+
 // ─── Nutrient registry ────────────────────────────────────────────────────────
 
 /**

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Gauge } from "$lib/components/ui/gauge";
 	import { Panel } from "$lib/components/ui/panel";
+	import { PulsingDot } from "$lib/components/ui/pulsing-dot";
 	import { SegmentedToggle } from "$lib/components/ui/segmented";
 	import {
 		rollupRecipe,
@@ -11,6 +12,7 @@
 	} from "$lib/recipe/nutrition";
 	import type { UnitConversion } from "$lib/recipe/units";
 	import type { DraftComponent, UnitOption } from "$lib/recipe/schema";
+	import { debounced } from "$lib/debounced.svelte";
 	import { t } from "$lib/i18n";
 	import { RECIPE_MACRO_REFERENCE, formatAmount, macroPct } from "./meta";
 
@@ -35,11 +37,23 @@
 
 	let basis = $state<"perServing" | "total">("perServing");
 
+	// Debounce the rollup recompute (the full ~74-nutrient engine): the amount field writes
+	// `c.amount` per keystroke, so without this, typing "125" into one row re-runs the whole
+	// engine across every component on each event. Mirror the rollup inputs into a 220ms
+	// snapshot (matching the picker's typeahead) and roll up off that — the math is unchanged,
+	// only the recompute cadence is throttled. The amount input itself stays responsive: its
+	// raw text buffer lives in `ComponentEditor`, independent of this panel.
+	const rollupInput = debounced(
+		() => ({ components: $state.snapshot(components) as DraftComponent[], servings }),
+		220,
+	);
+
 	const rollup = $derived.by(() => {
+		const { components: rows, servings: divisor } = rollupInput.current;
 		const productMap: Record<string, ProductNutrition> = {};
 		const subMap: Record<string, SubRecipeNutrition> = {};
 		const comps: RollupComponent[] = [];
-		for (const c of components) {
+		for (const c of rows) {
 			const u = unitById[c.unitId];
 			if (!u || c.amount == null || c.amount <= 0) continue;
 			const unit: UnitConversion = { kind: u.kind, baseFactor: u.baseFactor };
@@ -67,7 +81,7 @@
 		}
 		return rollupRecipe(
 			comps,
-			servings,
+			divisor,
 			(id) => productMap[id] ?? null,
 			(id) => subMap[id] ?? null,
 		);
@@ -123,7 +137,7 @@
 <Panel variant="solid" class="rollup">
 	<div class="ru-h">
 		<span class="ti">{t("recipe.form.nutritionTitle")}</span>
-		<span class="live"><span class="d"></span>{t("recipe.form.live")}</span>
+		<span class="live"><PulsingDot tone="positive" />{t("recipe.form.live")}</span>
 		<SegmentedToggle
 			class="ru-seg"
 			items={basisItems}
@@ -218,26 +232,6 @@
 		letter-spacing: 0.05em;
 		text-transform: uppercase;
 		color: var(--muted-foreground);
-	}
-	.ru-h .live .d {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--positive, oklch(0.62 0.13 152));
-	}
-	@media (prefers-reduced-motion: no-preference) {
-		.ru-h .live .d {
-			animation: blink 1.6s var(--ease) infinite;
-		}
-	}
-	@keyframes blink {
-		0%,
-		100% {
-			opacity: 0.4;
-		}
-		50% {
-			opacity: 1;
-		}
 	}
 	.ru-h :global(.ru-seg) {
 		margin-left: auto;

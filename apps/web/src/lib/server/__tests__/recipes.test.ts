@@ -54,11 +54,15 @@ import {
 	updateRecipe,
 	deleteRecipe,
 	recomputeDependents,
+	getRecipeDraftForEdit,
 	RecipeInUseError,
 	RecipeCycleError,
+	RecipeNotFoundError,
+	RecipeForbiddenError,
 } from "../recipes.js";
 import { deleteFoodProduct, FoodProductInUseError } from "../food-products.js";
 import type { RecipeSavePayload } from "$lib/recipe/schema";
+import { MACRO_TAGS } from "$lib/macros";
 
 const gUnit = { id: "unit-g", kind: "MASS", baseFactor: 1 };
 
@@ -219,17 +223,19 @@ describe("createRecipe → caches rolled-up nutrition", () => {
 describe("recomputeDependents({ productId }) → fan-out up the sub-recipe graph", () => {
 	it("recomputes the direct dependent AND its parent, children-first", async () => {
 		// Graph: P (parent) uses S (sub-recipe); S maps an ingredient to product 'prod'.
-		prismaMock.recipeComponent.findMany.mockImplementation((args: { where: Record<string, unknown> }) => {
-			const w = args.where;
-			const sub = w.subRecipeId as { not?: unknown } | undefined;
-			if (sub && typeof sub === "object" && "not" in sub) {
-				return Promise.resolve([{ recipeId: "P", subRecipeId: "S" }]); // edges
-			}
-			if (w.productId !== undefined) {
-				return Promise.resolve([{ recipeId: "S" }]); // S references the product
-			}
-			return Promise.resolve([]);
-		});
+		prismaMock.recipeComponent.findMany.mockImplementation(
+			(args: { where: Record<string, unknown> }) => {
+				const w = args.where;
+				const sub = w.subRecipeId as { not?: unknown } | undefined;
+				if (sub && typeof sub === "object" && "not" in sub) {
+					return Promise.resolve([{ recipeId: "P", subRecipeId: "S" }]); // edges
+				}
+				if (w.productId !== undefined) {
+					return Promise.resolve([{ recipeId: "S" }]); // S references the product
+				}
+				return Promise.resolve([]);
+			},
+		);
 
 		const sRow = recipeRow("S", [productComponent("cs", "prod", 100, { ENERC_KCAL: 200 })]);
 		const pRow = recipeRow("P", [
@@ -294,5 +300,55 @@ describe("updateRecipe → cycle safety", () => {
 			),
 		).rejects.toBeInstanceOf(RecipeCycleError);
 		expect(prismaMock.$transaction).not.toHaveBeenCalled();
+	});
+});
+
+describe("getRecipeDraftForEdit → narrowed nutrient fetch + draft projection", () => {
+	it("loads only the four macro tags' foodNutrients, not the full ~74-row profile", async () => {
+		prismaMock.recipe.findUnique.mockResolvedValue(
+			recipeRow("r1", [productComponent("c1", "chicken", 200, { ENERC_KCAL: 165, PROCNT: 31 })], {
+				cuisineId: null,
+			}),
+		);
+
+		await getRecipeDraftForEdit("u1", "r1");
+
+		// `select` narrows columns; the row narrowing has to come from a `where` on the relation.
+		const include = prismaMock.recipe.findUnique.mock.calls[0][0].include;
+		expect(include.components.include.product.select.foodNutrients.where).toEqual({
+			nutrientId: { in: Object.values(MACRO_TAGS) },
+		});
+	});
+
+	it("maps a product component into the live-panel preview payload", async () => {
+		prismaMock.recipe.findUnique.mockResolvedValue(
+			recipeRow("r1", [productComponent("c1", "chicken", 200, { ENERC_KCAL: 165, PROCNT: 31 })], {
+				cuisineId: null,
+			}),
+		);
+
+		const draft = await getRecipeDraftForEdit("u1", "r1");
+
+		expect(draft.components).toHaveLength(1);
+		expect(draft.components[0]).toMatchObject({
+			productId: "chicken",
+			subRecipeId: null,
+			amount: 200,
+			preview: { nutrientsPer100g: { ENERC_KCAL: 165, PROCNT: 31 } },
+		});
+	});
+
+	it("enforces owner-only access (forbidden) and rejects a missing recipe", async () => {
+		prismaMock.recipe.findUnique.mockResolvedValue(
+			recipeRow("r1", [], { userId: "owner", cuisineId: null }),
+		);
+		await expect(getRecipeDraftForEdit("intruder", "r1")).rejects.toBeInstanceOf(
+			RecipeForbiddenError,
+		);
+
+		prismaMock.recipe.findUnique.mockResolvedValue(null);
+		await expect(getRecipeDraftForEdit("u1", "missing")).rejects.toBeInstanceOf(
+			RecipeNotFoundError,
+		);
 	});
 });

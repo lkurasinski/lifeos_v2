@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Button } from "$lib/components/ui/button";
 	import { Dialog } from "$lib/components/ui/dialog";
 	import ProductForm from "$lib/components/catalog/ProductForm.svelte";
 	import {
@@ -16,6 +17,7 @@
 		UnitOption,
 	} from "$lib/recipe/schema";
 	import { t } from "$lib/i18n";
+	import { formatDecimalPl } from "$lib/decimal";
 	import ComponentRow from "./ComponentRow.svelte";
 	import { parseAmount } from "./component-row";
 
@@ -73,7 +75,7 @@
 
 	function amountDisplay(c: DraftComponent): string {
 		if (amountRaw[c.key] !== undefined) return amountRaw[c.key];
-		return c.amount != null ? String(c.amount).replace(".", ",") : "";
+		return c.amount != null ? formatDecimalPl(c.amount) : "";
 	}
 
 	function onAmountInput(key: string, raw: string) {
@@ -94,7 +96,6 @@
 			categorySlug: null,
 			amount: null,
 			unitId: defaultUnitId,
-			note: null,
 			preview: {},
 		});
 	}
@@ -113,10 +114,16 @@
 		c.subRecipeId = null;
 		c.name = hit.namePl ?? hit.nameEn;
 		c.categorySlug = hit.categorySlug;
-		// Per-100g nutrients come straight off the hit (tagname-keyed, no remap). Density/piece-
-		// weight aren't in the search doc, so VOLUME falls back to 1.0 and COUNT reads as partial
-		// in the LIVE preview until the save recompute (which loads them) makes it authoritative.
-		c.preview = { nutrientsPer100g: hit.nutrients };
+		// Per-100g nutrients + the conversion inputs all come straight off the hit (tagname-keyed,
+		// no remap). The search doc now carries density/piece-weight (omitted when null, which the
+		// `?? null` preserves), so the LIVE preview resolves grams with the SAME inputs the server
+		// caches on save — a VOLUME row no longer shows a confident density-1.0 figure that the
+		// save then silently overwrites, and a COUNT row resolves whenever a piece-weight exists.
+		c.preview = {
+			nutrientsPer100g: hit.nutrients,
+			densityGPerMl: hit.densityGPerMl ?? null,
+			pieceWeightG: hit.pieceWeightG ?? null,
+		};
 	}
 
 	// Per-row monotonic token: a fast re-pick into the same row fires a second fetch; only the
@@ -136,23 +143,38 @@
 		const mine = (subRecipeFetchToken[key] ?? 0) + 1;
 		subRecipeFetchToken[key] = mine;
 		// Fetch the cached (totals, yieldWeightG) pair so the live panel can apportion the
-		// sub-recipe's contribution by weight share (mirrors the server rollup).
-		try {
-			const res = await fetch(`/api/recipes/${hit.id}`);
-			if (res.ok) {
-				const d = (await res.json()) as RecipeDetailView;
-				const cur = components.find((x) => x.key === key);
-				if (cur && cur.subRecipeId === hit.id && subRecipeFetchToken[key] === mine) {
-					cur.preview = {
-						totals: d.nutrients,
-						yieldWeightG: d.yieldWeightG,
-						nutritionComplete: d.nutritionComplete,
-					};
+		// sub-recipe's contribution by weight share (mirrors the server rollup). On a TRANSIENT
+		// failure (network blip / 5xx) the preview would otherwise stay empty until a manual
+		// re-pick: the rollup still flags the row incomplete (so the total is never shown as a
+		// confident number), but it understates the live figure, so retry a few times with
+		// backoff. A 4xx is permanent (don't retry); a newer pick into this row (token bump)
+		// supersedes and aborts; the save recompute is authoritative regardless.
+		for (let attempt = 0; attempt < 3; attempt++) {
+			if (subRecipeFetchToken[key] !== mine) return; // superseded by a newer pick
+			try {
+				const res = await fetch(`/api/recipes/${hit.id}`);
+				if (res.ok) {
+					const d = (await res.json()) as RecipeDetailView;
+					const cur = components.find((x) => x.key === key);
+					if (cur && cur.subRecipeId === hit.id && subRecipeFetchToken[key] === mine) {
+						cur.preview = {
+							totals: d.nutrients,
+							yieldWeightG: d.yieldWeightG,
+							nutritionComplete: d.nutritionComplete,
+						};
+					}
+					return;
 				}
+				if (res.status < 500) return; // 4xx is permanent — re-picking won't help
+			} catch {
+				// network error — fall through to retry
 			}
-		} catch {
-			// Leave preview empty — the row still saves; the server recompute is authoritative.
+			// Backoff before the next attempt (none after the last); skip if superseded meanwhile.
+			if (attempt < 2 && subRecipeFetchToken[key] === mine) {
+				await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+			}
 		}
+		// Retries exhausted — leave preview empty; the live panel flags the row incomplete.
 	}
 
 	// ─── Inline "create product" dialog (embeds the foods ProductForm) ───────────────
@@ -269,15 +291,15 @@
 </div>
 
 <div class="addbtns">
-	<button type="button" class="addbtn" onclick={() => addRow("products")}>
+	<Button type="button" variant="secondary" size="sm" onclick={() => addRow("products")}>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 			><path
 				d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
 			/></svg
 		>
 		{t("recipe.form.addIngredient")}
-	</button>
-	<button type="button" class="addbtn" onclick={() => addRow("subRecipes")}>
+	</Button>
+	<Button type="button" variant="secondary" size="sm" onclick={() => addRow("subRecipes")}>
 		<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 			<path
 				d="M4 3.6A1.6 1.6 0 0 1 5.6 2H10v15.4l-.9-.5a3 3 0 0 0-1.5-.4H5.6A1.6 1.6 0 0 1 4 14.9V3.6Z"
@@ -287,7 +309,7 @@
 			/>
 		</svg>
 		{t("recipe.form.addSubRecipe")}
-	</button>
+	</Button>
 </div>
 
 <Dialog
@@ -327,28 +349,5 @@
 		gap: 8px;
 		margin-top: 13px;
 		flex-wrap: wrap;
-	}
-	.addbtn {
-		display: inline-flex;
-		align-items: center;
-		gap: 7px;
-		border: 0;
-		font-family: inherit;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: var(--foreground);
-		background: var(--card);
-		box-shadow: var(--shadow-soft);
-		border-radius: var(--radius-sm);
-		padding: 9px 13px;
-		cursor: pointer;
-	}
-	.addbtn:hover {
-		background: var(--accent);
-	}
-	.addbtn svg {
-		width: 15px;
-		height: 15px;
-		color: var(--muted-foreground);
 	}
 </style>

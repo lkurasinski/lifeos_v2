@@ -3,15 +3,16 @@ import { timingSafeEqual } from "node:crypto";
 import { REINDEX_TOKEN } from "$env/static/private";
 import { prisma } from "$lib/server/db";
 import { meili } from "$lib/server/search";
-import { reindexFoodProducts } from "$lib/server/reindex";
+import { reindexFoodProducts, reindexRecipes } from "$lib/server/reindex";
 import type { RequestHandler } from "./$types";
 
 /**
- * Rebuild the Meilisearch index from THIS deployment's database. Because it runs inside the
- * app, it uses the app's own `prisma` + `meili` clients — i.e. the internal Railway DB and
- * Meili over the private network — so the index is always sourced from the same DB the app
- * reads, and the bulk read never leaves Railway (no egress). The sync script calls this after
- * pushing the DB; it's also the way to reindex after editing products on the live app.
+ * Rebuild BOTH Meilisearch indexes (food products + recipes) from THIS deployment's database.
+ * Because it runs inside the app, it uses the app's own `prisma` + `meili` clients — i.e. the
+ * internal Railway DB and Meili over the private network — so the indexes are always sourced
+ * from the same DB the app reads, and the bulk read never leaves Railway (no egress). The sync
+ * script calls this after pushing the DB; it's also the way to reindex after editing products
+ * or recipes on the live app.
  *
  * Guarded by a shared secret (REINDEX_TOKEN), not a user session: it's an operator action and
  * must be callable from a script with no cookie. Disabled (503) until the token is set.
@@ -33,6 +34,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		error(401, "Unauthorized");
 	}
 
-	const result = await reindexFoodProducts(prisma, meili, (msg) => console.log(`[reindex] ${msg}`));
-	return json(result);
+	// Sequential (not parallel): both share one Meili client and the seed step orders them the
+	// same way; keeps the bulk load off a single index at a time.
+	const log = (msg: string) => console.log(`[reindex] ${msg}`);
+	const foods = await reindexFoodProducts(prisma, meili, log);
+	const recipes = await reindexRecipes(prisma, meili, log);
+	return json({ foods, recipes });
 };

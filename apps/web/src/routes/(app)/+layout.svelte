@@ -111,7 +111,7 @@
 					<span class="ue">{data.user?.email}</span>
 				</span>
 				<div class="uactions">
-					<IconButton size="sm" disabled aria-label={t("nav.settings")}>
+					<IconButton variant="subtle" size="sm" disabled aria-label={t("nav.settings")}>
 						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 							><path
 								fill-rule="evenodd"
@@ -120,7 +120,7 @@
 							/></svg
 						>
 					</IconButton>
-					<IconButton size="sm" onclick={handleLogout} aria-label={t("auth.logout")}>
+					<IconButton variant="subtle" size="sm" onclick={handleLogout} aria-label={t("auth.logout")}>
 						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 							><path
 								fill-rule="evenodd"

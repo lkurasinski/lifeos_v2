@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
 	import { Chip } from "$lib/components/ui/chip";
+	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
+	import { ExpandableRow } from "$lib/components/ui/expandable-row";
 	import { Gauge } from "$lib/components/ui/gauge";
+	import { MetadataItem } from "$lib/components/ui/metadata-item";
 	import { Panel } from "$lib/components/ui/panel";
 	import NutrientGroupSection from "$lib/components/catalog/NutrientGroupSection.svelte";
 	import { groupRegistryRows } from "$lib/components/catalog/meta";
@@ -138,36 +141,42 @@
 
 	<div class="dmeta">
 		{#if timeLabel}
-			<span class="dm">
-				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-					><path
-						fill-rule="evenodd"
-						d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm.75 4a.75.75 0 0 0-1.5 0V10c0 .24.11.46.3.6l2.4 1.8a.75.75 0 0 0 .9-1.2l-2.1-1.57V6.5Z"
-						clip-rule="evenodd"
-					/></svg
-				>
-				<b>{timeLabel}</b><span class="ml">{t("recipe.detail.totalTime")}</span>
-			</span>
+			<MetadataItem label={t("recipe.detail.totalTime")}>
+				{#snippet icon()}
+					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+						><path
+							fill-rule="evenodd"
+							d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Zm.75 4a.75.75 0 0 0-1.5 0V10c0 .24.11.46.3.6l2.4 1.8a.75.75 0 0 0 .9-1.2l-2.1-1.57V6.5Z"
+							clip-rule="evenodd"
+						/></svg
+					>
+				{/snippet}
+				{timeLabel}
+			</MetadataItem>
 		{/if}
 		{#if difficulty}
-			<span class="dm">
+			<MetadataItem>
+				{#snippet icon()}
+					<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+						><path
+							d="M3 13.5a7 7 0 0 1 14 0 .75.75 0 0 1-.75.75H3.75A.75.75 0 0 1 3 13.5Z"
+							opacity=".4"
+						/><path d="M10 13.25 13.4 8a.6.6 0 0 0-.84-.82L10 11.9a1.3 1.3 0 1 0 0 1.35Z" /></svg
+					>
+				{/snippet}
+				{difficulty}
+			</MetadataItem>
+		{/if}
+		<MetadataItem label={t("recipe.detail.servings")}>
+			{#snippet icon()}
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
 					><path
-						d="M3 13.5a7 7 0 0 1 14 0 .75.75 0 0 1-.75.75H3.75A.75.75 0 0 1 3 13.5Z"
-						opacity=".4"
-					/><path d="M10 13.25 13.4 8a.6.6 0 0 0-.84-.82L10 11.9a1.3 1.3 0 1 0 0 1.35Z" /></svg
+						d="M10 3.2c-3.6 0-6.6 2.3-7 5.3-.05.4.27.74.67.74h12.66c.4 0 .72-.34.67-.74-.4-3-3.4-5.3-7-5.3Z"
+					/><rect x="2.5" y="10.6" width="15" height="2.2" rx="1.1" /></svg
 				>
-				<b>{difficulty}</b>
-			</span>
-		{/if}
-		<span class="dm">
-			<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-				><path
-					d="M10 3.2c-3.6 0-6.6 2.3-7 5.3-.05.4.27.74.67.74h12.66c.4 0 .72-.34.67-.74-.4-3-3.4-5.3-7-5.3Z"
-				/><rect x="2.5" y="10.6" width="15" height="2.2" rx="1.1" /></svg
-			>
-			<b>{recipe.servings}</b><span class="ml">{t("recipe.detail.servings")}</span>
-		</span>
+			{/snippet}
+			{recipe.servings}
+		</MetadataItem>
 	</div>
 
 	{#if recipe.techniques.length > 0}
@@ -249,26 +258,22 @@
 	<div class="comp">
 		{#each recipe.components as c (c.id)}
 			{#if c.subRecipe}
+				{@const sub = c.subRecipe}
 				<div class="citem">
-					<button
-						type="button"
-						class="crow shead"
-						class:open={isOpen(c.id)}
-						aria-expanded={isOpen(c.id)}
-						onclick={() => (collapsed[c.id] = isOpen(c.id))}
+					<ExpandableRow
+						open={isOpen(c.id)}
+						onToggle={() => (collapsed[c.id] = isOpen(c.id))}
+						rowClass="px-0.5 py-2"
 					>
-						<svg class="chev2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-							><path d="M10 13.5l-4.5-5h9z" /></svg
-						>
-						<span class="cname">
-							{c.subRecipe.name}
-							<span class="subtag">{@render nestIcon()}{t("recipe.detail.subRecipeTag")}</span>
-						</span>
-						{@render qtyText(c)}
-					</button>
-					{#if isOpen(c.id)}
+						{#snippet header()}
+							<span class="cname">
+								{sub.name}
+								<span class="subtag">{@render nestIcon()}{t("recipe.detail.subRecipeTag")}</span>
+							</span>
+							{@render qtyText(c)}
+						{/snippet}
 						<div class="subitems">
-							{#each c.subRecipe.components as sc (sc.id)}
+							{#each sub.components as sc (sc.id)}
 								{@const sq = qty(sc)}
 								<div class="subrow">
 									<span class="sn">
@@ -283,7 +288,7 @@
 								</div>
 							{/each}
 						</div>
-					{/if}
+					</ExpandableRow>
 				</div>
 			{:else}
 				<div class="crow">
@@ -374,22 +379,19 @@
 
 	{#if profileCount > 0}
 		<div class="divider"></div>
-		<button
-			type="button"
-			class="expand"
-			class:open={profileOpen}
-			aria-expanded={profileOpen}
-			onclick={() => (profileOpen = !profileOpen)}
+		<CollapsibleSection
+			open={profileOpen}
+			onToggle={() => (profileOpen = !profileOpen)}
+			buttonClass="p-0.5"
+			chevronClass="ml-auto size-[17px]"
 		>
-			<span class="et">{t("recipe.detail.fullProfile")}</span>
-			<span class="ec"
-				>{t("recipe.detail.perServing")} · {profileCount} {t("recipe.detail.nutrientsCount")}</span
-			>
-			<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-				><path d="M10 13.5l-4.5-5h9z" /></svg
-			>
-		</button>
-		{#if profileOpen}
+			{#snippet header()}
+				<span class="et">{t("recipe.detail.fullProfile")}</span>
+				<span class="ec"
+					>{t("recipe.detail.perServing")} · {profileCount}
+					{t("recipe.detail.nutrientsCount")}</span
+				>
+			{/snippet}
 			{#each profileGroups as group (group.label)}
 				<NutrientGroupSection
 					label={group.label}
@@ -403,7 +405,7 @@
 					{/each}
 				</NutrientGroupSection>
 			{/each}
-		{/if}
+		</CollapsibleSection>
 	{/if}
 
 	{#if onEdit || onDelete}
@@ -484,30 +486,6 @@
 		gap: 8px 18px;
 		margin-top: 16px;
 	}
-	.dm {
-		display: flex;
-		align-items: center;
-		gap: 7px;
-		font-size: 0.8125rem;
-		color: var(--foreground);
-	}
-	.dm svg {
-		width: 16px;
-		height: 16px;
-		color: var(--muted-foreground);
-		flex-shrink: 0;
-	}
-	.dm b {
-		font-weight: 550;
-	}
-	.dm .ml {
-		color: var(--muted-foreground);
-		font-size: 0.6875rem;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		margin-left: 1px;
-	}
-
 	.dtech {
 		display: flex;
 		align-items: center;
@@ -682,37 +660,6 @@
 	.citem {
 		border-bottom: 1px solid var(--hairline);
 	}
-	.crow.shead {
-		border-bottom: 0;
-		cursor: pointer;
-		background: transparent;
-		border-left: 0;
-		border-right: 0;
-		border-top: 0;
-		font-family: inherit;
-		align-items: center;
-	}
-	.crow.shead:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-		border-radius: var(--radius-sm);
-	}
-	.chev2 {
-		width: 16px;
-		height: 16px;
-		color: var(--muted-foreground);
-		flex-shrink: 0;
-		transform: rotate(-90deg);
-		transition: transform 0.2s var(--ease);
-	}
-	.crow.shead.open .chev2 {
-		transform: none;
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.chev2 {
-			transition: none;
-		}
-	}
 	.subitems {
 		display: flex;
 		flex-direction: column;
@@ -873,49 +820,18 @@
 		margin-top: 2px;
 	}
 
-	/* full profile expander */
-	.expand {
-		width: 100%;
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		font-family: inherit;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 2px;
-	}
-	.expand:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-		border-radius: var(--radius-sm);
-	}
-	.expand .et {
+	/* full profile expander (header content; chevron + toggle live in CollapsibleSection) */
+	.et {
 		font-size: 0.625rem;
 		font-weight: 500;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--muted-foreground);
 	}
-	.expand .ec {
+	.ec {
 		font-size: 0.6875rem;
 		color: var(--muted-foreground);
 		font-variant-numeric: tabular-nums;
-	}
-	.expand .chev {
-		margin-left: auto;
-		width: 17px;
-		height: 17px;
-		color: var(--muted-foreground);
-		transition: transform 0.2s var(--ease);
-	}
-	.expand.open .chev {
-		transform: rotate(180deg);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.expand .chev {
-			transition: none;
-		}
 	}
 	.prow {
 		display: flex;

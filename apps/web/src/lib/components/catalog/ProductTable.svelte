@@ -8,6 +8,9 @@
 	// Master list — the locked catalog table with sortable column headers (sort lives
 	// in the header, no dedicated control). Rows compose the category glyph + a source
 	// badge; macros are the top-level doc fields, with an em dash for absent (NULL≠0).
+	//
+	// In `selectionMode` the row click toggles batch selection (a leading checkbox) instead
+	// of opening the detail; the page owns the selected-id set and the delete action.
 	type Props = {
 		hits: FoodDocument[];
 		sort: SortKey;
@@ -15,9 +18,24 @@
 		selectedId: string | null;
 		onSort: (key: SortKey) => void;
 		onSelect: (id: string) => void;
+		/** Batch-select mode: row click toggles selection rather than opening the detail. */
+		selectionMode?: boolean;
+		/** The set of ids selected for batch delete (read for the per-row checkbox state). */
+		selectedForDelete?: ReadonlySet<string>;
+		onToggleSelect?: (id: string) => void;
 	};
 
-	let { hits, sort, dir, selectedId, onSort, onSelect }: Props = $props();
+	let {
+		hits,
+		sort,
+		dir,
+		selectedId,
+		onSort,
+		onSelect,
+		selectionMode = false,
+		selectedForDelete,
+		onToggleSelect,
+	}: Props = $props();
 
 	const SOURCE_BADGE: Record<"usda" | "custom" | "off", string> = {
 		usda: t("catalog.sourceBadge.usda"),
@@ -93,13 +111,28 @@
 <div class="flex flex-col gap-2">
 	{#each hits as hit (hit.id)}
 		{@const badge = sourceBadgeKey(hit.source)}
+		{@const checked = selectedForDelete?.has(hit.id) ?? false}
 		<button
 			type="button"
 			class="prow cols"
-			class:on={selectedId === hit.id}
-			onclick={() => onSelect(hit.id)}
+			class:on={selectionMode ? checked : selectedId === hit.id}
+			aria-pressed={selectionMode ? checked : undefined}
+			onclick={() => (selectionMode ? onToggleSelect?.(hit.id) : onSelect(hit.id))}
 		>
 			<div class="flex min-w-0 items-center gap-[11px]">
+				{#if selectionMode}
+					<span class="check" class:checked aria-hidden="true">
+						{#if checked}
+							<svg viewBox="0 0 20 20" fill="currentColor"
+								><path
+									fill-rule="evenodd"
+									d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0l-3.5-3.5a1 1 0 1 1 1.4-1.4l2.8 2.79 6.8-6.79a1 1 0 0 1 1.4 0Z"
+									clip-rule="evenodd"
+								/></svg
+							>
+						{/if}
+					</span>
+				{/if}
 				{#if hit.imageThumbUrl ?? hit.imageUrl}
 					<img
 						class="h-[34px] w-[34px] shrink-0 rounded-[8px] bg-secondary object-cover"
@@ -171,6 +204,30 @@
 	}
 	.prow:hover {
 		background: color-mix(in oklch, var(--card) 60%, transparent);
+	}
+
+	/* Leading batch-select checkbox (selection mode only). The row is the click target;
+	   this is a visual indicator, so it's aria-hidden and the button carries aria-pressed. */
+	.check {
+		width: 20px;
+		height: 20px;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 6px;
+		background: var(--card);
+		box-shadow: inset 0 0 0 1.5px var(--muted-foreground);
+		color: transparent;
+	}
+	.check.checked {
+		background: var(--primary);
+		box-shadow: none;
+		color: var(--primary-foreground);
+	}
+	.check svg {
+		width: 14px;
+		height: 14px;
 	}
 	.prow:focus-visible {
 		outline: none;

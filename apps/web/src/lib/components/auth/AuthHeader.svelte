@@ -6,7 +6,7 @@
 	let { label, title, holo = false, style }: Props = $props();
 </script>
 
-<header class={holo ? "auth-holo" : undefined} {style}>
+<header class={[holo && "auth-holo"]} {style}>
 	<p class="auth-sys-label">{label}</p>
 	<h1 class="auth-page-title">{title}</h1>
 </header>

@@ -9,6 +9,10 @@
 	// <label> so the whole row focuses the control. `labelAction` renders a trailing
 	// element in the label row (e.g. a "forgot password?" link). The control is the
 	// default slot.
+	//
+	// The error is a `role="alert"` live region so screen readers announce it the moment
+	// it appears (Field can't reach the slotted control to set `aria-invalid`). error and
+	// hint render in both orientations.
 	type Props = {
 		label: string;
 		for?: string;
@@ -34,11 +38,23 @@
 	}: Props = $props();
 </script>
 
+{#snippet messages()}
+	{#if error}
+		<p role="alert" class="text-[0.6875rem] text-destructive">{error}</p>
+	{/if}
+	{#if hint}
+		<p class="text-[0.6875rem] leading-[1.4] text-muted-foreground">{hint}</p>
+	{/if}
+{/snippet}
+
 {#if orientation === "horizontal"}
-	<label class={cn("flex items-center justify-between gap-3", className)} {style}>
-		<span class="text-[0.8125rem] text-muted-foreground">{label}</span>
-		{@render children()}
-	</label>
+	<div class={cn("flex flex-col gap-1.5", className)} {style}>
+		<label class="flex items-center justify-between gap-3">
+			<span class="text-[0.8125rem] text-muted-foreground">{label}</span>
+			{@render children()}
+		</label>
+		{@render messages()}
+	</div>
 {:else}
 	<div class={cn("flex flex-col gap-1.5", className)} {style}>
 		{#if labelAction}
@@ -50,11 +66,6 @@
 			<Label for={htmlFor}>{label}</Label>
 		{/if}
 		{@render children()}
-		{#if error}
-			<p class="text-[0.6875rem] text-destructive">{error}</p>
-		{/if}
-		{#if hint}
-			<p class="text-[0.6875rem] leading-[1.4] text-muted-foreground">{hint}</p>
-		{/if}
+		{@render messages()}
 	</div>
 {/if}

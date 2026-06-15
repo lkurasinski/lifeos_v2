@@ -649,14 +649,16 @@
 		}
 	}
 
-	/* Collapse to a single column below the two-column breakpoint (Phase 7 refines mobile). */
+	/* Collapse to a single column below the two-column breakpoint. The side panel (live
+	   nutrition + publication) drops to natural document order — below the content it
+	   summarises and just above the sticky save bar — instead of sitting empty above the
+	   name field, which is the correct mobile authoring flow (name → ingredients → … → publish). */
 	@media (max-width: 960px) {
 		.flow {
 			grid-template-columns: minmax(0, 1fr);
 		}
 		.col-side {
 			position: static;
-			order: -1;
 		}
 	}
 	@media (max-width: 768px) {

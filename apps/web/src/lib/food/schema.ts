@@ -227,6 +227,12 @@ export type SavePayload = z.infer<typeof savePayloadSchema>;
 export const patchPayloadSchema = savePayloadSchema.omit({ source: true, sourceId: true });
 export type PatchPayload = z.infer<typeof patchPayloadSchema>;
 
+/** Batch-delete payload — a non-empty, de-dupable list of product ids (capped to bound work). */
+export const bulkDeletePayloadSchema = z.object({
+	ids: z.array(z.string().min(1)).min(1).max(200),
+});
+export type BulkDeletePayload = z.infer<typeof bulkDeletePayloadSchema>;
+
 // ─── Pure adapters (no I/O) ───────────────────────────────────────────────────
 
 /**

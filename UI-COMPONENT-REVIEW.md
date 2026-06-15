@@ -34,8 +34,10 @@ accessibility gaps and reuse/consistency cleanups — no correctness bugs.
 
 5. **RecipeDetail full-profile expander hand-rolls a disclosure** —
    `recipe/RecipeDetail.svelte:381-411`. Matches `CollapsibleSection`
-   (chevron-after, 180°), not `ExpandableRow`. Status: **DEFERRED** — visual
-   refactor with drift risk; needs an eyeball check. Reported, not applied.
+   (chevron-after, 180°), not `ExpandableRow`. Status: **FIXED** — adopted
+   `CollapsibleSection` (`buttonClass="p-0.5"`, `chevronClass="ml-auto size-[17px]"`);
+   removed ~40 lines of duplicated button/chevron markup + scoped styles. Header
+   text classes (`.et`/`.ec`) preserved.
 
 6. **New primitives don't forward rest props** (cf. `Badge` spreads
    `{...restProps}`). Status: **FIXED for `ExpandableRow` + `PickerPopover`**
@@ -43,10 +45,15 @@ accessibility gaps and reuse/consistency cleanups — no correctness bugs.
    `<label>`/`<div>` makes a single rest target awkward).
 
 7. **`PickerPopover` reinvents the segmented control** instead of reusing
-   `SegmentedToggle`. Status: **DEFERRED** — `SegmentedToggle` is `bind:value`
-   on bits-ui `ToggleGroup`, which can deselect on re-click and emit `""`;
-   not a safe drop-in for the picker's one-way controlled tabs. #1 fixed the
-   a11y gap directly instead.
+   `SegmentedToggle`. Status: **FIXED** — `PickerPopover` now renders
+   `<SegmentedToggle block …>`, dropping the bespoke tab markup and the manual
+   roving-focus code added in #1 (bits-ui `ToggleGroup` provides keyboard nav +
+   semantics). Enablers: (a) hardened `SegmentedToggle` to suppress
+   ToggleGroup's deselect-to-empty — a single-select must keep a value, which
+   also makes it safe to drive one-way (`value` + `onValueChange`); (b) added a
+   `block` prop for the full-width, equal-segment layout the picker needs.
+   `PickerPopover`'s external API (`tabs`/`activeTab`/`onTabChange`) is
+   unchanged, so `ProductPicker` needs no edits.
 
 ## Minor / notes
 

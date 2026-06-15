@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from "$lib/components/ui/button";
 	import { Chip } from "$lib/components/ui/chip";
+	import { CollapsibleSection } from "$lib/components/ui/collapsible-section";
 	import { ExpandableRow } from "$lib/components/ui/expandable-row";
 	import { Gauge } from "$lib/components/ui/gauge";
 	import { MetadataItem } from "$lib/components/ui/metadata-item";
@@ -378,22 +379,19 @@
 
 	{#if profileCount > 0}
 		<div class="divider"></div>
-		<button
-			type="button"
-			class="expand"
-			class:open={profileOpen}
-			aria-expanded={profileOpen}
-			onclick={() => (profileOpen = !profileOpen)}
+		<CollapsibleSection
+			open={profileOpen}
+			onToggle={() => (profileOpen = !profileOpen)}
+			buttonClass="p-0.5"
+			chevronClass="ml-auto size-[17px]"
 		>
-			<span class="et">{t("recipe.detail.fullProfile")}</span>
-			<span class="ec"
-				>{t("recipe.detail.perServing")} · {profileCount} {t("recipe.detail.nutrientsCount")}</span
-			>
-			<svg class="chev" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-				><path d="M10 13.5l-4.5-5h9z" /></svg
-			>
-		</button>
-		{#if profileOpen}
+			{#snippet header()}
+				<span class="et">{t("recipe.detail.fullProfile")}</span>
+				<span class="ec"
+					>{t("recipe.detail.perServing")} · {profileCount}
+					{t("recipe.detail.nutrientsCount")}</span
+				>
+			{/snippet}
 			{#each profileGroups as group (group.label)}
 				<NutrientGroupSection
 					label={group.label}
@@ -407,7 +405,7 @@
 					{/each}
 				</NutrientGroupSection>
 			{/each}
-		{/if}
+		</CollapsibleSection>
 	{/if}
 
 	{#if onEdit || onDelete}
@@ -822,49 +820,18 @@
 		margin-top: 2px;
 	}
 
-	/* full profile expander */
-	.expand {
-		width: 100%;
-		border: 0;
-		background: transparent;
-		cursor: pointer;
-		font-family: inherit;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 2px;
-	}
-	.expand:focus-visible {
-		outline: none;
-		box-shadow: var(--focus);
-		border-radius: var(--radius-sm);
-	}
-	.expand .et {
+	/* full profile expander (header content; chevron + toggle live in CollapsibleSection) */
+	.et {
 		font-size: 0.625rem;
 		font-weight: 500;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		color: var(--muted-foreground);
 	}
-	.expand .ec {
+	.ec {
 		font-size: 0.6875rem;
 		color: var(--muted-foreground);
 		font-variant-numeric: tabular-nums;
-	}
-	.expand .chev {
-		margin-left: auto;
-		width: 17px;
-		height: 17px;
-		color: var(--muted-foreground);
-		transition: transform 0.2s var(--ease);
-	}
-	.expand.open .chev {
-		transform: rotate(180deg);
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.expand .chev {
-			transition: none;
-		}
 	}
 	.prow {
 		display: flex;

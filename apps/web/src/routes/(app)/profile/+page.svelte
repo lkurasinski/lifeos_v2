@@ -4,8 +4,9 @@
 	import { IconButton } from "$lib/components/ui/icon-button";
 	import NutritionalTargetsForm from "$lib/components/profile/NutritionalTargetsForm.svelte";
 	import { t } from "$lib/i18n";
+	import type { PageProps } from "./$types";
 
-	let { data } = $props();
+	let { data }: PageProps = $props();
 
 	function back() {
 		goto(resolve("/"));

@@ -10,8 +10,12 @@
  *   pnpm tsx scripts/seed-food-data.ts --step index
  *   pnpm tsx scripts/seed-food-data.ts --step recipe-taxonomies
  *   pnpm tsx scripts/seed-food-data.ts --step recipe-index
+ *   pnpm tsx scripts/seed-food-data.ts --step curate         # merge meat cats + prune to shortlists
+ *   pnpm tsx scripts/seed-food-data.ts --step export-jsonl   # snapshot catalog → catalog.jsonl
+ *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl   # reseed catalog from catalog.jsonl
  *
  * Each step is idempotent. Run from apps/web/ so dotenv finds .env.
+ * curate / export-jsonl / import-jsonl are step-only (not part of the default all-steps run).
  * On Railway: railway run pnpm tsx scripts/seed-food-data.ts
  */
 
@@ -26,8 +30,21 @@ import { translateProducts } from './steps/translate-products.js';
 import { indexMeilisearch } from './steps/index-meilisearch.js';
 import { seedRecipeTaxonomies } from './steps/seed-recipe-taxonomies.js';
 import { indexRecipes } from './steps/index-recipes.js';
+import { curateCatalog } from './steps/curate-catalog.js';
+import { exportCatalogJsonl } from './steps/export-catalog-jsonl.js';
+import { importFromJsonl } from './steps/import-from-jsonl.js';
 
-const VALID_STEPS = ['nutrients', 'usda', 'translate', 'index', 'recipe-taxonomies', 'recipe-index'] as const;
+const VALID_STEPS = [
+	'nutrients',
+	'usda',
+	'translate',
+	'index',
+	'recipe-taxonomies',
+	'recipe-index',
+	'curate',
+	'export-jsonl',
+	'import-jsonl',
+] as const;
 type Step = (typeof VALID_STEPS)[number];
 
 function parseStep(): Step | undefined {
@@ -83,6 +100,20 @@ async function main() {
 		if (!step || step === 'recipe-index') {
 			console.log('\n=== Step: recipe-index ===');
 			await indexRecipes(prisma, meili);
+		}
+		// Step-only (excluded from the default all-steps run): one-time curation and the
+		// JSONL snapshot/reset path.
+		if (step === 'curate') {
+			console.log('\n=== Step: curate ===');
+			await curateCatalog(prisma);
+		}
+		if (step === 'export-jsonl') {
+			console.log('\n=== Step: export-jsonl ===');
+			await exportCatalogJsonl(prisma);
+		}
+		if (step === 'import-jsonl') {
+			console.log('\n=== Step: import-jsonl ===');
+			await importFromJsonl(prisma);
 		}
 	} finally {
 		await prisma.$disconnect();

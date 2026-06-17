@@ -34,19 +34,19 @@ export const USDA_CATEGORY_TO_SLUG: Record<string, string> = {
 	'2': 'spices',
 	'3': 'other',
 	'4': 'fats',
-	'5': 'poultry',
+	'5': 'meat', // Poultry → merged into single meat category
 	'6': 'soups',
-	'7': 'processed-meat',
+	'7': 'meat', // Sausages and Luncheon Meats → meat
 	'8': 'cereals',
 	'9': 'fruits',
-	'10': 'pork',
+	'10': 'meat', // Pork → meat
 	'11': 'vegetables',
 	'12': 'nuts',
-	'13': 'beef',
+	'13': 'meat', // Beef → meat
 	'14': 'beverages',
 	'15': 'seafood',
 	'16': 'legumes',
-	'17': 'lamb-game',
+	'17': 'meat', // Lamb, Veal, and Game → meat
 	'18': 'baked',
 	'19': 'sweets',
 	'20': 'grains',
@@ -124,19 +124,18 @@ const FOOD_CATEGORIES: Array<{ slug: string; namePl: string; nameEn: string }> =
 	{ slug: 'dairy', namePl: 'Nabiał i jaja', nameEn: 'Dairy and Egg Products' },
 	{ slug: 'spices', namePl: 'Przyprawy i zioła', nameEn: 'Spices and Herbs' },
 	{ slug: 'fats', namePl: 'Tłuszcze i oleje', nameEn: 'Fats and Oils' },
-	{ slug: 'poultry', namePl: 'Drób', nameEn: 'Poultry Products' },
+	// Single merged meat category — collapses USDA poultry / pork / beef / sausages /
+	// lamb-game (ids 5, 7, 10, 13, 17) into one. The catalog is curated down to a
+	// handful of staple cuts per the shortlist, so per-animal facets add no value.
+	{ slug: 'meat', namePl: 'Mięso', nameEn: 'Meat Products' },
 	{ slug: 'soups', namePl: 'Zupy, sosy i dipy', nameEn: 'Soups, Sauces, and Gravies' },
-	{ slug: 'processed-meat', namePl: 'Wędliny i przetwory mięsne', nameEn: 'Sausages and Luncheon Meats' },
 	{ slug: 'cereals', namePl: 'Płatki i musli', nameEn: 'Breakfast Cereals' },
 	{ slug: 'fruits', namePl: 'Owoce i soki owocowe', nameEn: 'Fruits and Fruit Juices' },
-	{ slug: 'pork', namePl: 'Wieprzowina', nameEn: 'Pork Products' },
 	{ slug: 'vegetables', namePl: 'Warzywa', nameEn: 'Vegetables and Vegetable Products' },
 	{ slug: 'nuts', namePl: 'Orzechy i nasiona', nameEn: 'Nut and Seed Products' },
-	{ slug: 'beef', namePl: 'Wołowina', nameEn: 'Beef Products' },
 	{ slug: 'beverages', namePl: 'Napoje', nameEn: 'Beverages' },
 	{ slug: 'seafood', namePl: 'Ryby i owoce morza', nameEn: 'Finfish and Shellfish Products' },
 	{ slug: 'legumes', namePl: 'Strączki i rośliny strączkowe', nameEn: 'Legumes and Legume Products' },
-	{ slug: 'lamb-game', namePl: 'Jagnięcina i dziczyzna', nameEn: 'Lamb, Veal, and Game Products' },
 	{ slug: 'baked', namePl: 'Pieczywo i wypieki', nameEn: 'Baked Products' },
 	{ slug: 'sweets', namePl: 'Słodycze i desery', nameEn: 'Sweets' },
 	{ slug: 'grains', namePl: 'Zboża i makarony', nameEn: 'Cereal Grains and Pasta' },

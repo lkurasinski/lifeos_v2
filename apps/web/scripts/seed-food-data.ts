@@ -13,6 +13,7 @@
  *   pnpm tsx scripts/seed-food-data.ts --step curate         # merge meat cats + prune to shortlists
  *   pnpm tsx scripts/seed-food-data.ts --step export-jsonl   # snapshot catalog → catalog.jsonl
  *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl   # reseed catalog from catalog.jsonl
+ *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl --reset   # also prune products not in snapshot (1:1)
  *
  * Each step is idempotent. Run from apps/web/ so dotenv finds .env.
  * curate / export-jsonl / import-jsonl are step-only (not part of the default all-steps run).
@@ -113,7 +114,7 @@ async function main() {
 		}
 		if (step === 'import-jsonl') {
 			console.log('\n=== Step: import-jsonl ===');
-			await importFromJsonl(prisma);
+			await importFromJsonl(prisma, { reset });
 		}
 	} finally {
 		await prisma.$disconnect();

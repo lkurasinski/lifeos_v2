@@ -7,10 +7,16 @@
  * stay valid (ids are NOT reminted, unlike the USDA import).
  *
  * Idempotent: categories and products are upserted by id; each product's nutrient rows
- * are fully replaced (delete + recreate). It does NOT delete products absent from the
- * snapshot — it reconciles the snapshot's rows back into place.
+ * are fully replaced (delete + recreate). By default it does NOT delete products absent
+ * from the snapshot — it reconciles the snapshot's rows back into place.
+ *
+ * With `--reset` it additionally makes the catalog match the snapshot 1:1 by deleting
+ * products whose id is not in the snapshot. A full wipe-then-load is avoided on purpose:
+ * deleting a product referenced by a recipe_component would SetNull the optional FK and
+ * orphan the component, so referenced extras are skipped and reported instead.
  *
  *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl
+ *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl --reset
  *
  * Counterpart: export-catalog-jsonl.ts (`--step export-jsonl`).
  */
@@ -51,8 +57,9 @@ interface ProductLine {
 
 export async function importFromJsonl(
 	prisma: PrismaClient,
-	inPath: string = defaultCatalogPath()
+	options: { reset?: boolean; inPath?: string } = {}
 ): Promise<void> {
+	const { reset = false, inPath = defaultCatalogPath() } = options;
 	if (!existsSync(inPath)) {
 		throw new Error(
 			`Catalog snapshot not found: ${inPath}\nRun \`--step export-jsonl\` first to create it.`
@@ -132,4 +139,34 @@ export async function importFromJsonl(
 	}
 
 	console.log(`  Done: ${imported} products, ${totalNutrients} nutrient rows`);
+
+	// --reset: prune products not present in the snapshot so the catalog matches it 1:1.
+	if (reset) {
+		const snapshotIds = new Set(products.map((p) => p.id));
+		const all = await prisma.foodProduct.findMany({ select: { id: true, sourceId: true, nameEn: true } });
+		const extras = all.filter((p) => !snapshotIds.has(p.id));
+
+		if (extras.length === 0) {
+			console.log('  --reset: no extra products to delete (catalog already matches snapshot)');
+			return;
+		}
+
+		// Never delete a product referenced by a recipe component (productId is an optional
+		// FK → onDelete SetNull would silently orphan the component and violate its CHECK).
+		const referenced = await prisma.recipeComponent.findMany({
+			where: { productId: { in: extras.map((p) => p.id) } },
+			select: { productId: true },
+		});
+		const referencedIds = new Set(referenced.map((r) => r.productId));
+		const safe = extras.filter((p) => !referencedIds.has(p.id));
+		const skipped = extras.filter((p) => referencedIds.has(p.id));
+
+		if (skipped.length > 0) {
+			console.warn(`  --reset: SKIPPED ${skipped.length} extra product(s) referenced by a recipe — not deleted:`);
+			for (const p of skipped) console.warn(`      ${p.sourceId}  ${p.nameEn}`);
+		}
+
+		const del = await prisma.foodProduct.deleteMany({ where: { id: { in: safe.map((p) => p.id) } } });
+		console.log(`  --reset: deleted ${del.count} product(s) not in snapshot`);
+	}
 }

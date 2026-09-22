@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAmount, seedFields, buildDraftProduct } from "./product-form";
+import { parseAmount, seedFields, seedNutrientValues, buildDraftProduct } from "./product-form";
 import type { DraftProduct, NutrientRegistryEntry, NutrientRegistryGroup } from "$lib/food/schema";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────────
@@ -70,6 +70,28 @@ describe("seedFields", () => {
 		);
 		expect(f.values).toEqual({ ENERC_KCAL: 0, FAT: 3 });
 		expect("PROCNT" in f.values).toBe(false);
+	});
+});
+
+// ─── seedNutrientValues ─────────────────────────────────────────────────────────────
+
+describe("seedNutrientValues", () => {
+	it("gives EVERY registry nutrient a slot — absent → null, never undefined (no bind:value crash)", () => {
+		const values = seedNutrientValues({ ENERC_KCAL: 5 }, registry);
+		expect(values).toEqual({ ENERC_KCAL: 5, PROCNT: null });
+		// The crash this guards against is an `undefined` slot, so assert presence explicitly.
+		expect("PROCNT" in values).toBe(true);
+		expect(values.PROCNT).toBeNull();
+	});
+
+	it("keeps a typed 0 as 0 (NULL ≠ 0)", () => {
+		expect(seedNutrientValues({ ENERC_KCAL: 0 }, registry).ENERC_KCAL).toBe(0);
+	});
+
+	it("drops values not in the registry (the form renders registry rows only)", () => {
+		const values = seedNutrientValues({ FAT: 9 }, registry);
+		expect("FAT" in values).toBe(false);
+		expect(values).toEqual({ ENERC_KCAL: null, PROCNT: null });
 	});
 });
 

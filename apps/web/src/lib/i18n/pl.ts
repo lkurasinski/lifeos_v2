@@ -50,7 +50,8 @@ export const pl = {
 		backToLogin: "Wróć do logowania",
 		alreadyHaveAccount: "Masz już konto? Zaloguj się zamiast tego.",
 		brandLabel: "System żywienia · AI",
-		brandTagline: "Katalog przepisów → plan tygodniowy → lista zakupów. AI proponuje, ty decydujesz.",
+		brandTagline:
+			"Katalog przepisów → plan tygodniowy → lista zakupów. AI proponuje, ty decydujesz.",
 		brandStatus: "v1.0 · beta",
 	},
 	dashboard: {
@@ -65,6 +66,52 @@ export const pl = {
 		weeklyPlan: "Plan tygodnia",
 		shoppingList: "Lista zakupów",
 		settings: "Ustawienia",
+		profile: "Profil",
+	},
+	nutritionTargets: {
+		crumb: "Profil",
+		title: "Cele żywieniowe",
+		back: "Wróć",
+		eyebrow: "Dzienny cel",
+		lead: "Te wartości są punktem odniesienia dla każdego posiłku i planu tygodnia. Ustaw kaloryczność i rozkład makroskładników — resztę policzymy względem nich.",
+		hero: {
+			label: "Energia · cel dzienny",
+			sub: "Liczba, do której dążymy każdego dnia.",
+			unit: "kcal",
+			ariaLabel: "Cel kaloryczny (kcal/dzień)",
+		},
+		macrosLabel: "Makroskładniki",
+		macrosHint: "wartości w gramach",
+		gramUnit: "g",
+		kcalSuffix: "kcal",
+		totalLabel: "Razem z makr",
+		macros: {
+			protein: "Białko",
+			carbs: "Węglowodany",
+			fat: "Tłuszcze",
+			proteinAria: "Cel białka (g)",
+			carbsAria: "Cel węglowodanów (g)",
+			fatAria: "Cel tłuszczów (g)",
+		},
+		recon: {
+			title: "Energia z makroskładników",
+			subtitle: "4 kcal/g białka i węgli, 9 kcal/g tłuszczu",
+			targetPrefix: "cel",
+			statusOk: "Zgadza się z celem",
+			statusWarn: "Drobna rozbieżność",
+			statusOver: "Makra nie sumują się do celu",
+			exact: "Dokładnie na celu",
+			below: "kcal poniżej celu",
+			above: "kcal powyżej celu",
+		},
+		loopNote:
+			"Zmiana celów przeliczy adekwatność istniejących planów — nie zmienia samych przepisów ani zapisanych posiłków.",
+		dirty: "Niezapisane zmiany",
+		reset: "Przywróć",
+		save: "Zapisz cele",
+		saving: "Zapisuję…",
+		saved: "Zapisano cele żywieniowe",
+		saveError: "Nie udało się zapisać celów. Spróbuj ponownie.",
 	},
 	catalog: {
 		title: "Katalog produktów",
@@ -120,7 +167,8 @@ export const pl = {
 		edited: "Edytowano",
 		editProduct: "Edytuj produkt",
 		deleteConfirmTitle: "Usunąć produkt?",
-		deleteConfirmBody: "Produkt zostanie usunięty z katalogu i wyszukiwarki. Tej operacji nie można cofnąć.",
+		deleteConfirmBody:
+			"Produkt zostanie usunięty z katalogu i wyszukiwarki. Tej operacji nie można cofnąć.",
 		deleting: "Usuwam…",
 		deleted: "Usunięto produkt z katalogu",
 		deleteError: "Nie udało się usunąć produktu. Spróbuj ponownie.",
@@ -177,7 +225,8 @@ export const pl = {
 		resultsLabel: "Wyniki z OFF",
 		inCatalog: "W katalogu",
 		emptyResults: "Brak wyników w Open Food Facts. Sprawdź pisownię albo dodaj produkt ręcznie.",
-		networkError: "Nie udało się połączyć z Open Food Facts po kilku próbach. Spróbuj ponownie później.",
+		networkError:
+			"Nie udało się połączyć z Open Food Facts po kilku próbach. Spróbuj ponownie później.",
 		rateLimitError: "Zbyt wiele zapytań do Open Food Facts. Odczekaj chwilę i spróbuj ponownie.",
 		guardrailNote:
 			"Wybór wyniku tylko wczytuje podgląd — niczego nie zapisuje. Zapis tworzysz dopiero przyciskiem.",
@@ -186,7 +235,8 @@ export const pl = {
 		previewSubtitle:
 			"Wczytane i zmapowane na rejestr LifeOS. Sprawdź i popraw — zapis utworzysz dopiero przyciskiem.",
 		manualEyebrow: "Nowy produkt",
-		manualSubtitle: "Uzupełnij nazwę i wartości odżywcze. Puste pola zostaną zapisane jako brak danych.",
+		manualSubtitle:
+			"Uzupełnij nazwę i wartości odżywcze. Puste pola zostaną zapisane jako brak danych.",
 		editEyebrow: "Edycja produktu",
 		editSubtitle: "Popraw nazwę, kategorię i wartości odżywcze. Puste pole = brak danych (nie 0).",
 		draftUnsaved: "Podgląd · niezapisane",
@@ -306,7 +356,8 @@ export const pl = {
 		},
 		delete: {
 			confirmTitle: "Usunąć przepis?",
-			confirmBody: "Przepis zostanie usunięty z katalogu i wyszukiwarki. Tej operacji nie można cofnąć.",
+			confirmBody:
+				"Przepis zostanie usunięty z katalogu i wyszukiwarki. Tej operacji nie można cofnąć.",
 			deleting: "Usuwam…",
 			done: "Usunięto przepis",
 			error: "Nie udało się usunąć przepisu. Spróbuj ponownie.",
@@ -377,7 +428,8 @@ export const pl = {
 			partialOutro: "Sumy są przybliżone, nie zaniżone do zera.",
 			publishTitle: "Publikacja",
 			statusLabel: "Status",
-			statusHint: "Szkice są ukryte przed wyszukiwarką i sugestiami AI, dopóki ich nie opublikujesz.",
+			statusHint:
+				"Szkice są ukryte przed wyszukiwarką i sugestiami AI, dopóki ich nie opublikujesz.",
 			statusDraft: "Szkic",
 			statusPublished: "Opublikowany",
 			visibilityLabel: "Widoczność",

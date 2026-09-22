@@ -100,9 +100,7 @@ describe('nutrient registry integrity', () => {
 
 describe('mapCategorySlug', () => {
 	it('maps known USDA category IDs to correct slugs', () => {
-		expect(mapCategorySlug('5')).toBe('poultry');
 		expect(mapCategorySlug('11')).toBe('vegetables');
-		expect(mapCategorySlug('13')).toBe('beef');
 		expect(mapCategorySlug('15')).toBe('seafood');
 		expect(mapCategorySlug('20')).toBe('grains');
 		expect(mapCategorySlug('1')).toBe('dairy');
@@ -123,6 +121,14 @@ describe('mapCategorySlug', () => {
 		expect(mapCategorySlug('21')).toBe('other');
 		expect(mapCategorySlug('22')).toBe('other');
 		expect(mapCategorySlug('27')).toBe('other');
+	});
+
+	it('maps every animal-protein category to the single "meat" slug', () => {
+		expect(mapCategorySlug('5')).toBe('meat'); // Poultry
+		expect(mapCategorySlug('7')).toBe('meat'); // Sausages and Luncheon Meats
+		expect(mapCategorySlug('10')).toBe('meat'); // Pork
+		expect(mapCategorySlug('13')).toBe('meat'); // Beef
+		expect(mapCategorySlug('17')).toBe('meat'); // Lamb, Veal, and Game
 	});
 
 	it('maps both beverage categories to "beverages"', () => {

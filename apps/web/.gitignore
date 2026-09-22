@@ -24,5 +24,10 @@ vite.config.ts.timestamp-*
 
 /src/generated
 
-# Seed data (bulk CSV downloads — not checked in)
-/data
+# Seed data: bulk CSV downloads (USDA dump) are not checked in, but the curated
+# catalog snapshot and the hand-curated shortlists ARE — they are the canonical reseed source.
+/data/*
+!/data/catalog-seed
+!/data/catalog-curation
+# ...but the raw candidate buffets are regenerable scratch — keep only the shortlists.
+/data/catalog-curation/*-candidates.tsv

@@ -23,9 +23,24 @@ model User {
   createdDiets      Diet[]
   createdTechniques Technique[]
   createdAllergens  Allergen[]
+  nutritionalTarget NutritionalTarget?
 
   @@unique([email])
   @@map("user")
+}
+
+model NutritionalTarget {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caloriesKcal Float?
+  proteinG     Float?
+  carbsG       Float?
+  fatG         Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("nutritional_target")
 }
 
 model Session {

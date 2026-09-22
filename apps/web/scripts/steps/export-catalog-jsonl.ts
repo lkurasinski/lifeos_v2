@@ -36,7 +36,11 @@ export async function exportCatalogJsonl(
 
 	const products = await prisma.foodProduct.findMany({
 		orderBy: [{ source: "asc" }, { sourceId: "asc" }],
-		include: { foodNutrients: true },
+		// Nutrient rows MUST be ordered: Postgres returns them in physical order, which shifts
+		// as rows are rewritten, so an unordered export reshuffles nutrients inside product
+		// lines and turns `git diff` on the snapshot into noise. The snapshot is the catalog's
+		// source of truth and is reviewed as a diff — it has to be deterministic.
+		include: { foodNutrients: { orderBy: { nutrientId: "asc" } } },
 	});
 
 	const lines: string[] = [];

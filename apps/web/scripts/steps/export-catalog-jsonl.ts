@@ -19,10 +19,12 @@
 import path from "path";
 import { mkdirSync, writeFileSync } from "fs";
 import type { PrismaClient } from "../../src/generated/prisma/client.js";
+import { resolveSnapshotPath } from "../../src/lib/server/catalog-snapshot.js";
 
+// One definition of where the snapshot lives, shared with the import side. `mustExist: false`
+// because the very first export is what creates the file.
 export function defaultCatalogPath(): string {
-	const scriptDir = path.dirname(new URL(import.meta.url).pathname);
-	return path.resolve(scriptDir, "../../data/catalog-seed/catalog.jsonl");
+	return resolveSnapshotPath({ mustExist: false });
 }
 
 export async function exportCatalogJsonl(

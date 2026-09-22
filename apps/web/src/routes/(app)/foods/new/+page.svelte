@@ -86,7 +86,12 @@
 
 	<div class="flow">
 		<div class="src">
-			<OffFinder {manualActive} onSelect={selectDraft} onManual={startManual} onExisting={toCatalog} />
+			<OffFinder
+				{manualActive}
+				onSelect={selectDraft}
+				onManual={startManual}
+				onExisting={toCatalog}
+			/>
 		</div>
 
 		<div class="pv">

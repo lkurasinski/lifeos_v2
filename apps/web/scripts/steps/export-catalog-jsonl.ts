@@ -16,39 +16,39 @@
  * Counterpart: import-from-jsonl.ts (`--step import-jsonl`).
  */
 
-import path from 'path';
-import { mkdirSync, writeFileSync } from 'fs';
-import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import path from "path";
+import { mkdirSync, writeFileSync } from "fs";
+import type { PrismaClient } from "../../src/generated/prisma/client.js";
 
 export function defaultCatalogPath(): string {
 	const scriptDir = path.dirname(new URL(import.meta.url).pathname);
-	return path.resolve(scriptDir, '../../data/catalog-seed/catalog.jsonl');
+	return path.resolve(scriptDir, "../../data/catalog-seed/catalog.jsonl");
 }
 
 export async function exportCatalogJsonl(
 	prisma: PrismaClient,
-	outPath: string = defaultCatalogPath()
+	outPath: string = defaultCatalogPath(),
 ): Promise<void> {
 	const categories = await prisma.foodCategory.findMany({
-		orderBy: { slug: 'asc' },
+		orderBy: { slug: "asc" },
 		select: { id: true, slug: true, namePl: true, nameEn: true },
 	});
 
 	const products = await prisma.foodProduct.findMany({
-		orderBy: [{ source: 'asc' }, { sourceId: 'asc' }],
+		orderBy: [{ source: "asc" }, { sourceId: "asc" }],
 		include: { foodNutrients: true },
 	});
 
 	const lines: string[] = [];
 
 	for (const c of categories) {
-		lines.push(JSON.stringify({ kind: 'category', ...c }));
+		lines.push(JSON.stringify({ kind: "category", ...c }));
 	}
 
 	for (const p of products) {
 		lines.push(
 			JSON.stringify({
-				kind: 'product',
+				kind: "product",
 				id: p.id,
 				source: p.source,
 				sourceId: p.sourceId,
@@ -70,15 +70,15 @@ export async function exportCatalogJsonl(
 					// Decimal → string preserves the Decimal(10,4) value exactly.
 					amountPer100g: fn.amountPer100g === null ? null : fn.amountPer100g.toString(),
 				})),
-			})
+			}),
 		);
 	}
 
 	mkdirSync(path.dirname(outPath), { recursive: true });
-	writeFileSync(outPath, lines.join('\n') + '\n', 'utf-8');
+	writeFileSync(outPath, lines.join("\n") + "\n", "utf-8");
 
 	const nutrientCount = products.reduce((sum, p) => sum + p.foodNutrients.length, 0);
 	console.log(
-		`  Exported ${categories.length} categories, ${products.length} products, ${nutrientCount} nutrient rows → ${outPath}`
+		`  Exported ${categories.length} categories, ${products.length} products, ${nutrientCount} nutrient rows → ${outPath}`,
 	);
 }

@@ -45,7 +45,9 @@
 	const mealTypeLabels = $derived(
 		Object.fromEntries(data.taxonomies.mealTypes.map((m) => [m.slug, m.namePl])),
 	);
-	const dietLabels = $derived(Object.fromEntries(data.taxonomies.diets.map((d) => [d.slug, d.namePl])));
+	const dietLabels = $derived(
+		Object.fromEntries(data.taxonomies.diets.map((d) => [d.slug, d.namePl])),
+	);
 
 	const active = $derived<Record<FacetDim, string[]>>({
 		mealTypes: data.params.mealTypes ?? [],
@@ -272,7 +274,9 @@
 		{#snippet actions()}
 			<Button onclick={() => goto(resolve("/recipes/new"))}>
 				<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-					<path d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z" />
+					<path
+						d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
+					/>
 				</svg>
 				{t("recipe.list.addButton")}
 			</Button>
@@ -333,7 +337,12 @@
 						/>
 					{/each}
 				</div>
-				<Pagination page={data.result.page} limit={data.result.limit} total={data.result.total} {onPage} />
+				<Pagination
+					page={data.result.page}
+					limit={data.result.limit}
+					total={data.result.total}
+					{onPage}
+				/>
 			{/if}
 		</div>
 

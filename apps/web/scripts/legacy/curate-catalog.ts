@@ -30,25 +30,25 @@
  *
  */
 
-import path from 'path';
-import { readFileSync, existsSync } from 'fs';
-import { parse as parseCsvSync } from 'csv-parse/sync';
-import type { PrismaClient } from '../../src/generated/prisma/client.js';
+import path from "path";
+import { readFileSync, existsSync } from "fs";
+import { parse as parseCsvSync } from "csv-parse/sync";
+import type { PrismaClient } from "../../src/generated/prisma/client.js";
 
 // USDA category slugs merged into the single `meat` category.
-const MEAT_SOURCE_SLUGS = ['beef', 'pork', 'poultry', 'processed-meat', 'lamb-game'];
-const MEAT_CATEGORY = { slug: 'meat', namePl: 'Mięso', nameEn: 'Meat Products' };
+const MEAT_SOURCE_SLUGS = ["beef", "pork", "poultry", "processed-meat", "lamb-game"];
+const MEAT_CATEGORY = { slug: "meat", namePl: "Mięso", nameEn: "Meat Products" };
 
 // Categories curated against a shortlist TSV (filename → category slug).
 const CURATED: Array<{ slug: string; file: string }> = [
-	{ slug: 'meat', file: 'meat-shortlist.tsv' },
-	{ slug: 'seafood', file: 'seafood-shortlist.tsv' },
-	{ slug: 'nuts', file: 'nuts-shortlist.tsv' },
+	{ slug: "meat", file: "meat-shortlist.tsv" },
+	{ slug: "seafood", file: "seafood-shortlist.tsv" },
+	{ slug: "nuts", file: "nuts-shortlist.tsv" },
 ];
 
 function shortlistDir(): string {
 	const scriptDir = path.dirname(new URL(import.meta.url).pathname);
-	return path.resolve(scriptDir, '../../data/catalog-curation');
+	return path.resolve(scriptDir, "../../data/catalog-curation");
 }
 
 /** Read a shortlist TSV → the set of kept sourceIds (FDC ids). */
@@ -57,9 +57,9 @@ function readKeptSourceIds(file: string): Set<string> {
 	if (!existsSync(full)) {
 		throw new Error(`Shortlist not found: ${full}`);
 	}
-	const rows = parseCsvSync(readFileSync(full, 'utf-8'), {
+	const rows = parseCsvSync(readFileSync(full, "utf-8"), {
 		columns: true,
-		delimiter: '\t',
+		delimiter: "\t",
 		skip_empty_lines: true,
 		relax_quotes: true,
 	}) as Array<{ sourceId?: string }>;
@@ -87,7 +87,7 @@ async function mergeMeatCategories(prisma: PrismaClient): Promise<void> {
 	});
 
 	if (oldCats.length === 0) {
-		console.log('  Merge: no legacy meat categories present (already merged)');
+		console.log("  Merge: no legacy meat categories present (already merged)");
 		return;
 	}
 
@@ -102,7 +102,7 @@ async function mergeMeatCategories(prisma: PrismaClient): Promise<void> {
 	});
 
 	console.log(
-		`  Merge: moved ${moved.count} products into "meat", removed ${deleted.count} legacy categories (${oldCats.map((c) => c.slug).join(', ')})`
+		`  Merge: moved ${moved.count} products into "meat", removed ${deleted.count} legacy categories (${oldCats.map((c) => c.slug).join(", ")})`,
 	);
 }
 
@@ -111,12 +111,12 @@ async function mergeMeatCategories(prisma: PrismaClient): Promise<void> {
 async function pruneCategory(
 	prisma: PrismaClient,
 	slug: string,
-	keptSourceIds: Set<string>
+	keptSourceIds: Set<string>,
 ): Promise<{ kept: number; deleted: number; skipped: number }> {
 	// Candidates for deletion: USDA_SR products in this category NOT on the shortlist.
 	// OFF / CUSTOM products are deliberately excluded — they are user/branded data.
 	const inCategory = await prisma.foodProduct.findMany({
-		where: { source: 'USDA_SR', category: { slug } },
+		where: { source: "USDA_SR", category: { slug } },
 		select: { id: true, sourceId: true, nameEn: true },
 	});
 
@@ -140,7 +140,7 @@ async function pruneCategory(
 
 	if (skipped.length > 0) {
 		console.warn(
-			`  ${slug}: SKIPPED ${skipped.length} product(s) referenced by a recipe — not deleted:`
+			`  ${slug}: SKIPPED ${skipped.length} product(s) referenced by a recipe — not deleted:`,
 		);
 		for (const p of skipped) console.warn(`      ${p.sourceId}  ${p.nameEn}`);
 	}
@@ -156,10 +156,10 @@ async function pruneCategory(
 // ── Entry point ────────────────────────────────────────────────────
 
 export async function curateCatalog(prisma: PrismaClient): Promise<void> {
-	console.log('Merging meat categories...');
+	console.log("Merging meat categories...");
 	await mergeMeatCategories(prisma);
 
-	console.log('Pruning curated categories against shortlists...');
+	console.log("Pruning curated categories against shortlists...");
 	let totalDeleted = 0;
 	for (const { slug, file } of CURATED) {
 		const kept = readKeptSourceIds(file);

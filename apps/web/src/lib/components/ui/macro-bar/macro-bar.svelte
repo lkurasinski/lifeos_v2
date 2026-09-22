@@ -30,7 +30,10 @@
 	{...restProps}
 >
 	<div
-		class={cn("h-full rounded-pill motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out-expo", fillTone)}
+		class={cn(
+			"h-full rounded-pill motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out-expo",
+			fillTone,
+		)}
 		style="width:{pct}%"
 	></div>
 </div>

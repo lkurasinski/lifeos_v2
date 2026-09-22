@@ -29,5 +29,8 @@
 </script>
 
 <span class={cn(metricVariants({ size }), className)} {...restProps}>
-	{value}{#if unit}<span class="ml-[0.2em] translate-y-[-0.7em] text-[0.36em] font-medium tracking-normal text-muted-foreground">{unit}</span>{/if}
+	{value}{#if unit}<span
+			class="ml-[0.2em] translate-y-[-0.7em] text-[0.36em] font-medium tracking-normal text-muted-foreground"
+			>{unit}</span
+		>{/if}
 </span>

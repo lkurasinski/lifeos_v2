@@ -320,7 +320,11 @@
 			linear-gradient(oklch(from var(--foreground) l c h / 0.04) 1px, transparent 1px),
 			linear-gradient(90deg, oklch(from var(--foreground) l c h / 0.04) 1px, transparent 1px);
 		background-size: 34px 34px;
-		-webkit-mask-image: radial-gradient(ellipse 72% 68% at 38% 28%, oklch(0 0 0) 0%, transparent 78%);
+		-webkit-mask-image: radial-gradient(
+			ellipse 72% 68% at 38% 28%,
+			oklch(0 0 0) 0%,
+			transparent 78%
+		);
 		mask-image: radial-gradient(ellipse 72% 68% at 38% 28%, oklch(0 0 0) 0%, transparent 78%);
 		pointer-events: none;
 	}

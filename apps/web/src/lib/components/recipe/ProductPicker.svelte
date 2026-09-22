@@ -202,68 +202,68 @@
 		onTabChange={(v) => (tab = v as "products" | "subRecipes")}
 	>
 		<SearchInput
-				bind:inputEl={searchEl}
-				bind:value={query}
-				inputClass="h-auto py-[9px] pl-[33px] pr-3 text-[0.875rem]"
-				leading={ppSearchIcon}
-				placeholder={tab === "products"
-					? t("recipe.form.pickerSearchProduct")
-					: t("recipe.form.pickerSearchSubRecipe")}
-				aria-label={tab === "products"
-					? t("recipe.form.pickerSearchProduct")
-					: t("recipe.form.pickerSearchSubRecipe")}
-			/>
+			bind:inputEl={searchEl}
+			bind:value={query}
+			inputClass="h-auto py-[9px] pl-[33px] pr-3 text-[0.875rem]"
+			leading={ppSearchIcon}
+			placeholder={tab === "products"
+				? t("recipe.form.pickerSearchProduct")
+				: t("recipe.form.pickerSearchSubRecipe")}
+			aria-label={tab === "products"
+				? t("recipe.form.pickerSearchProduct")
+				: t("recipe.form.pickerSearchSubRecipe")}
+		/>
 
-			{#if tab === "products"}
-				<div class="pp-lab">{t("recipe.form.matchingProducts")}</div>
-				{#if loading}
-					<div class="pp-empty">{t("recipe.form.pickerSearching")}</div>
-				{:else}
-					{#each products as hit (hit.id)}
-						<PickerResult
-							kind="product"
-							categorySlug={hit.categorySlug}
-							name={hit.namePl ?? hit.nameEn}
-							meta={productMeta(hit)}
-							onSelect={() => pickProduct(hit)}
-						/>
-					{:else}
-						{#if query.trim()}<div class="pp-empty">{t("recipe.form.pickerEmpty")}</div>{/if}
-					{/each}
-				{/if}
-				{#if query.trim()}
-					<div class="pp-div"></div>
-					<button type="button" class="pp-create" onclick={create}>
-						<span class="ci">
-							<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
-								><path
-									d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
-								/></svg
-							>
-						</span>
-						<span class="cc">
-							<span class="ct">{t("recipe.form.createProduct")} „{query.trim()}"</span>
-							<span class="cs">{t("recipe.form.createProductHint")}</span>
-						</span>
-					</button>
-				{/if}
+		{#if tab === "products"}
+			<div class="pp-lab">{t("recipe.form.matchingProducts")}</div>
+			{#if loading}
+				<div class="pp-empty">{t("recipe.form.pickerSearching")}</div>
 			{:else}
-				<div class="pp-lab">{t("recipe.form.matchingSubRecipes")}</div>
-				{#if loading}
-					<div class="pp-empty">{t("recipe.form.pickerSearching")}</div>
+				{#each products as hit (hit.id)}
+					<PickerResult
+						kind="product"
+						categorySlug={hit.categorySlug}
+						name={hit.namePl ?? hit.nameEn}
+						meta={productMeta(hit)}
+						onSelect={() => pickProduct(hit)}
+					/>
 				{:else}
-					{#each recipes as hit (hit.id)}
-						<PickerResult
-							kind="subRecipe"
-							name={hit.name}
-							meta={recipeMeta(hit)}
-							onSelect={() => pickRecipe(hit)}
-						/>
-					{:else}
-						{#if query.trim()}<div class="pp-empty">{t("recipe.form.pickerEmpty")}</div>{/if}
-					{/each}
-				{/if}
+					{#if query.trim()}<div class="pp-empty">{t("recipe.form.pickerEmpty")}</div>{/if}
+				{/each}
 			{/if}
+			{#if query.trim()}
+				<div class="pp-div"></div>
+				<button type="button" class="pp-create" onclick={create}>
+					<span class="ci">
+						<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"
+							><path
+								d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
+							/></svg
+						>
+					</span>
+					<span class="cc">
+						<span class="ct">{t("recipe.form.createProduct")} „{query.trim()}"</span>
+						<span class="cs">{t("recipe.form.createProductHint")}</span>
+					</span>
+				</button>
+			{/if}
+		{:else}
+			<div class="pp-lab">{t("recipe.form.matchingSubRecipes")}</div>
+			{#if loading}
+				<div class="pp-empty">{t("recipe.form.pickerSearching")}</div>
+			{:else}
+				{#each recipes as hit (hit.id)}
+					<PickerResult
+						kind="subRecipe"
+						name={hit.name}
+						meta={recipeMeta(hit)}
+						onSelect={() => pickRecipe(hit)}
+					/>
+				{:else}
+					{#if query.trim()}<div class="pp-empty">{t("recipe.form.pickerEmpty")}</div>{/if}
+				{/each}
+			{/if}
+		{/if}
 	</PickerPopover>
 </span>
 

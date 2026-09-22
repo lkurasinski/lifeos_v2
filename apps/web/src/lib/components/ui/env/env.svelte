@@ -10,4 +10,8 @@
 	let { class: className, ...restProps }: Props = $props();
 </script>
 
-<div aria-hidden="true" class={cn("env pointer-events-none fixed inset-0 -z-10", className)} {...restProps}></div>
+<div
+	aria-hidden="true"
+	class={cn("env pointer-events-none fixed inset-0 -z-10", className)}
+	{...restProps}
+></div>

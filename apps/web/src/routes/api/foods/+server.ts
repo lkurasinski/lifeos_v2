@@ -45,7 +45,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
  */
 export const DELETE: RequestHandler = async ({ request, locals }) => {
 	requireUser(locals);
-	const { ids } = await parseJsonBody(request, bulkDeletePayloadSchema, "Nieprawidłowa lista produktów");
+	const { ids } = await parseJsonBody(
+		request,
+		bulkDeletePayloadSchema,
+		"Nieprawidłowa lista produktów",
+	);
 
 	try {
 		const result = await deleteFoodProducts(ids);

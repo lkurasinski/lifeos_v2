@@ -26,7 +26,10 @@ function formatLevel(value) {
 	const name = typeof value === "number" ? NAME[value] : String(value ?? "").toUpperCase();
 	if (!name || !COLOR[name]) return "";
 	const c = COLOR[name];
-	return `\x1b[${c}m${GLYPH[name]}\x1b[39m \x1b[${c}m${name}\x1b[39m` + " ".repeat(Math.max(0, 5 - name.length));
+	return (
+		`\x1b[${c}m${GLYPH[name]}\x1b[39m \x1b[${c}m${name}\x1b[39m` +
+		" ".repeat(Math.max(0, 5 - name.length))
+	);
 }
 
 /** Replacement for pino-princess's `formatUrl` (registered on our `path` field via keyMap).

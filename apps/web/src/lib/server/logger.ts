@@ -64,7 +64,8 @@ const usePretty = process.env.NODE_ENV !== "production" && !process.env.VITEST;
 // from this module's own path (sibling .mjs) rather than `new URL(literal, import.meta.url)` —
 // the latter is statically rewritten by Vite into an asset reference. The worker loads it by
 // absolute path. Computed lazily inside the dev branch so prod never touches it.
-const prettyTransportTarget = () => fileURLToPath(import.meta.url).replace(/logger\.[^/]+$/, "pretty-transport.mjs");
+const prettyTransportTarget = () =>
+	fileURLToPath(import.meta.url).replace(/logger\.[^/]+$/, "pretty-transport.mjs");
 
 export const logger = usePretty
 	? pino({

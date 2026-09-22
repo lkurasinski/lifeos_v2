@@ -31,33 +31,33 @@
  * On Railway: railway run pnpm tsx scripts/seed-food-data.ts
  */
 
-import 'dotenv/config';
-import { PrismaClient } from '../src/generated/prisma/client.js';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Meilisearch } from 'meilisearch';
-import { seedNutrients } from './steps/seed-nutrients.js';
-import { indexMeilisearch } from './steps/index-meilisearch.js';
-import { seedRecipeTaxonomies } from './steps/seed-recipe-taxonomies.js';
-import { indexRecipes } from './steps/index-recipes.js';
-import { exportCatalogJsonl } from './steps/export-catalog-jsonl.js';
-import { importFromJsonl } from './steps/import-from-jsonl.js';
+import "dotenv/config";
+import { PrismaClient } from "../src/generated/prisma/client.js";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Meilisearch } from "meilisearch";
+import { seedNutrients } from "./steps/seed-nutrients.js";
+import { indexMeilisearch } from "./steps/index-meilisearch.js";
+import { seedRecipeTaxonomies } from "./steps/seed-recipe-taxonomies.js";
+import { indexRecipes } from "./steps/index-recipes.js";
+import { exportCatalogJsonl } from "./steps/export-catalog-jsonl.js";
+import { importFromJsonl } from "./steps/import-from-jsonl.js";
 
 const VALID_STEPS = [
-	'nutrients',
-	'import-jsonl',
-	'index',
-	'recipe-taxonomies',
-	'recipe-index',
-	'export-jsonl',
+	"nutrients",
+	"import-jsonl",
+	"index",
+	"recipe-taxonomies",
+	"recipe-index",
+	"export-jsonl",
 ] as const;
 type Step = (typeof VALID_STEPS)[number];
 
 function parseStep(): Step | undefined {
-	const idx = process.argv.indexOf('--step');
+	const idx = process.argv.indexOf("--step");
 	if (idx === -1) return undefined;
 	const val = process.argv[idx + 1];
 	if (!VALID_STEPS.includes(val as Step)) {
-		throw new Error(`Unknown --step "${val}". Valid: ${VALID_STEPS.join(', ')}`);
+		throw new Error(`Unknown --step "${val}". Valid: ${VALID_STEPS.join(", ")}`);
 	}
 	return val as Step;
 }
@@ -68,7 +68,7 @@ function hasFlag(flag: string): boolean {
 
 async function main() {
 	const step = parseStep();
-	const reset = hasFlag('--reset');
+	const reset = hasFlag("--reset");
 
 	const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 	const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
@@ -79,29 +79,29 @@ async function main() {
 	});
 
 	try {
-		if (!step || step === 'nutrients') {
-			console.log('\n=== Step: nutrients ===');
+		if (!step || step === "nutrients") {
+			console.log("\n=== Step: nutrients ===");
 			await seedNutrients(prisma, { reset });
 		}
-		if (!step || step === 'import-jsonl') {
-			console.log('\n=== Step: import-jsonl ===');
+		if (!step || step === "import-jsonl") {
+			console.log("\n=== Step: import-jsonl ===");
 			await importFromJsonl(prisma, { reset });
 		}
-		if (!step || step === 'index') {
-			console.log('\n=== Step: index ===');
+		if (!step || step === "index") {
+			console.log("\n=== Step: index ===");
 			await indexMeilisearch(prisma, meili);
 		}
-		if (!step || step === 'recipe-taxonomies') {
-			console.log('\n=== Step: recipe-taxonomies ===');
+		if (!step || step === "recipe-taxonomies") {
+			console.log("\n=== Step: recipe-taxonomies ===");
 			await seedRecipeTaxonomies(prisma);
 		}
-		if (!step || step === 'recipe-index') {
-			console.log('\n=== Step: recipe-index ===');
+		if (!step || step === "recipe-index") {
+			console.log("\n=== Step: recipe-index ===");
 			await indexRecipes(prisma, meili);
 		}
 		// Step-only (never part of the default run): writing the snapshot is an explicit act.
-		if (step === 'export-jsonl') {
-			console.log('\n=== Step: export-jsonl ===');
+		if (step === "export-jsonl") {
+			console.log("\n=== Step: export-jsonl ===");
 			await exportCatalogJsonl(prisma);
 		}
 	} finally {

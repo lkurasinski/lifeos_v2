@@ -63,9 +63,7 @@ describe("buildFoodSearchQueries", () => {
 	});
 
 	it("source-distribution query OMITS its own (source) filter and requests the source facet", () => {
-		const queries = buildFoodSearchQueries(
-			params({ sources: ["CUSTOM"], categories: ["nabial"] }),
-		);
+		const queries = buildFoodSearchQueries(params({ sources: ["CUSTOM"], categories: ["nabial"] }));
 		const source = queries[FOOD_QUERY_INDEX.SOURCE];
 		expect(source.facets).toEqual(["source"]);
 		// keeps the OTHER dimension's filter (category) but not its own (source)
@@ -74,9 +72,7 @@ describe("buildFoodSearchQueries", () => {
 	});
 
 	it("category-distribution query OMITS its own (category) filter and requests the category facet", () => {
-		const queries = buildFoodSearchQueries(
-			params({ sources: ["CUSTOM"], categories: ["nabial"] }),
-		);
+		const queries = buildFoodSearchQueries(params({ sources: ["CUSTOM"], categories: ["nabial"] }));
 		const category = queries[FOOD_QUERY_INDEX.CATEGORY];
 		expect(category.facets).toEqual(["categorySlug"]);
 		expect(category.filter).toEqual([['source = "CUSTOM"']]);

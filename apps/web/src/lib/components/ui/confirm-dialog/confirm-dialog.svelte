@@ -39,7 +39,9 @@
 	<div class="px-6 pb-[22px] pt-[26px]">
 		<h2 class="text-[1.125rem] font-semibold tracking-[-0.01em] text-foreground">{title}</h2>
 		<p class="mt-2 text-sm leading-normal text-muted-foreground">{message}</p>
-		<p class="mt-3 break-words rounded-sm bg-secondary px-3 py-2.5 text-[0.9375rem] font-semibold text-foreground">
+		<p
+			class="mt-3 break-words rounded-sm bg-secondary px-3 py-2.5 text-[0.9375rem] font-semibold text-foreground"
+		>
 			{subject}
 		</p>
 		<div class="mt-[22px] flex justify-end gap-2.5">

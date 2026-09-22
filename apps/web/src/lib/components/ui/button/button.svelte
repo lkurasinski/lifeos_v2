@@ -9,14 +9,16 @@
 			variant: {
 				// Primary action: solid graphite block, off-white text, soft shadow
 				// that lifts on hover and presses in on click. No brand color.
-				default: "bg-primary text-primary-foreground shadow-soft hover:shadow-lift active:translate-y-px active:shadow-soft",
+				default:
+					"bg-primary text-primary-foreground shadow-soft hover:shadow-lift active:translate-y-px active:shadow-soft",
 				// Secondary "glass": near-opaque card surface, graphite text, borderless.
 				secondary: "bg-card text-foreground shadow-soft hover:bg-accent active:translate-y-px",
 				outline: "border border-border bg-transparent text-foreground hover:bg-accent",
 				ghost: "text-muted-foreground hover:bg-accent hover:text-foreground",
 				link: "text-foreground underline-offset-4 hover:underline",
 				// Semantic only — destructive is the one place a hue is permitted on a button.
-				destructive: "bg-destructive text-destructive-foreground shadow-soft hover:opacity-90 active:translate-y-px",
+				destructive:
+					"bg-destructive text-destructive-foreground shadow-soft hover:opacity-90 active:translate-y-px",
 			},
 			size: {
 				default: "h-10 px-5 py-2",

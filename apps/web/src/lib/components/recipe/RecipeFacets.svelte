@@ -11,7 +11,13 @@
 	// are always visible; technika/alergeny/kuchnia/trudność hide behind a `Więcej filtrów`
 	// overflow. Counts come from each facet's OWN disjunctive query (an active selection in
 	// one dimension never collapses that dimension's own chips).
-	export type FacetDim = "mealTypes" | "diets" | "allergens" | "techniques" | "cuisines" | "difficulties";
+	export type FacetDim =
+		| "mealTypes"
+		| "diets"
+		| "allergens"
+		| "techniques"
+		| "cuisines"
+		| "difficulties";
 
 	type Props = {
 		scope: RecipeScope;
@@ -47,23 +53,43 @@
 		{ value: "wszystkie", label: t("recipe.scope.all") },
 		{ value: "moje", label: t("recipe.scope.mine") },
 		{ value: "publiczne", label: t("recipe.scope.public") },
-		{ value: "szkice", label: draftCount > 0 ? `${t("recipe.scope.drafts")} ${draftCount}` : t("recipe.scope.drafts") },
+		{
+			value: "szkice",
+			label:
+				draftCount > 0 ? `${t("recipe.scope.drafts")} ${draftCount}` : t("recipe.scope.drafts"),
+		},
 	]);
 
 	type ChipItem = { value: string; label: string };
-	type Group = { dim: FacetDim; label: string; items: ChipItem[]; counts: Record<string, number>; active: string[] };
+	type Group = {
+		dim: FacetDim;
+		label: string;
+		items: ChipItem[];
+		counts: Record<string, number>;
+		active: string[];
+	};
 
 	/** Build a chip group: only items with a hit (count > 0) or already-selected stay visible. */
-	function group(dim: FacetDim, label: string, items: ChipItem[], counts: Record<string, number>): Group {
+	function group(
+		dim: FacetDim,
+		label: string,
+		items: ChipItem[],
+		counts: Record<string, number>,
+	): Group {
 		const act = active[dim];
 		const visible = items.filter((it) => (counts[it.value] ?? 0) > 0 || act.includes(it.value));
 		return { dim, label, items: visible, counts, active: act };
 	}
 
-	const taxItems = (rows: TaxonomyView[]): ChipItem[] => rows.map((r) => ({ value: r.slug, label: r.namePl }));
+	const taxItems = (rows: TaxonomyView[]): ChipItem[] =>
+		rows.map((r) => ({ value: r.slug, label: r.namePl }));
 
-	const mealGroup = $derived(group("mealTypes", t("recipe.facets.meal"), taxItems(mealTypes), facets.mealTypeSlugs));
-	const dietGroup = $derived(group("diets", t("recipe.facets.diet"), taxItems(diets), facets.dietSlugs));
+	const mealGroup = $derived(
+		group("mealTypes", t("recipe.facets.meal"), taxItems(mealTypes), facets.mealTypeSlugs),
+	);
+	const dietGroup = $derived(
+		group("diets", t("recipe.facets.diet"), taxItems(diets), facets.dietSlugs),
+	);
 	const overflowGroups = $derived([
 		group("techniques", t("recipe.facets.technique"), taxItems(techniques), facets.techniqueSlugs),
 		group("allergens", t("recipe.facets.allergen"), taxItems(allergens), facets.allergenSlugs),
@@ -81,7 +107,9 @@
 
 {#snippet chipGroup(g: Group, trailing?: Snippet)}
 	<div class="flex flex-wrap items-center gap-[7px]">
-		<span class="mr-1 w-[60px] shrink-0 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-md:w-auto">
+		<span
+			class="mr-1 w-[60px] shrink-0 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-md:w-auto"
+		>
 			{g.label}
 		</span>
 		<Chip active={g.active.length === 0} onclick={() => onClear(g.dim)}>

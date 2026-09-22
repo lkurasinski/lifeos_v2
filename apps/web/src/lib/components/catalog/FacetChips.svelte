@@ -22,8 +22,14 @@
 		onCategoryChange: (slug: string | null) => void;
 	};
 
-	let { sourceSegment, onSourceChange, categories, counts, activeCategory, onCategoryChange }: Props =
-		$props();
+	let {
+		sourceSegment,
+		onSourceChange,
+		categories,
+		counts,
+		activeCategory,
+		onCategoryChange,
+	}: Props = $props();
 
 	const sourceItems = [
 		{ value: "all", label: t("catalog.sources.all") },
@@ -72,7 +78,9 @@
 			onclick={() => (expanded = !expanded)}
 		>
 			<CategoryIcon slug={activeCategory} size={15} />
-			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em]">{t("catalog.categoryLabel")}:</span>
+			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em]"
+				>{t("catalog.categoryLabel")}:</span
+			>
 			<span class="text-foreground">{activeName}</span>
 			<svg
 				class="h-[15px] w-[15px] transition-transform duration-200 ease-[var(--ease)] motion-reduce:transition-none {expanded
@@ -92,7 +100,9 @@
 				!expanded && "max-xl:hidden",
 			]}
 		>
-			<span class="mr-1 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-xl:hidden">
+			<span
+				class="mr-1 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-xl:hidden"
+			>
 				{t("catalog.categoryLabel")}
 			</span>
 			<Chip active={activeCategory === null} onclick={() => pick(null)}>
@@ -100,7 +110,11 @@
 				{t("catalog.allCategories")}
 			</Chip>
 			{#each visibleCategories as cat (cat.slug)}
-				<Chip active={activeCategory === cat.slug} count={counts[cat.slug]} onclick={() => pick(cat.slug)}>
+				<Chip
+					active={activeCategory === cat.slug}
+					count={counts[cat.slug]}
+					onclick={() => pick(cat.slug)}
+				>
 					{#snippet leading()}<CategoryIcon slug={cat.slug} size={15} />{/snippet}
 					{cat.namePl}
 				</Chip>

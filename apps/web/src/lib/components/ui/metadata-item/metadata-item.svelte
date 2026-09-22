@@ -22,6 +22,8 @@
 	{/if}
 	<b class="font-[550]">{@render children()}</b>
 	{#if label}
-		<span class="ml-px text-[0.6875rem] uppercase tracking-[0.04em] text-muted-foreground">{label}</span>
+		<span class="ml-px text-[0.6875rem] uppercase tracking-[0.04em] text-muted-foreground"
+			>{label}</span
+		>
 	{/if}
 </span>

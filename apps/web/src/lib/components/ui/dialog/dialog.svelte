@@ -16,8 +16,14 @@
 		class?: string;
 	};
 
-	let { open = false, onOpenChange, title, closeLabel = "Zamknij", children, class: className }: Props =
-		$props();
+	let {
+		open = false,
+		onOpenChange,
+		title,
+		closeLabel = "Zamknij",
+		children,
+		class: className,
+	}: Props = $props();
 </script>
 
 <Primitive.Root {open} {onOpenChange}>
@@ -79,7 +85,9 @@
 		background: var(--secondary);
 		color: var(--muted-foreground);
 		cursor: pointer;
-		transition: background-color 150ms var(--ease), color 150ms var(--ease);
+		transition:
+			background-color 150ms var(--ease),
+			color 150ms var(--ease);
 	}
 	:global(.dialog-close svg) {
 		width: 18px;

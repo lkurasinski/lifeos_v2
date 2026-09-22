@@ -104,21 +104,29 @@
 	</div>
 
 	<div>
-		<div class="text-[1.625rem] font-semibold leading-[1.15] tracking-[-0.02em] text-foreground max-md:text-[1.375rem]">
+		<div
+			class="text-[1.625rem] font-semibold leading-[1.15] tracking-[-0.02em] text-foreground max-md:text-[1.375rem]"
+		>
 			{hit.namePl ?? hit.nameEn}
 		</div>
 		{#if hit.namePl && hit.namePl !== hit.nameEn}
 			<div class="mt-1 text-[0.875rem] text-muted-foreground">{hit.nameEn}</div>
 		{/if}
 		{#if hit.brand}
-			<div class="mt-1.5 text-xs font-medium tracking-[0.02em] text-muted-foreground">{hit.brand}</div>
+			<div class="mt-1.5 text-xs font-medium tracking-[0.02em] text-muted-foreground">
+				{hit.brand}
+			</div>
 		{/if}
 	</div>
 
-	<div class="mb-2.5 mt-5 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-md:mb-2 max-md:mt-4">
+	<div
+		class="mb-2.5 mt-5 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground max-md:mb-2 max-md:mt-4"
+	>
 		{t("catalog.profileBasis")}
 	</div>
-	<div class="mt-[2px] grid grid-cols-4 gap-2.5 max-md:gap-1.5 max-[380px]:grid-cols-2 max-[380px]:gap-3">
+	<div
+		class="mt-[2px] grid grid-cols-4 gap-2.5 max-md:gap-1.5 max-[380px]:grid-cols-2 max-[380px]:gap-3"
+	>
 		{#each gauges as g (g.macro)}
 			<Gauge
 				macro={g.macro}
@@ -134,8 +142,12 @@
 		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>
 
 		{#snippet fullProfileHeader()}
-			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("catalog.fullProfile")}</span>
-			<span class="text-[0.6875rem] tabular-nums text-muted-foreground">{totalCount} {t("catalog.nutrientsCount")}</span>
+			<span class="text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+				>{t("catalog.fullProfile")}</span
+			>
+			<span class="text-[0.6875rem] tabular-nums text-muted-foreground"
+				>{totalCount} {t("catalog.nutrientsCount")}</span
+			>
 		{/snippet}
 
 		<CollapsibleSection
@@ -146,11 +158,16 @@
 			header={fullProfileHeader}
 		>
 			{#each groups as group (group.label)}
-				<NutrientGroupSection label={group.label} count={`${group.rows.length} ${t("catalog.itemsCount")}`}>
+				<NutrientGroupSection
+					label={group.label}
+					count={`${group.rows.length} ${t("catalog.itemsCount")}`}
+				>
 					{#each group.rows as row (row.id)}
 						<div class="flex items-baseline justify-between py-1.5 pl-4 pr-0.5">
 							<span class="text-[0.8125rem] text-muted-foreground">{row.name}</span>
-							<span class="text-[0.875rem] tabular-nums tracking-[-0.01em] text-foreground">{formatAmount(row.value)} {row.unit}</span>
+							<span class="text-[0.875rem] tabular-nums tracking-[-0.01em] text-foreground"
+								>{formatAmount(row.value)} {row.unit}</span
+							>
 						</div>
 					{/each}
 				</NutrientGroupSection>
@@ -183,11 +200,20 @@
 		<div class="my-[18px] h-px bg-[var(--hairline)]"></div>
 		<!-- Ingredients / nutrition shots — small thumbnails opening full-size in a new tab. -->
 		<div class="mt-1">
-			<div class="mb-[9px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">{t("catalog.photos")}</div>
+			<div
+				class="mb-[9px] text-[0.625rem] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+			>
+				{t("catalog.photos")}
+			</div>
 			<div class="grid grid-cols-2 gap-2.5">
 				{#each extraPhotos as p (p.label)}
 					<div class="flex flex-col gap-[5px] text-[0.6875rem] text-muted-foreground">
-						<img class="h-24 w-full rounded-sm bg-secondary object-cover shadow-soft" src={p.url} alt={p.label} loading="lazy" />
+						<img
+							class="h-24 w-full rounded-sm bg-secondary object-cover shadow-soft"
+							src={p.url}
+							alt={p.label}
+							loading="lazy"
+						/>
 						<span>{p.label}</span>
 					</div>
 				{/each}
@@ -196,7 +222,12 @@
 	{/if}
 
 	<div class="mt-[18px] flex items-center gap-[7px] text-xs text-muted-foreground">
-		<svg class="h-[14px] w-[14px] shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+		<svg
+			class="h-[14px] w-[14px] shrink-0"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+			aria-hidden="true"
+		>
 			<path
 				fill-rule="evenodd"
 				d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z"
@@ -212,13 +243,19 @@
 		</div>
 	{/if}
 	{#if hasAnyPhoto}
-		<div class="mt-[14px] text-[0.625rem] text-muted-foreground opacity-80">{t("catalog.photoCredit")}</div>
+		<div class="mt-[14px] text-[0.625rem] text-muted-foreground opacity-80">
+			{t("catalog.photoCredit")}
+		</div>
 	{/if}
 {/snippet}
 
 {#if embedded}
 	<!-- Embedded (inside the Dialog): no glass chrome, no sticky — the dialog is the surface. -->
-	<div class="flex flex-col px-[22px] pb-[22px] pt-6 max-md:px-4 max-md:pb-4 max-md:pt-5">{@render body()}</div>
+	<div class="flex flex-col px-[22px] pb-[22px] pt-6 max-md:px-4 max-md:pb-4 max-md:pt-5">
+		{@render body()}
+	</div>
 {:else}
-	<Panel variant="thick" class="sticky top-[18px] flex flex-col px-6 pb-[22px] pt-6">{@render body()}</Panel>
+	<Panel variant="thick" class="sticky top-[18px] flex flex-col px-6 pb-[22px] pt-6"
+		>{@render body()}</Panel
+	>
 {/if}

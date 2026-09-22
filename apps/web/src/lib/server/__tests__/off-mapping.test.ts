@@ -1,131 +1,131 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest';
-import { OFF_NUTRIENT_MAP, buildNutrimentRows } from '../off.js';
+import { describe, it, expect } from "vitest";
+import { OFF_NUTRIENT_MAP, buildNutrimentRows } from "../off.js";
 
-describe('OFF_NUTRIENT_MAP', () => {
-	it('maps energy-kcal to ENERC_KCAL with factor 1', () => {
-		const entry = OFF_NUTRIENT_MAP.get('energy-kcal');
+describe("OFF_NUTRIENT_MAP", () => {
+	it("maps energy-kcal to ENERC_KCAL with factor 1", () => {
+		const entry = OFF_NUTRIENT_MAP.get("energy-kcal");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('ENERC_KCAL');
+		expect(entry!.tag).toBe("ENERC_KCAL");
 		expect(entry!.factor).toBe(1);
 	});
 
-	it('maps proteins to PROCNT with factor 1', () => {
-		const entry = OFF_NUTRIENT_MAP.get('proteins');
+	it("maps proteins to PROCNT with factor 1", () => {
+		const entry = OFF_NUTRIENT_MAP.get("proteins");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('PROCNT');
+		expect(entry!.tag).toBe("PROCNT");
 		expect(entry!.factor).toBe(1);
 	});
 
-	it('maps sodium with factor 1000 (g→mg)', () => {
-		const entry = OFF_NUTRIENT_MAP.get('sodium');
+	it("maps sodium with factor 1000 (g→mg)", () => {
+		const entry = OFF_NUTRIENT_MAP.get("sodium");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('NA');
+		expect(entry!.tag).toBe("NA");
 		expect(entry!.factor).toBe(1000);
 	});
 
-	it('maps salt with factor 1000 (g→mg)', () => {
-		const entry = OFF_NUTRIENT_MAP.get('salt');
+	it("maps salt with factor 1000 (g→mg)", () => {
+		const entry = OFF_NUTRIENT_MAP.get("salt");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('NACL');
+		expect(entry!.tag).toBe("NACL");
 		expect(entry!.factor).toBe(1000);
 	});
 
-	it('maps vitamin-c to VITC', () => {
-		const entry = OFF_NUTRIENT_MAP.get('vitamin-c');
+	it("maps vitamin-c to VITC", () => {
+		const entry = OFF_NUTRIENT_MAP.get("vitamin-c");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('VITC');
+		expect(entry!.tag).toBe("VITC");
 	});
 
-	it('maps selenium to SE', () => {
-		const entry = OFF_NUTRIENT_MAP.get('selenium');
+	it("maps selenium to SE", () => {
+		const entry = OFF_NUTRIENT_MAP.get("selenium");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('SE');
+		expect(entry!.tag).toBe("SE");
 	});
 
-	it('maps vitamin-pp alias to NIAC', () => {
-		const entry = OFF_NUTRIENT_MAP.get('vitamin-pp');
+	it("maps vitamin-pp alias to NIAC", () => {
+		const entry = OFF_NUTRIENT_MAP.get("vitamin-pp");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('NIAC');
+		expect(entry!.tag).toBe("NIAC");
 	});
 
-	it('maps folates alias to FOL', () => {
-		const entry = OFF_NUTRIENT_MAP.get('folates');
+	it("maps folates alias to FOL", () => {
+		const entry = OFF_NUTRIENT_MAP.get("folates");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('FOL');
+		expect(entry!.tag).toBe("FOL");
 	});
 
-	it('maps pantothenic-acid alias to PANTAC', () => {
-		const entry = OFF_NUTRIENT_MAP.get('pantothenic-acid');
+	it("maps pantothenic-acid alias to PANTAC", () => {
+		const entry = OFF_NUTRIENT_MAP.get("pantothenic-acid");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('PANTAC');
+		expect(entry!.tag).toBe("PANTAC");
 	});
 
-	it('maps biotin alias to BIOT', () => {
-		const entry = OFF_NUTRIENT_MAP.get('biotin');
+	it("maps biotin alias to BIOT", () => {
+		const entry = OFF_NUTRIENT_MAP.get("biotin");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('BIOT');
+		expect(entry!.tag).toBe("BIOT");
 	});
 
-	it('maps niacin alias to NIAC', () => {
-		const entry = OFF_NUTRIENT_MAP.get('niacin');
+	it("maps niacin alias to NIAC", () => {
+		const entry = OFF_NUTRIENT_MAP.get("niacin");
 		expect(entry).toBeDefined();
-		expect(entry!.tag).toBe('NIAC');
+		expect(entry!.tag).toBe("NIAC");
 	});
 
-	it('does not contain unknown OFF keys', () => {
-		expect(OFF_NUTRIENT_MAP.get('some-unknown-nutrient')).toBeUndefined();
+	it("does not contain unknown OFF keys", () => {
+		expect(OFF_NUTRIENT_MAP.get("some-unknown-nutrient")).toBeUndefined();
 	});
 });
 
-describe('buildNutrimentRows', () => {
+describe("buildNutrimentRows", () => {
 	// nutrientId IS the INFOODS tagname (the Nutrient PK) — buildNutrimentRows emits
 	// it straight from OFF_NUTRIENT_MAP, so no tag→id map is passed.
-	it('processes _100g suffix keys and maps to canonical values', () => {
-		const rows = buildNutrimentRows({ 'energy-kcal_100g': 200, proteins_100g: 10 });
+	it("processes _100g suffix keys and maps to canonical values", () => {
+		const rows = buildNutrimentRows({ "energy-kcal_100g": 200, proteins_100g: 10 });
 		expect(rows).toHaveLength(2);
-		const kcal = rows.find((r) => r.nutrientId === 'ENERC_KCAL');
+		const kcal = rows.find((r) => r.nutrientId === "ENERC_KCAL");
 		expect(kcal!.amountPer100g).toBe(200);
-		const protein = rows.find((r) => r.nutrientId === 'PROCNT');
+		const protein = rows.find((r) => r.nutrientId === "PROCNT");
 		expect(protein!.amountPer100g).toBe(10);
 	});
 
-	it('applies factor 1000 for sodium (g→mg)', () => {
+	it("applies factor 1000 for sodium (g→mg)", () => {
 		const rows = buildNutrimentRows({ sodium_100g: 0.05 });
-		const sodium = rows.find((r) => r.nutrientId === 'NA');
+		const sodium = rows.find((r) => r.nutrientId === "NA");
 		expect(sodium!.amountPer100g).toBeCloseTo(50);
 	});
 
-	it('applies factor 1000 for salt (g→mg)', () => {
+	it("applies factor 1000 for salt (g→mg)", () => {
 		const rows = buildNutrimentRows({ salt_100g: 0.12 });
-		const salt = rows.find((r) => r.nutrientId === 'NACL');
+		const salt = rows.find((r) => r.nutrientId === "NACL");
 		expect(salt!.amountPer100g).toBeCloseTo(120);
 	});
 
-	it('silently skips unknown OFF keys', () => {
+	it("silently skips unknown OFF keys", () => {
 		const rows = buildNutrimentRows({ unknown_nutrient_100g: 5, proteins_100g: 20 });
 		expect(rows).toHaveLength(1);
-		expect(rows[0].nutrientId).toBe('PROCNT');
+		expect(rows[0].nutrientId).toBe("PROCNT");
 	});
 
-	it('silently skips keys without _100g suffix', () => {
+	it("silently skips keys without _100g suffix", () => {
 		const rows = buildNutrimentRows({ proteins: 10, proteins_100g: 20 });
 		expect(rows).toHaveLength(1);
 		expect(rows[0].amountPer100g).toBe(20);
 	});
 
-	it('produces correct subset for EU-7 mandatory nutrients', () => {
+	it("produces correct subset for EU-7 mandatory nutrients", () => {
 		const rows = buildNutrimentRows({
-			'energy-kcal_100g': 250,
+			"energy-kcal_100g": 250,
 			fat_100g: 10,
-			'saturated-fat_100g': 4,
+			"saturated-fat_100g": 4,
 			carbohydrates_100g: 30,
 			sugars_100g: 8,
 			proteins_100g: 15,
 			salt_100g: 0.5,
 		});
 		expect(rows).toHaveLength(7);
-		const salt = rows.find((r) => r.nutrientId === 'NACL');
+		const salt = rows.find((r) => r.nutrientId === "NACL");
 		expect(salt!.amountPer100g).toBeCloseTo(500);
 	});
 });

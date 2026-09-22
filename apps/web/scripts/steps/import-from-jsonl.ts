@@ -21,13 +21,13 @@
  * Counterpart: export-catalog-jsonl.ts (`--step export-jsonl`).
  */
 
-import { readFileSync, existsSync } from 'fs';
-import type { PrismaClient } from '../../src/generated/prisma/client.js';
-import type { FoodSource } from '../../src/generated/prisma/client.js';
-import { defaultCatalogPath } from './export-catalog-jsonl.js';
+import { readFileSync, existsSync } from "fs";
+import type { PrismaClient } from "../../src/generated/prisma/client.js";
+import type { FoodSource } from "../../src/generated/prisma/client.js";
+import { defaultCatalogPath } from "./export-catalog-jsonl.js";
 
 interface CategoryLine {
-	kind: 'category';
+	kind: "category";
 	id: string;
 	slug: string;
 	namePl: string;
@@ -35,7 +35,7 @@ interface CategoryLine {
 }
 
 interface ProductLine {
-	kind: 'product';
+	kind: "product";
 	id: string;
 	source: FoodSource;
 	sourceId: string;
@@ -57,17 +57,17 @@ interface ProductLine {
 
 export async function importFromJsonl(
 	prisma: PrismaClient,
-	options: { reset?: boolean; inPath?: string } = {}
+	options: { reset?: boolean; inPath?: string } = {},
 ): Promise<void> {
 	const { reset = false, inPath = defaultCatalogPath() } = options;
 	if (!existsSync(inPath)) {
 		throw new Error(
-			`Catalog snapshot not found: ${inPath}\nRun \`--step export-jsonl\` first to create it.`
+			`Catalog snapshot not found: ${inPath}\nRun \`--step export-jsonl\` first to create it.`,
 		);
 	}
 
-	const lines = readFileSync(inPath, 'utf-8')
-		.split('\n')
+	const lines = readFileSync(inPath, "utf-8")
+		.split("\n")
 		.map((l) => l.trim())
 		.filter(Boolean);
 
@@ -75,11 +75,13 @@ export async function importFromJsonl(
 	const products: ProductLine[] = [];
 	for (const line of lines) {
 		const rec = JSON.parse(line) as CategoryLine | ProductLine;
-		if (rec.kind === 'category') categories.push(rec);
-		else if (rec.kind === 'product') products.push(rec);
+		if (rec.kind === "category") categories.push(rec);
+		else if (rec.kind === "product") products.push(rec);
 	}
 
-	console.log(`  Loaded ${categories.length} categories, ${products.length} products from ${inPath}`);
+	console.log(
+		`  Loaded ${categories.length} categories, ${products.length} products from ${inPath}`,
+	);
 
 	// 1. Categories first — products reference them by id.
 	for (const c of categories) {
@@ -143,11 +145,13 @@ export async function importFromJsonl(
 	// --reset: prune products not present in the snapshot so the catalog matches it 1:1.
 	if (reset) {
 		const snapshotIds = new Set(products.map((p) => p.id));
-		const all = await prisma.foodProduct.findMany({ select: { id: true, sourceId: true, nameEn: true } });
+		const all = await prisma.foodProduct.findMany({
+			select: { id: true, sourceId: true, nameEn: true },
+		});
 		const extras = all.filter((p) => !snapshotIds.has(p.id));
 
 		if (extras.length === 0) {
-			console.log('  --reset: no extra products to delete (catalog already matches snapshot)');
+			console.log("  --reset: no extra products to delete (catalog already matches snapshot)");
 			return;
 		}
 
@@ -162,11 +166,15 @@ export async function importFromJsonl(
 		const skipped = extras.filter((p) => referencedIds.has(p.id));
 
 		if (skipped.length > 0) {
-			console.warn(`  --reset: SKIPPED ${skipped.length} extra product(s) referenced by a recipe — not deleted:`);
+			console.warn(
+				`  --reset: SKIPPED ${skipped.length} extra product(s) referenced by a recipe — not deleted:`,
+			);
 			for (const p of skipped) console.warn(`      ${p.sourceId}  ${p.nameEn}`);
 		}
 
-		const del = await prisma.foodProduct.deleteMany({ where: { id: { in: safe.map((p) => p.id) } } });
+		const del = await prisma.foodProduct.deleteMany({
+			where: { id: { in: safe.map((p) => p.id) } },
+		});
 		console.log(`  --reset: deleted ${del.count} product(s) not in snapshot`);
 	}
 }

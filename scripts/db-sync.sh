@@ -16,10 +16,11 @@
 #   into git. `publish` respects that split; `mirror-push` violates it on purpose and says so.
 #
 # WHAT EACH COMMAND DOES
-#   publish     replays catalog.jsonl into the remote DB (`--step nutrients` + `--step
-#               import-jsonl`), then POSTs the app's /api/admin/reindex so Railway reindexes
-#               ITSELF from its own DB over the private network (no egress; Meili stays private).
-#               No pg_dump, no docker needed. Prod's users and recipes are never touched.
+#   publish     backs up the remote catalog tables, then POSTs /api/admin/publish-catalog so the
+#               DEPLOYED APP replays the snapshot from its own build into its own database — in
+#               one transaction, over the private network — and reindexes itself. The write
+#               never crosses the internet and needs no production credential here. Prod's
+#               users and recipes are never touched.
 #   harvest     the escape hatch for the other direction: snapshots the REMOTE catalog over
 #               catalog.jsonl, so products added in the deployed app (OFF/CUSTOM) land in the
 #               repo instead of being lost at the next publish. Review with `git diff`.
@@ -69,17 +70,20 @@ db-sync.sh — move catalog data between the repo, the local docker stack and Ra
   ./scripts/db-sync.sh mirror-push --no-reindex
   ./scripts/db-sync.sh status              # resolved config + connectivity for both ends
 
-`publish` is the everyday command: the catalog lives in the repo, so publishing replays
-the committed snapshot into Railway and has the deployed app reindex itself. It never
-reads or writes user / session / recipe / nutritional_target rows.
+`publish` is the everyday command. The catalog lives in the repo, so the deployed app
+publishes the snapshot from its OWN build: this script only takes a backup and triggers it.
+The replay is one transaction — it lands completely or not at all — and never reads or
+writes user / session / recipe / nutritional_target rows.
 
 `publish --reset` makes the remote catalog match the snapshot 1:1. It deletes remote
 products that are not in the snapshot — including anything added through the deployed
 app (a product still referenced by a recipe is skipped and reported). Run `harvest`
 first if the deployed app may hold curation you have not captured yet.
 
-When the schema changes shape: deploy the new code first, then publish — the running app
-must understand the rows it is asked to index.
+Deploy before you publish: the app replays the snapshot from its own build, so what lands
+is the snapshot of the DEPLOYED commit, not the one in your working tree.
+
+Backups go to backups/ (gitignored) before every publish.
 
 Remote config: scripts/railway-remote.env  (copy the .example; gitignored)
 USAGE
@@ -131,8 +135,10 @@ remote_seed() { ( cd "$WEB" && DATABASE_URL="$REMOTE_DATABASE_URL" pnpm tsx scri
 confirm() { read -r -p "$1 [y/N] " a; [[ "$a" =~ ^[Yy]$ ]] || die "aborted"; }
 count_products() { psql_url "$1" "select count(*) from food_product" 2>/dev/null || echo "?"; }
 
-# Publish the catalog from the committed snapshot. Catalog tables only — the repo owns
-# them, so this is the everyday way production gets your curation.
+# Publish the catalog. The DESTRUCTIVE part runs on Railway: this backs the remote catalog up
+# first, then asks the deployed app to replay the snapshot from its own build and reindex
+# itself. Nothing here writes to the remote database, so no production credential is needed for
+# the write path — only for the backup and the row counts.
 cmd_publish() {
   local reset=0
   case "${1:-}" in
@@ -141,21 +147,53 @@ cmd_publish() {
     *) die "unknown option '$1' for publish (only --reset is supported)" ;;
   esac
   load_remote
-  [ -f "$WEB/data/catalog-seed/catalog.jsonl" ] || die "no snapshot at apps/web/data/catalog-seed/catalog.jsonl"
-  echo "${c_ylw}PUBLISH${c_rst}  catalog.jsonl  ->  Railway   ${c_dim}(catalog tables only; users and recipes untouched)${c_rst}"
+  echo "${c_ylw}PUBLISH${c_rst}  deployment snapshot  ->  Railway   ${c_dim}(catalog tables only; users and recipes untouched)${c_rst}"
   info "remote food_product rows: $(count_products "$REMOTE_DATABASE_URL")"
   if [ "$reset" = 1 ]; then
     echo "${c_ylw}!${c_rst} --reset also DELETES remote products missing from the snapshot"
     echo "${c_dim}  (anything added in the deployed app; run \`harvest\` first to keep it)${c_rst}"
     confirm "Make the remote catalog match the snapshot 1:1?"
   fi
-  info "seeding nutrient registry …"
-  remote_seed --step nutrients
-  info "replaying catalog.jsonl …"
-  if [ "$reset" = 1 ]; then remote_seed --step import-jsonl --reset; else remote_seed --step import-jsonl; fi
-  info "triggering reindex on Railway (private network) …"
-  remote_reindex
+  backup_remote_catalog
+  info "asking the deployed app to publish its snapshot …"
+  remote_publish "$reset"
   ok "catalog published ($(count_products "$REMOTE_DATABASE_URL") products on Railway)."
+  echo "${c_dim}  The app publishes the snapshot from ITS build — deploy first if the commit matters.${c_rst}"
+}
+
+# Dump the remote catalog tables before a publish. Cheap insurance: the snapshot can always be
+# replayed, but rows the snapshot does not know about (OFF/CUSTOM products added in the app)
+# exist nowhere else. Restore into a scratch database and cherry-pick — do not aim it at prod.
+backup_remote_catalog() {
+  compose_pg_up
+  mkdir -p "$ROOT/backups"
+  local out="$ROOT/backups/catalog-railway-$(date +%Y%m%d-%H%M%S).dump"
+  info "backing up remote catalog tables → ${out#$ROOT/} …"
+  $COMPOSE exec -T "$PG_SERVICE" pg_dump -Fc --no-owner --no-privileges \
+    -t food_category -t food_product -t food_nutrient -t nutrient \
+    "$REMOTE_DATABASE_URL" > "$out"
+  [ -s "$out" ] || die "backup is empty — refusing to publish"
+  ok "backup written ($(du -h "$out" | cut -f1))"
+}
+
+# POST the app's publish endpoint: it replays the snapshot from its own build into its own
+# database over the private network, in one transaction, then reindexes.
+remote_publish() {
+  local reset="$1" resp code body
+  resp=$(curl -sS -X POST "${REMOTE_APP_URL%/}/api/admin/publish-catalog" \
+           -H "Authorization: Bearer $REMOTE_REINDEX_TOKEN" \
+           -H "Content-Type: application/json" \
+           -d "{\"reset\":$([ "$reset" = 1 ] && echo true || echo false)}" \
+           --max-time 1800 -w $'\n%{http_code}') \
+    || die "publish request failed — is $REMOTE_APP_URL reachable?"
+  code=${resp##*$'\n'}; body=${resp%$'\n'*}
+  case "$code" in
+    200) echo "  $body" ;;
+    400) die "publish rejected the request body: $body" ;;
+    401) die "publish unauthorized — REMOTE_REINDEX_TOKEN doesn't match the app's REINDEX_TOKEN" ;;
+    503) die "publish disabled or snapshot missing in the deployment: $body" ;;
+    *)   die "publish returned HTTP $code: $body" ;;
+  esac
 }
 
 # Adopt the remote catalog into the repo. The escape hatch for curation done in the

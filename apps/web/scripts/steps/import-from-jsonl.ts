@@ -11,6 +11,7 @@
  *
  *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl
  *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl --reset
+ *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl --reset --force
  *
  * Counterpart: export-catalog-jsonl.ts (`--step export-jsonl`).
  */
@@ -20,7 +21,7 @@ import { importCatalogSnapshot } from "../../src/lib/server/catalog-snapshot.js"
 
 export async function importFromJsonl(
 	prisma: PrismaClient,
-	options: { reset?: boolean; inPath?: string } = {},
+	options: { reset?: boolean; force?: boolean; inPath?: string } = {},
 ): Promise<void> {
 	await importCatalogSnapshot(prisma, { ...options, log: (msg) => console.log(`  ${msg}`) });
 }

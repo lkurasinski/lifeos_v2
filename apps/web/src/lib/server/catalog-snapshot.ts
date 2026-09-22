@@ -73,13 +73,27 @@ export function resolveSnapshotPath(options: { mustExist?: boolean } = {}): stri
 	);
 }
 
+/** Why an extra product survived a reset instead of being deleted. */
+export type SkipReason =
+	/** A recipe component still points at it — deleting would orphan the component. */
+	| "recipe-reference"
+	/** Created in the app (OFF / CUSTOM), so it exists nowhere but this database. */
+	| "user-created";
+
 export interface ImportSnapshotResult {
 	products: number;
 	nutrients: number;
 	deleted: number;
-	/** Extra products a recipe still references — reported, never deleted. */
-	skipped: Array<{ sourceId: string; nameEn: string }>;
+	/** Extra products that were reported rather than deleted, with the reason. */
+	skipped: Array<{ sourceId: string; nameEn: string; reason: SkipReason }>;
 }
+
+/**
+ * Sources that a database owns rather than the repo. `USDA_SR` rows come from the snapshot and
+ * a reset can always replay them; an OFF or CUSTOM row was created through the app and exists
+ * in no other place, so a reset must not be the thing that discovers it was the only copy.
+ */
+const ENVIRONMENT_OWNED_SOURCES: FoodSource[] = ["OFF", "CUSTOM"];
 
 /**
  * The whole replay runs in ONE transaction. Nutrient rows are replaced per product
@@ -97,9 +111,15 @@ export interface ImportSnapshotResult {
  */
 export async function importCatalogSnapshot(
 	prisma: PrismaClient,
-	options: { reset?: boolean; inPath?: string; log?: (msg: string) => void } = {},
+	options: {
+		reset?: boolean;
+		/** Let a reset delete app-created (OFF / CUSTOM) products too. Opt-in, never implied. */
+		force?: boolean;
+		inPath?: string;
+		log?: (msg: string) => void;
+	} = {},
 ): Promise<ImportSnapshotResult> {
-	const { reset = false, log = () => {} } = options;
+	const { reset = false, force = false, log = () => {} } = options;
 	const inPath = options.inPath ?? resolveSnapshotPath();
 
 	const lines = readFileSync(inPath, "utf-8")
@@ -118,7 +138,7 @@ export async function importCatalogSnapshot(
 	log(`loaded ${categories.length} categories, ${products.length} products from ${inPath}`);
 
 	return prisma.$transaction(
-		async (tx) => replay(tx, categories, products, reset, log),
+		async (tx) => replay(tx, categories, products, reset, force, log),
 		// One commit for ~4k statements: the default 5s interactive timeout is far too short,
 		// and a publish that times out halfway is exactly what the transaction is here to
 		// prevent. maxWait covers contention with the app's own writes.
@@ -131,6 +151,7 @@ async function replay(
 	categories: CategoryLine[],
 	products: ProductLine[],
 	reset: boolean,
+	force: boolean,
 	log: (msg: string) => void,
 ): Promise<ImportSnapshotResult> {
 	// 1. Categories first — products reference them by id.
@@ -192,7 +213,7 @@ async function replay(
 
 	const snapshotIds = new Set(products.map((p) => p.id));
 	const all = await tx.foodProduct.findMany({
-		select: { id: true, sourceId: true, nameEn: true },
+		select: { id: true, sourceId: true, nameEn: true, source: true },
 	});
 	const extras = all.filter((p) => !snapshotIds.has(p.id));
 
@@ -206,13 +227,32 @@ async function replay(
 		select: { productId: true },
 	});
 	const referencedIds = new Set(referenced.map((r) => r.productId));
-	const safe = extras.filter((p) => !referencedIds.has(p.id));
-	const skipped = extras
-		.filter((p) => referencedIds.has(p.id))
-		.map((p) => ({ sourceId: p.sourceId, nameEn: p.nameEn }));
+
+	const skipped: ImportSnapshotResult["skipped"] = [];
+	const safe: typeof extras = [];
+	for (const p of extras) {
+		const reason: SkipReason | null = referencedIds.has(p.id)
+			? "recipe-reference"
+			: !force && ENVIRONMENT_OWNED_SOURCES.includes(p.source)
+				? "user-created"
+				: null;
+		if (reason) skipped.push({ sourceId: p.sourceId, nameEn: p.nameEn, reason });
+		else safe.push(p);
+	}
 
 	for (const p of skipped) {
-		log(`reset: SKIPPED ${p.sourceId} ${p.nameEn} — still referenced by a recipe`);
+		const why =
+			p.reason === "recipe-reference"
+				? "still referenced by a recipe"
+				: "created in the app and not in the snapshot";
+		log(`reset: SKIPPED ${p.sourceId} ${p.nameEn} — ${why}`);
+	}
+	const userCreated = skipped.filter((p) => p.reason === "user-created").length;
+	if (userCreated > 0) {
+		log(
+			`reset: kept ${userCreated} app-created product(s). Capture them in the snapshot ` +
+				`(export / harvest) — or pass force to delete them.`,
+		);
 	}
 
 	const del = await tx.foodProduct.deleteMany({ where: { id: { in: safe.map((p) => p.id) } } });

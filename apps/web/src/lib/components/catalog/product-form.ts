@@ -38,8 +38,29 @@ export function parseAmount(raw: AmountField | undefined): number | null {
 }
 
 /**
+ * Complete the editable nutrient map against the registry the form renders: every registry
+ * nutrient gets a slot, seeded from the draft's present values, absent ones as `null` (no
+ * data). The form draws one row per registry nutrient and each `bind:value`s its slot — a
+ * slot resolving to `undefined` crashes `NumberField`'s `$bindable(null)` (Svelte rejects
+ * `bind:value={undefined}` against a bindable-with-fallback), so the map MUST be complete.
+ * NULL ≠ 0 is preserved: `?? null` leaves a stored `0` as `0`; an absent nutrient becomes
+ * `null`, which `parseAmount` reads back as "no data".
+ */
+export function seedNutrientValues(
+	presentValues: Record<string, AmountField>,
+	registry: NutrientRegistryGroup[],
+): Record<string, AmountField> {
+	const values: Record<string, AmountField> = {};
+	for (const group of registry) {
+		for (const n of group.nutrients) values[n.id] = presentValues[n.id] ?? null;
+	}
+	return values;
+}
+
+/**
  * Snapshot a draft into editable form fields. Nutrient values are seeded ONLY with present
  * (non-null) amounts — an absent nutrient stays out of `values`, i.e. NULL (no data), not 0.
+ * The form completes this sparse map against the registry via {@link seedNutrientValues}.
  */
 export function seedFields(draft: DraftProduct): ProductFormFields {
 	const values: Record<string, AmountField> = {};

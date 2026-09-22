@@ -13,7 +13,13 @@
 	import NutrientGroupSection from "./NutrientGroupSection.svelte";
 	import NutrientRow from "./NutrientRow.svelte";
 	import { formatAmount, macroGauges, macroPct, nutrientGroupLabels, sourceBadgeKey } from "./meta";
-	import { parseAmount, seedFields, buildDraftProduct, type AmountField } from "./product-form";
+	import {
+		parseAmount,
+		seedFields,
+		seedNutrientValues,
+		buildDraftProduct,
+		type AmountField,
+	} from "./product-form";
 
 	// The shared editable product surface — the DESIGN.md "AI suggestion surface /
 	// editable preview", realizing the locked off-add.html. One form for OFF preview,
@@ -64,7 +70,12 @@
 	let servingSizeG = $state<AmountField>(init.servingSizeG);
 	let densityGPerMl = $state<AmountField>(init.densityGPerMl);
 	let pieceWeightG = $state<AmountField>(init.pieceWeightG);
-	let values = $state<Record<string, AmountField>>(init.values);
+	// Complete the sparse seed against the registry the form renders: every nutrient row
+	// `bind:value`s its slot, and an `undefined` slot crashes NumberField's `$bindable(null)`
+	// (see `seedNutrientValues`). NULL ≠ 0 is preserved end-to-end.
+	let values = $state<Record<string, AmountField>>(
+		untrack(() => seedNutrientValues(init.values, registry)),
+	);
 
 	// Group expand/collapse — default every group open (the locked probe shows them expanded).
 	let collapsed = $state<Record<string, boolean>>({});

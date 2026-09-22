@@ -1,18 +1,32 @@
 #!/usr/bin/env bash
 #
-# db-sync.sh — mirror the food catalog between the local docker stack and Railway.
+# db-sync.sh — move catalog data between the repo, the local docker stack and Railway.
 #
-#   ./scripts/db-sync.sh push      # local  ->  Railway   (overwrite remote DB, reindex on Railway)
-#   ./scripts/db-sync.sh pull      # Railway ->  local    (overwrite local DB, reindex locally)
-#   ./scripts/db-sync.sh status    # show resolved config + test connectivity to both ends
+#   ./scripts/db-sync.sh publish       # catalog.jsonl -> Railway  (catalog tables only)  ← everyday
+#   ./scripts/db-sync.sh harvest       # Railway catalog -> catalog.jsonl (adopt what prod added)
+#   ./scripts/db-sync.sh pull          # Railway -> local          (overwrite local DB, reindex locally)
+#   ./scripts/db-sync.sh reindex       # reindex Railway only
+#   ./scripts/db-sync.sh mirror-push   # local -> Railway          (FULL DB overwrite — destroys prod user data)
+#   ./scripts/db-sync.sh status        # resolved config + connectivity for both ends
 #
-# WHAT IT DOES
-#   1. pg_dump the whole source DB and pg_restore --clean it into the target (full mirror,
-#      including auth + _prisma_migrations — the target schema ends up identical to the source).
-#   2. Rebuild the target's Meilisearch index from the freshly-synced DB (full override):
-#        push -> POST the app's /api/admin/reindex, so Railway reindexes ITSELF from its own
-#                DB over the private network (no egress; Meili can stay private, no public domain).
-#        pull -> the local tsx index step against the local stack.
+# THE OWNERSHIP RULE THIS SCRIPT ENFORCES
+#   Catalog data (food_category / food_product / food_nutrient / nutrient) is owned by the
+#   REPO: `apps/web/data/catalog-seed/catalog.jsonl` is its single source of truth. User data
+#   (user / session / recipe / nutritional_target) is owned by PRODUCTION and never travels
+#   into git. `publish` respects that split; `mirror-push` violates it on purpose and says so.
+#
+# WHAT EACH COMMAND DOES
+#   publish     replays catalog.jsonl into the remote DB (`--step nutrients` + `--step
+#               import-jsonl`), then POSTs the app's /api/admin/reindex so Railway reindexes
+#               ITSELF from its own DB over the private network (no egress; Meili stays private).
+#               No pg_dump, no docker needed. Prod's users and recipes are never touched.
+#   harvest     the escape hatch for the other direction: snapshots the REMOTE catalog over
+#               catalog.jsonl, so products added in the deployed app (OFF/CUSTOM) land in the
+#               repo instead of being lost at the next publish. Review with `git diff`.
+#   pull        full pg_dump | pg_restore of the remote DB into local + a local reindex. Safe
+#               direction: it overwrites YOUR machine, which is how you get real recipes locally.
+#   mirror-push full pg_dump | pg_restore of local over the remote DB. Overwrites production
+#               auth, sessions, recipes and targets with whatever your laptop holds.
 #
 # WHY THE POSTGRES TOOLS RUN IN DOCKER
 #   The host pg_dump may be older than the server (a v14 client can't dump a v16 DB). The
@@ -44,20 +58,28 @@ ok()   { echo "${c_grn}✓${c_rst} $*"; }
 
 usage() {
   cat <<'USAGE'
-db-sync.sh — mirror the food catalog between the local docker stack and Railway.
+db-sync.sh — move catalog data between the repo, the local docker stack and Railway.
 
-  ./scripts/db-sync.sh push                # local  -> Railway  (overwrite remote DB, reindex on Railway)
-  ./scripts/db-sync.sh push --no-reindex   # mirror only; skip reindex (run it after deploying new code)
-  ./scripts/db-sync.sh reindex             # reindex Railway only (no DB mirror)
-  ./scripts/db-sync.sh pull                # Railway -> local   (overwrite local DB, reindex locally)
+  ./scripts/db-sync.sh publish             # catalog.jsonl -> Railway (catalog tables only)
+  ./scripts/db-sync.sh publish --reset     # ... and delete remote products absent from the snapshot
+  ./scripts/db-sync.sh harvest             # Railway catalog -> catalog.jsonl (then review `git diff`)
+  ./scripts/db-sync.sh reindex             # reindex Railway only (no data movement)
+  ./scripts/db-sync.sh pull                # Railway -> local (overwrite local DB, reindex locally)
+  ./scripts/db-sync.sh mirror-push         # local -> Railway, FULL DB (destroys prod user data)
+  ./scripts/db-sync.sh mirror-push --no-reindex
   ./scripts/db-sync.sh status              # resolved config + connectivity for both ends
 
-Full-override mirror via pg_dump | pg_restore (run inside the compose `postgres`
-container so the client matches the v16 server). After a push, the deployed app
-reindexes itself over Railway's private network via POST /api/admin/reindex.
+`publish` is the everyday command: the catalog lives in the repo, so publishing replays
+the committed snapshot into Railway and has the deployed app reindex itself. It never
+reads or writes user / session / recipe / nutritional_target rows.
 
-Use `push --no-reindex` then `reindex` when the deployed schema changes shape: mirror
-first, deploy the new code, then reindex (old code can't index the new schema).
+`publish --reset` makes the remote catalog match the snapshot 1:1. It deletes remote
+products that are not in the snapshot — including anything added through the deployed
+app (a product still referenced by a recipe is skipped and reported). Run `harvest`
+first if the deployed app may hold curation you have not captured yet.
+
+When the schema changes shape: deploy the new code first, then publish — the running app
+must understand the rows it is asked to index.
 
 Remote config: scripts/railway-remote.env  (copy the .example; gitignored)
 USAGE
@@ -102,21 +124,67 @@ remote_reindex() {
 # Rebuild the LOCAL index from the local DB (reads apps/web/.env → local Meili).
 local_reindex() { ( cd "$WEB" && pnpm tsx scripts/seed-food-data.ts --step index ); }
 
+# Run a seeder step against the REMOTE database. dotenv does not override variables that
+# are already set, so this DATABASE_URL wins over apps/web/.env for this process only.
+remote_seed() { ( cd "$WEB" && DATABASE_URL="$REMOTE_DATABASE_URL" pnpm tsx scripts/seed-food-data.ts "$@" ); }
+
 confirm() { read -r -p "$1 [y/N] " a; [[ "$a" =~ ^[Yy]$ ]] || die "aborted"; }
 count_products() { psql_url "$1" "select count(*) from food_product" 2>/dev/null || echo "?"; }
 
-cmd_push() {
+# Publish the catalog from the committed snapshot. Catalog tables only — the repo owns
+# them, so this is the everyday way production gets your curation.
+cmd_publish() {
+  local reset=0
+  case "${1:-}" in
+    --reset) reset=1 ;;
+    "") ;;
+    *) die "unknown option '$1' for publish (only --reset is supported)" ;;
+  esac
+  load_remote
+  [ -f "$WEB/data/catalog-seed/catalog.jsonl" ] || die "no snapshot at apps/web/data/catalog-seed/catalog.jsonl"
+  echo "${c_ylw}PUBLISH${c_rst}  catalog.jsonl  ->  Railway   ${c_dim}(catalog tables only; users and recipes untouched)${c_rst}"
+  info "remote food_product rows: $(count_products "$REMOTE_DATABASE_URL")"
+  if [ "$reset" = 1 ]; then
+    echo "${c_ylw}!${c_rst} --reset also DELETES remote products missing from the snapshot"
+    echo "${c_dim}  (anything added in the deployed app; run \`harvest\` first to keep it)${c_rst}"
+    confirm "Make the remote catalog match the snapshot 1:1?"
+  fi
+  info "seeding nutrient registry …"
+  remote_seed --step nutrients
+  info "replaying catalog.jsonl …"
+  if [ "$reset" = 1 ]; then remote_seed --step import-jsonl --reset; else remote_seed --step import-jsonl; fi
+  info "triggering reindex on Railway (private network) …"
+  remote_reindex
+  ok "catalog published ($(count_products "$REMOTE_DATABASE_URL") products on Railway)."
+}
+
+# Adopt the remote catalog into the repo. The escape hatch for curation done in the
+# deployed app — without it, the next publish --reset would drop those rows.
+cmd_harvest() {
+  load_remote
+  echo "${c_ylw}HARVEST${c_rst}  Railway catalog  ->  catalog.jsonl   ${c_dim}(overwrites the snapshot in your working tree)${c_rst}"
+  info "remote food_product rows: $(count_products "$REMOTE_DATABASE_URL")"
+  confirm "Overwrite apps/web/data/catalog-seed/catalog.jsonl with the remote catalog?"
+  remote_seed --step export-jsonl
+  ok "snapshot written."
+  echo "${c_dim}  Review it before committing: git diff --stat apps/web/data/catalog-seed/catalog.jsonl${c_rst}"
+}
+
+cmd_mirror_push() {
   local no_reindex=0
   case "${1:-}" in
     --no-reindex) no_reindex=1 ;;
     "") ;;
-    *) die "unknown option '$1' for push (only --no-reindex is supported)" ;;
+    *) die "unknown option '$1' for mirror-push (only --no-reindex is supported)" ;;
   esac
   load_remote; compose_pg_up
-  echo "${c_ylw}PUSH${c_rst}  local  ->  Railway   ${c_dim}(overwrites the remote database + search index)${c_rst}"
+  echo "${c_red}MIRROR-PUSH${c_rst}  local  ->  Railway   ${c_dim}(FULL database overwrite)${c_rst}"
   info "local  food_product rows: $(count_products "$LOCAL_DB")"
   info "remote food_product rows: $(count_products "$REMOTE_DATABASE_URL") (about to be replaced)"
-  confirm "Overwrite the REMOTE database with your local data?"
+  echo "${c_ylw}!${c_rst} This replaces EVERY table, not just the catalog: production users, sessions,"
+  echo "${c_ylw}!${c_rst} recipes and nutritional targets are overwritten with your local ones."
+  echo "${c_dim}  To publish only the catalog, use: ./scripts/db-sync.sh publish${c_rst}"
+  confirm "Overwrite the ENTIRE remote database, including user data?"
   info "dumping local → restoring remote …"
   pg_dump_url "$LOCAL_DB" | pg_restore_url "$REMOTE_DATABASE_URL"
   ok "database mirrored to Railway ($(count_products "$REMOTE_DATABASE_URL") products)"
@@ -165,10 +233,13 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  push)    shift; cmd_push "$@" ;;
-  pull)    cmd_pull ;;
-  reindex) cmd_reindex ;;
-  status)  cmd_status ;;
+  publish)     shift; cmd_publish "$@" ;;
+  harvest)     cmd_harvest ;;
+  pull)        cmd_pull ;;
+  reindex)     cmd_reindex ;;
+  mirror-push) shift; cmd_mirror_push "$@" ;;
+  status)      cmd_status ;;
+  push)    die "\`push\` is gone — it mirrored the whole database. Use \`publish\` for the catalog (the usual case), or \`mirror-push\` for the old full overwrite." ;;
   ""|-h|--help|help) usage 0 ;;
-  *) die "unknown command '$1' (use push | pull | reindex | status)" ;;
+  *) die "unknown command '$1' (use publish | harvest | pull | reindex | mirror-push | status)" ;;
 esac

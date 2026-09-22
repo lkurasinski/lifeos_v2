@@ -1,5 +1,6 @@
 import { json, error } from "@sveltejs/kit";
 import { timingSafeEqual } from "node:crypto";
+import { z } from "zod";
 import { REINDEX_TOKEN } from "$env/static/private";
 import { prisma } from "$lib/server/db";
 import { meili } from "$lib/server/search";
@@ -26,6 +27,20 @@ import type { RequestHandler } from "./$types";
  * maintenance actions with no cookie, and splitting the token would only mean two secrets to
  * rotate for one trust level. Disabled (503) until the token is set.
  */
+/**
+ * `reset` makes the catalog match the snapshot 1:1, deleting products absent from it. `force`
+ * extends that to products created through this deployment (OFF / CUSTOM), which exist in no
+ * other place — harvest them into the snapshot first. Both opt-in, and `strict()` so that a
+ * misspelled flag is a 400 rather than a silently ignored key on a destructive endpoint.
+ */
+const publishPayloadSchema = z
+	.object({
+		reset: z.boolean().default(false),
+		force: z.boolean().default(false),
+	})
+	.strict();
+type PublishPayload = z.infer<typeof publishPayloadSchema>;
+
 function tokenMatches(provided: string): boolean {
 	if (!REINDEX_TOKEN || !provided) return false;
 	const a = Buffer.from(provided);
@@ -43,18 +58,15 @@ export const POST: RequestHandler = async ({ request }) => {
 		error(401, "Unauthorized");
 	}
 
-	// `reset` makes the catalog match the snapshot 1:1, deleting products absent from it —
-	// including anything added through this deployment. Opt-in, never the default.
-	let reset = false;
+	// An empty body means "publish, change nothing else" — the safe default for a curl by hand.
 	const raw = await request.text();
-	if (raw.trim()) {
-		try {
-			const body = JSON.parse(raw) as { reset?: unknown };
-			reset = body.reset === true;
-		} catch {
-			error(400, "invalid_json");
-		}
+	let payload: PublishPayload;
+	try {
+		payload = publishPayloadSchema.parse(raw.trim() ? JSON.parse(raw) : {});
+	} catch {
+		error(400, "invalid_payload");
 	}
+	const { reset, force } = payload;
 
 	const log = (msg: string) => console.log(`[publish-catalog] ${msg}`);
 
@@ -67,7 +79,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		error(503, "snapshot_missing");
 	}
 
-	const result = await importCatalogSnapshot(prisma, { reset, inPath: snapshot, log });
+	const result = await importCatalogSnapshot(prisma, { reset, force, inPath: snapshot, log });
 	const indexed = await reindexFoodProducts(prisma, meili, log);
 
 	return json({ ...result, indexed, snapshot });

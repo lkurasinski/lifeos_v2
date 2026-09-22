@@ -63,6 +63,7 @@ db-sync.sh — move catalog data between the repo, the local docker stack and Ra
 
   ./scripts/db-sync.sh publish             # catalog.jsonl -> Railway (catalog tables only)
   ./scripts/db-sync.sh publish --reset     # ... and delete remote products absent from the snapshot
+  ./scripts/db-sync.sh publish --reset --force   # ... including products added in the app
   ./scripts/db-sync.sh harvest             # Railway catalog -> catalog.jsonl (then review `git diff`)
   ./scripts/db-sync.sh reindex             # reindex Railway only (no data movement)
   ./scripts/db-sync.sh pull                # Railway -> local (overwrite local DB, reindex locally)
@@ -75,10 +76,10 @@ publishes the snapshot from its OWN build: this script only takes a backup and t
 The replay is one transaction — it lands completely or not at all — and never reads or
 writes user / session / recipe / nutritional_target rows.
 
-`publish --reset` makes the remote catalog match the snapshot 1:1. It deletes remote
-products that are not in the snapshot — including anything added through the deployed
-app (a product still referenced by a recipe is skipped and reported). Run `harvest`
-first if the deployed app may hold curation you have not captured yet.
+`publish --reset` deletes remote products that are not in the snapshot. Two kinds survive
+it and are reported instead: products a recipe still references, and products created in
+the app (OFF / CUSTOM), which exist in no other place. `harvest` captures the latter into
+the snapshot; `--force` deletes them.
 
 Deploy before you publish: the app replays the snapshot from its own build, so what lands
 is the snapshot of the DEPLOYED commit, not the one in your working tree.
@@ -140,23 +141,33 @@ count_products() { psql_url "$1" "select count(*) from food_product" 2>/dev/null
 # itself. Nothing here writes to the remote database, so no production credential is needed for
 # the write path — only for the backup and the row counts.
 cmd_publish() {
-  local reset=0
-  case "${1:-}" in
-    --reset) reset=1 ;;
-    "") ;;
-    *) die "unknown option '$1' for publish (only --reset is supported)" ;;
-  esac
+  local reset=0 force=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --reset) reset=1 ;;
+      --force) force=1 ;;
+      *) die "unknown option '$1' for publish (--reset, --force)" ;;
+    esac
+    shift
+  done
+  [ "$force" = 1 ] && [ "$reset" = 0 ] && die "--force only means something with --reset"
   load_remote
   echo "${c_ylw}PUBLISH${c_rst}  deployment snapshot  ->  Railway   ${c_dim}(catalog tables only; users and recipes untouched)${c_rst}"
   info "remote food_product rows: $(count_products "$REMOTE_DATABASE_URL")"
   if [ "$reset" = 1 ]; then
-    echo "${c_ylw}!${c_rst} --reset also DELETES remote products missing from the snapshot"
-    echo "${c_dim}  (anything added in the deployed app; run \`harvest\` first to keep it)${c_rst}"
-    confirm "Make the remote catalog match the snapshot 1:1?"
+    echo "${c_ylw}!${c_rst} --reset DELETES remote products missing from the snapshot"
+    if [ "$force" = 1 ]; then
+      echo "${c_red}!${c_rst} --force includes products ADDED IN THE APP (OFF/CUSTOM) — they exist nowhere else"
+      echo "${c_dim}  \`harvest\` captures them into the snapshot instead${c_rst}"
+      confirm "Delete app-created products that are missing from the snapshot?"
+    else
+      echo "${c_dim}  App-created products (OFF/CUSTOM) are kept and reported; --force deletes them too.${c_rst}"
+      confirm "Make the remote catalog match the snapshot?"
+    fi
   fi
   backup_remote_catalog
   info "asking the deployed app to publish its snapshot …"
-  remote_publish "$reset"
+  remote_publish "$reset" "$force"
   ok "catalog published ($(count_products "$REMOTE_DATABASE_URL") products on Railway)."
   echo "${c_dim}  The app publishes the snapshot from ITS build — deploy first if the commit matters.${c_rst}"
 }
@@ -179,11 +190,11 @@ backup_remote_catalog() {
 # POST the app's publish endpoint: it replays the snapshot from its own build into its own
 # database over the private network, in one transaction, then reindexes.
 remote_publish() {
-  local reset="$1" resp code body
+  local reset="$1" force="$2" resp code body
   resp=$(curl -sS -X POST "${REMOTE_APP_URL%/}/api/admin/publish-catalog" \
            -H "Authorization: Bearer $REMOTE_REINDEX_TOKEN" \
            -H "Content-Type: application/json" \
-           -d "{\"reset\":$([ "$reset" = 1 ] && echo true || echo false)}" \
+           -d "{\"reset\":$([ "$reset" = 1 ] && echo true || echo false),\"force\":$([ "$force" = 1 ] && echo true || echo false)}" \
            --max-time 1800 -w $'\n%{http_code}') \
     || die "publish request failed — is $REMOTE_APP_URL reachable?"
   code=${resp##*$'\n'}; body=${resp%$'\n'*}

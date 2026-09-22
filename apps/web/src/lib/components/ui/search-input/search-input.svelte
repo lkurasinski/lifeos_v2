@@ -52,7 +52,13 @@
 			/>
 		</svg>
 	{/if}
-	<Input bind:value bind:ref={inputEl} type="text" class={cn("px-[42px]", inputClass)} {...restProps} />
+	<Input
+		bind:value
+		bind:ref={inputEl}
+		type="text"
+		class={cn("px-[42px]", inputClass)}
+		{...restProps}
+	/>
 	{#if trailing}{@render trailing()}{/if}
 	{#if onclear && value.length > 0}
 		<IconButton

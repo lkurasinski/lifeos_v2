@@ -97,7 +97,8 @@ const handleRequestLogging: Handle = async ({ event, resolve }) => {
 			if (logBody) {
 				const body = await readRequestBodyForLog(event.request);
 				// No status yet (pre-resolve) → dev renders `->` in the status column.
-				if (body !== undefined) logger.debug({ method, path: pathname, body: capBody(body) }, "request body");
+				if (body !== undefined)
+					logger.debug({ method, path: pathname, body: capBody(body) }, "request body");
 			}
 
 			const response = await resolve(event);
@@ -105,7 +106,10 @@ const handleRequestLogging: Handle = async ({ event, resolve }) => {
 			if (logBody) {
 				const body = await readResponseBodyForLog(response);
 				if (body !== undefined)
-					logger.debug({ method, path: pathname, status: response.status, body: capBody(body) }, "response body");
+					logger.debug(
+						{ method, path: pathname, status: response.status, body: capBody(body) },
+						"response body",
+					);
 			}
 
 			const fields = {

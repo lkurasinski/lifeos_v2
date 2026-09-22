@@ -13,7 +13,13 @@
 	import { ExpandableRow } from "$lib/components/ui/expandable-row";
 	import { TintedBadge } from "$lib/components/ui/tinted-badge";
 	import { Label } from "$lib/components/ui/label";
-	import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "$lib/components/ui/card";
+	import {
+		Card,
+		CardHeader,
+		CardTitle,
+		CardDescription,
+		CardContent,
+	} from "$lib/components/ui/card";
 	import { Alert, AlertDescription } from "$lib/components/ui/alert";
 	import { Panel } from "$lib/components/ui/panel";
 	import { Env } from "$lib/components/ui/env";
@@ -56,11 +62,19 @@
 		<!-- Metrics on a solid backing -->
 		<Panel variant="solid" class="flex items-end gap-8 p-6">
 			<div>
-				<div class="mb-1 text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">Dziś</div>
+				<div
+					class="mb-1 text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+				>
+					Dziś
+				</div>
 				<Metric value="2 140" unit="kcal" />
 			</div>
 			<div>
-				<div class="mb-1 text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">Białko</div>
+				<div
+					class="mb-1 text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-muted-foreground"
+				>
+					Białko
+				</div>
 				<Metric value="112" unit="g" size="sm" />
 			</div>
 			<Status tone="positive">Na celu</Status>
@@ -69,7 +83,13 @@
 		<!-- Gauges -->
 		<Panel variant="regular" class="grid grid-cols-4 place-items-center gap-4 p-6">
 			{#each macros as m (m.macro)}
-				<Gauge value={m.pct} macro={m.macro} display={m.val} unit={m.macro === "kcal" ? "kcal" : "g"} label={m.label} />
+				<Gauge
+					value={m.pct}
+					macro={m.macro}
+					display={m.val}
+					unit={m.macro === "kcal" ? "kcal" : "g"}
+					label={m.label}
+				/>
 			{/each}
 		</Panel>
 
@@ -86,11 +106,17 @@
 				/>
 			</div>
 			<div class="space-y-2">
-				<div class="flex items-center justify-between text-sm"><span>Energia</span><Status tone="positive">−120 kcal</Status></div>
+				<div class="flex items-center justify-between text-sm">
+					<span>Energia</span><Status tone="positive">−120 kcal</Status>
+				</div>
 				<MacroBar value={72} tone="positive" />
-				<div class="flex items-center justify-between text-sm"><span>Tłuszcze</span><Status tone="caution">blisko limitu</Status></div>
+				<div class="flex items-center justify-between text-sm">
+					<span>Tłuszcze</span><Status tone="caution">blisko limitu</Status>
+				</div>
 				<MacroBar value={86} tone="caution" />
-				<div class="flex items-center justify-between text-sm"><span>Sód</span><Status tone="destructive">+340 mg</Status></div>
+				<div class="flex items-center justify-between text-sm">
+					<span>Sód</span><Status tone="destructive">+340 mg</Status>
+				</div>
 				<MacroBar value={100} tone="destructive" />
 			</div>
 		</Panel>
@@ -106,7 +132,11 @@
 					<Label for="e">E-mail</Label>
 					<Input id="e" type="email" placeholder="ty@przyklad.pl" />
 				</div>
-				<Input variant="seamless" class="py-1.5 text-xl font-semibold" placeholder="Tytuł (seamless)" />
+				<Input
+					variant="seamless"
+					class="py-1.5 text-xl font-semibold"
+					placeholder="Tytuł (seamless)"
+				/>
 				<div class="flex items-center gap-2">
 					<NumberField class="w-24" unit="g" placeholder="0" />
 					<NumberField class="w-28" unit="g/ml" inputClass="pr-[36px]" placeholder="0" />
@@ -120,7 +150,12 @@
 					<option>Włoska</option>
 					<option>Tajska</option>
 				</SelectField>
-				<SearchInput bind:value={search} placeholder="Szukaj…" onclear={() => (search = "")} clearLabel="Wyczyść" />
+				<SearchInput
+					bind:value={search}
+					placeholder="Szukaj…"
+					onclear={() => (search = "")}
+					clearLabel="Wyczyść"
+				/>
 				<CollapsibleSection
 					open={sectionOpen}
 					onToggle={() => (sectionOpen = !sectionOpen)}
@@ -136,29 +171,51 @@
 					<Button variant="ghost">Ghost</Button>
 					<Button variant="destructive">Usuń</Button>
 					<IconButton aria-label="Dodaj">
-						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
+						<svg viewBox="0 0 24 24" fill="currentColor"
+							><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg
+						>
 					</IconButton>
 					<IconButton variant="subtle" aria-label="Dodaj">
-						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg>
+						<svg viewBox="0 0 24 24" fill="currentColor"
+							><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" /></svg
+						>
 					</IconButton>
 					<IconButton variant="ghost" aria-label="Zamknij">
-						<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" /></svg>
+						<svg viewBox="0 0 24 24" fill="currentColor"
+							><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" /></svg
+						>
 					</IconButton>
-					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="positive" />Live</span>
-					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><PulsingDot tone="muted" />Szkic</span>
-					<TintedBadge tone="amber"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg></TintedBadge>
-					<TintedBadge tone="positive"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg></TintedBadge>
+					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+						><PulsingDot tone="positive" />Live</span
+					>
+					<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+						><PulsingDot tone="muted" />Szkic</span
+					>
+					<TintedBadge tone="amber"
+						><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg
+						></TintedBadge
+					>
+					<TintedBadge tone="positive"
+						><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="6" /></svg
+						></TintedBadge
+					>
 				</div>
 				<div class="flex flex-wrap gap-x-[18px] gap-y-2">
 					<MetadataItem label="czas">
-						{#snippet icon()}<svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="7" /></svg>{/snippet}
+						{#snippet icon()}<svg viewBox="0 0 20 20" fill="currentColor"
+								><circle cx="10" cy="10" r="7" /></svg
+							>{/snippet}
 						45 min
 					</MetadataItem>
 					<MetadataItem label="porcje">4</MetadataItem>
 				</div>
 				<ExpandableRow open={rowOpen} onToggle={() => (rowOpen = !rowOpen)} rowClass="px-0.5 py-2">
-					{#snippet header()}<span class="flex-1 text-[0.875rem]">Sos pomidorowy</span><span class="text-[0.875rem] tabular-nums">200 g</span>{/snippet}
-					<div class="px-6 py-1 text-[0.8125rem] text-muted-foreground">Pomidory · czosnek · oliwa</div>
+					{#snippet header()}<span class="flex-1 text-[0.875rem]">Sos pomidorowy</span><span
+							class="text-[0.875rem] tabular-nums">200 g</span
+						>{/snippet}
+					<div class="px-6 py-1 text-[0.8125rem] text-muted-foreground">
+						Pomidory · czosnek · oliwa
+					</div>
 				</ExpandableRow>
 			</CardContent>
 		</Card>

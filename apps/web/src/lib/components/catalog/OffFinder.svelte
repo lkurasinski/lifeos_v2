@@ -129,7 +129,9 @@
 </script>
 
 <div class="rounded-lg bg-card p-[18px] pb-4 shadow-soft">
-	<h2 class="text-[1.0625rem] font-semibold tracking-[-0.01em] text-foreground">{t("add.findTitle")}</h2>
+	<h2 class="text-[1.0625rem] font-semibold tracking-[-0.01em] text-foreground">
+		{t("add.findTitle")}
+	</h2>
 	<p class="mb-[15px] mt-[3px] text-xs leading-[1.45] text-muted-foreground">{t("add.findNote")}</p>
 
 	<div class="flex gap-[9px]">
@@ -189,7 +191,9 @@
 	</div>
 
 	{#if loading}
-		<div class="mx-0.5 mb-1.5 mt-[18px] flex items-center gap-2.5 text-[0.8125rem] text-muted-foreground">
+		<div
+			class="mx-0.5 mb-1.5 mt-[18px] flex items-center gap-2.5 text-[0.8125rem] text-muted-foreground"
+		>
 			<span class="spin" aria-hidden="true"></span>
 			{#if retrying}
 				<span>{t("add.retrying")} · {attempt}/{MAX_ATTEMPTS}</span>
@@ -198,8 +202,12 @@
 			{/if}
 		</div>
 	{:else if view === "results"}
-		<div class="mx-0.5 mb-2 mt-4 flex items-center gap-[7px] text-[0.5625rem] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-			{t("add.resultsLabel")}<span class="ml-auto normal-case tracking-normal tabular-nums">{results.length}</span>
+		<div
+			class="mx-0.5 mb-2 mt-4 flex items-center gap-[7px] text-[0.5625rem] font-medium uppercase tracking-[0.08em] text-muted-foreground"
+		>
+			{t("add.resultsLabel")}<span class="ml-auto normal-case tracking-normal tabular-nums"
+				>{results.length}</span
+			>
 		</div>
 		<div class="flex flex-col gap-1.5">
 			{#each results as r, i (r.draft.sourceId ?? i)}
@@ -213,35 +221,60 @@
 					]}
 					onclick={() => pickResult(i)}
 				>
-					<span class="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-[9px] bg-secondary">
+					<span
+						class="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-[9px] bg-secondary"
+					>
 						{#if r.draft.imageThumbUrl ?? r.draft.imageUrl}
-							<img class="h-full w-full object-cover" src={r.draft.imageThumbUrl ?? r.draft.imageUrl} alt="" loading="lazy" />
+							<img
+								class="h-full w-full object-cover"
+								src={r.draft.imageThumbUrl ?? r.draft.imageUrl}
+								alt=""
+								loading="lazy"
+							/>
 						{:else}
 							<CategoryIcon slug={null} size={18} />
 						{/if}
 					</span>
 					<span class="min-w-0 flex-1">
-						<span class="block truncate text-[0.875rem] font-[550] leading-[1.25] tracking-[-0.005em] text-foreground">{draftDisplayName(r.draft)}</span>
+						<span
+							class="block truncate text-[0.875rem] font-[550] leading-[1.25] tracking-[-0.005em] text-foreground"
+							>{draftDisplayName(r.draft)}</span
+						>
 						{#if r.draft.brand}
-							<span class="mt-px block truncate text-[0.6875rem] tabular-nums text-muted-foreground">{r.draft.brand}</span>
+							<span class="mt-px block truncate text-[0.6875rem] tabular-nums text-muted-foreground"
+								>{r.draft.brand}</span
+							>
 						{/if}
 					</span>
 					{#if r.existing}
-						<span class="shrink-0 rounded-pill bg-secondary px-2 py-1 text-[0.5625rem] font-semibold uppercase tracking-[0.07em] text-muted-foreground">{t("add.inCatalog")}</span>
+						<span
+							class="shrink-0 rounded-pill bg-secondary px-2 py-1 text-[0.5625rem] font-semibold uppercase tracking-[0.07em] text-muted-foreground"
+							>{t("add.inCatalog")}</span
+						>
 					{/if}
 				</button>
 			{/each}
 		</div>
 	{:else if view === "empty"}
-		<p class="mx-0.5 mb-1 mt-4 text-[0.8125rem] leading-[1.45] text-muted-foreground">{t("add.emptyResults")}</p>
+		<p class="mx-0.5 mb-1 mt-4 text-[0.8125rem] leading-[1.45] text-muted-foreground">
+			{t("add.emptyResults")}
+		</p>
 	{:else if view === "network"}
-		<p class="mx-0.5 mb-1 mt-4 text-[0.8125rem] leading-[1.45] text-destructive">{t("add.networkError")}</p>
+		<p class="mx-0.5 mb-1 mt-4 text-[0.8125rem] leading-[1.45] text-destructive">
+			{t("add.networkError")}
+		</p>
 	{:else if view === "rate"}
-		<p class="mx-0.5 mb-1 mt-4 text-[0.8125rem] leading-[1.45] text-destructive">{t("add.rateLimitError")}</p>
+		<p class="mx-0.5 mb-1 mt-4 text-[0.8125rem] leading-[1.45] text-destructive">
+			{t("add.rateLimitError")}
+		</p>
 	{/if}
 
 	<!-- "albo" divider before the manual-entry escape hatch (rules drawn via .orline pseudo-elements). -->
-	<div class="orline mx-0.5 mb-3 mt-[18px] flex items-center gap-3 text-[0.6875rem] tracking-[0.04em] text-muted-foreground">{t("add.or")}</div>
+	<div
+		class="orline mx-0.5 mb-3 mt-[18px] flex items-center gap-3 text-[0.6875rem] tracking-[0.04em] text-muted-foreground"
+	>
+		{t("add.or")}
+	</div>
 	<!-- Manual entry — opens a blank CUSTOM draft in the preview pane (probe `.manual`). -->
 	<button
 		type="button"
@@ -251,7 +284,9 @@
 		]}
 		onclick={onManual}
 	>
-		<span class="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] bg-secondary text-foreground">
+		<span
+			class="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] bg-secondary text-foreground"
+		>
 			<svg class="h-[18px] w-[18px]" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 				<path
 					d="M10 3.25a.75.75 0 0 1 .75.75v5.25H16a.75.75 0 0 1 0 1.5h-5.25V16a.75.75 0 0 1-1.5 0v-5.25H4a.75.75 0 0 1 0-1.5h5.25V4a.75.75 0 0 1 .75-.75Z"
@@ -259,13 +294,22 @@
 			</svg>
 		</span>
 		<span class="flex min-w-0 flex-col gap-px">
-			<span class="text-[0.875rem] font-semibold tracking-[-0.005em] text-foreground">{t("add.manualTitle")}</span>
+			<span class="text-[0.875rem] font-semibold tracking-[-0.005em] text-foreground"
+				>{t("add.manualTitle")}</span
+			>
 			<span class="text-[0.6875rem] text-muted-foreground">{t("add.manualSub")}</span>
 		</span>
 	</button>
 
-	<div class="mt-[14px] flex gap-[7px] border-t border-[color:var(--hairline)] pt-[13px] text-[0.6875rem] leading-[1.4] text-muted-foreground">
-		<svg class="mt-px h-[14px] w-[14px] shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+	<div
+		class="mt-[14px] flex gap-[7px] border-t border-[color:var(--hairline)] pt-[13px] text-[0.6875rem] leading-[1.4] text-muted-foreground"
+	>
+		<svg
+			class="mt-px h-[14px] w-[14px] shrink-0"
+			viewBox="0 0 20 20"
+			fill="currentColor"
+			aria-hidden="true"
+		>
 			<path
 				fill-rule="evenodd"
 				d="M10 2.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15ZM9 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm.25 2.75a.75.75 0 0 1 1.5 0v3.5a.75.75 0 0 1-1.5 0v-3.5Z"

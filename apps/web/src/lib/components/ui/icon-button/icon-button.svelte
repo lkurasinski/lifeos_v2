@@ -25,8 +25,7 @@
 		defaultVariants: { variant: "solid", size: "default" },
 	});
 
-	type Props = HTMLButtonAttributes &
-		VariantProps<typeof iconButtonVariants> & { class?: string };
+	type Props = HTMLButtonAttributes & VariantProps<typeof iconButtonVariants> & { class?: string };
 
 	let { class: className, variant, size, children, ...restProps }: Props = $props();
 </script>

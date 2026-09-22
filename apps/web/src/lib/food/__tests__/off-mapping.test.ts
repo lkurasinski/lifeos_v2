@@ -76,7 +76,9 @@ describe("offToDraft", () => {
 	});
 
 	it("leaves categoryId null when no tag matches or no map is supplied", () => {
-		expect(offToDraft({ code: "1", categories_tags: ["en:unknown-thing"] }, [], new Map()).categoryId).toBeNull();
+		expect(
+			offToDraft({ code: "1", categories_tags: ["en:unknown-thing"] }, [], new Map()).categoryId,
+		).toBeNull();
 		expect(offToDraft({ code: "1", categories_tags: ["en:dairies"] }, []).categoryId).toBeNull();
 	});
 });
@@ -85,7 +87,9 @@ describe("matchFoodCategorySlug", () => {
 	it("matches whole tokens, preferring the most specific tag", () => {
 		expect(matchFoodCategorySlug(["en:dairies", "en:cheeses"])).toBe("dairy");
 		expect(matchFoodCategorySlug(["en:meats", "en:beef"])).toBe("beef");
-		expect(matchFoodCategorySlug(["en:snacks", "en:salty-snacks", "en:chips-and-fries"])).toBe("snacks");
+		expect(matchFoodCategorySlug(["en:snacks", "en:salty-snacks", "en:chips-and-fries"])).toBe(
+			"snacks",
+		);
 	});
 
 	it("does not fire a keyword inside a larger word", () => {

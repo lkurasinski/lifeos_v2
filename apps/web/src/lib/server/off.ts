@@ -1,5 +1,5 @@
-import { NUTRIENT_REGISTRY } from '../../../scripts/data/nutrient-registry.js';
-import { loggedFetch } from './http-logging';
+import { NUTRIENT_REGISTRY } from "../../../scripts/data/nutrient-registry.js";
+import { loggedFetch } from "./http-logging";
 
 export interface OFFProduct {
 	code: string;
@@ -66,21 +66,21 @@ export const OFF_NUTRIENT_MAP: Map<string, { tag: string; factor: number }> = ((
  * so every emitted tag corresponds to a seeded Nutrient row.
  */
 export function buildNutrimentRows(
-	nutriments: Record<string, number>
+	nutriments: Record<string, number>,
 ): Array<{ nutrientId: string; amountPer100g: number }> {
 	const rows: Array<{ nutrientId: string; amountPer100g: number }> = [];
 	for (const [key, raw] of Object.entries(nutriments)) {
-		if (!key.endsWith('_100g')) continue;
+		if (!key.endsWith("_100g")) continue;
 		const slug = key.slice(0, -5);
 		const mapping = OFF_NUTRIENT_MAP.get(slug);
 		if (!mapping) continue;
-		if (typeof raw !== 'number' || isNaN(raw)) continue;
+		if (typeof raw !== "number" || isNaN(raw)) continue;
 		rows.push({ nutrientId: mapping.tag, amountPer100g: raw * mapping.factor });
 	}
 	return rows;
 }
 
-const OFF_HEADERS = { 'User-Agent': 'LifeOS - Web - Version 1.0' };
+const OFF_HEADERS = { "User-Agent": "LifeOS - Web - Version 1.0" };
 
 /** Bound each OFF request so a hung CDN can't hold a server request open
  *  indefinitely (compounded by the client-side retry loop). An abort here is

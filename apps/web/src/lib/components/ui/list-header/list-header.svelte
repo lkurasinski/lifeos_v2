@@ -20,8 +20,15 @@
 		class?: string;
 	};
 
-	let { title, count, caption, countMinCh = 3, search, actions, class: className }: Props =
-		$props();
+	let {
+		title,
+		count,
+		caption,
+		countMinCh = 3,
+		search,
+		actions,
+		class: className,
+	}: Props = $props();
 </script>
 
 <header class={cn("appbar px-6 py-[18px] max-md:px-4", className)}>
@@ -31,7 +38,9 @@
 		<div class="shrink-0">
 			<h1 class="text-xl font-semibold tracking-[-0.015em] text-foreground">{title}</h1>
 			<p class="mt-px text-[0.8125rem] tabular-nums text-muted-foreground">
-				<b class="inline-block font-medium text-foreground" style:min-width="{countMinCh}ch">{count}</b>
+				<b class="inline-block font-medium text-foreground" style:min-width="{countMinCh}ch"
+					>{count}</b
+				>
 				{caption}
 			</p>
 		</div>

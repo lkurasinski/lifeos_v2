@@ -17,7 +17,11 @@
 	import Pagination from "$lib/components/catalog/Pagination.svelte";
 	import ProductDetail from "$lib/components/catalog/ProductDetail.svelte";
 	import ProductTable from "$lib/components/catalog/ProductTable.svelte";
-	import { segmentToSources, sourcesToSegment, type SourceSegment } from "$lib/components/catalog/meta";
+	import {
+		segmentToSources,
+		sourcesToSegment,
+		type SourceSegment,
+	} from "$lib/components/catalog/meta";
 
 	let { data } = $props();
 
@@ -134,7 +138,13 @@
 		// Same column → flip direction; new column → sensible default (name asc,
 		// macros desc so the richest products surface first).
 		const dir: "asc" | "desc" =
-			data.params.sort === key ? (data.params.dir === "asc" ? "desc" : "asc") : key === "name" ? "asc" : "desc";
+			data.params.sort === key
+				? data.params.dir === "asc"
+					? "desc"
+					: "asc"
+				: key === "name"
+					? "asc"
+					: "desc";
 		navigate({ sort: key, dir, page: 1 });
 	}
 	function onPage(nextPage: number) {
@@ -250,7 +260,11 @@
 				toast.error(t("catalog.batch.error"));
 				return;
 			}
-			const result = (await res.json()) as { deleted: string[]; inUse: string[]; notFound: string[] };
+			const result = (await res.json()) as {
+				deleted: string[];
+				inUse: string[];
+				notFound: string[];
+			};
 			// notFound is "already gone" — fold into removed; only in-use is a real skip.
 			const removed = result.deleted.length + result.notFound.length;
 			if (removed > 0) {
@@ -295,10 +309,7 @@
 			/>
 		{/snippet}
 		{#snippet actions()}
-			<Button
-				variant="secondary"
-				onclick={selectionMode ? exitSelectionMode : enterSelectionMode}
-			>
+			<Button variant="secondary" onclick={selectionMode ? exitSelectionMode : enterSelectionMode}>
 				{#if selectionMode}
 					{t("catalog.batch.cancel")}
 				{:else}
@@ -373,7 +384,12 @@
 					{selectedForDelete}
 					onToggleSelect={toggleSelect}
 				/>
-				<Pagination page={data.result.page} limit={data.result.limit} total={data.result.total} {onPage} />
+				<Pagination
+					page={data.result.page}
+					limit={data.result.limit}
+					total={data.result.total}
+					{onPage}
+				/>
 			{/if}
 		</div>
 

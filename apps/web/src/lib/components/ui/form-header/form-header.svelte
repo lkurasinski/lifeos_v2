@@ -19,8 +19,15 @@
 		class?: string;
 	};
 
-	let { title, onBack, backLabel, onCancel, cancelLabel, actions, class: className }: Props =
-		$props();
+	let {
+		title,
+		onBack,
+		backLabel,
+		onCancel,
+		cancelLabel,
+		actions,
+		class: className,
+	}: Props = $props();
 </script>
 
 <header class={cn("appbar flex items-center gap-4 px-6 py-4 max-md:px-4 max-md:py-3", className)}>

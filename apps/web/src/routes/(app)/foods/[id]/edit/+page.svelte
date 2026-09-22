@@ -29,7 +29,12 @@
 		// draftToPatchPayload drops the immutable source/sourceId AND keeps null amounts so
 		// the server removes the rows of nutrients the user cleared (NULL = "no data",
 		// distinct from a stored 0). 404 = the product vanished (deleted in another tab).
-		const outcome = await saveDraft(`/api/foods/${data.id}`, "PATCH", draftToPatchPayload(draft), 404);
+		const outcome = await saveDraft(
+			`/api/foods/${data.id}`,
+			"PATCH",
+			draftToPatchPayload(draft),
+			404,
+		);
 		saving = false;
 		if (outcome === "special") {
 			toast.error(t("edit.notFound"), { description: name });

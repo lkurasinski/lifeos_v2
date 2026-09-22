@@ -32,7 +32,9 @@ describe("withRetry", () => {
 	it("rethrows the last error after exhausting all attempts", async () => {
 		const fn = vi.fn().mockRejectedValue(new Error("boom"));
 		const onRetry = vi.fn();
-		await expect(withRetry(fn, { attempts: 3, delayMs: 10, sleep: noSleep, onRetry })).rejects.toThrow("boom");
+		await expect(
+			withRetry(fn, { attempts: 3, delayMs: 10, sleep: noSleep, onRetry }),
+		).rejects.toThrow("boom");
 		expect(fn).toHaveBeenCalledTimes(3);
 		// Retry announced before attempts 2 and 3, but NOT after the final failure.
 		expect(onRetry.mock.calls).toEqual([[2], [3]]);

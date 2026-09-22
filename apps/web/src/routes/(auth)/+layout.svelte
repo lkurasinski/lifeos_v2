@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t } from "$lib/i18n";
 	let { children } = $props();
 </script>
 
@@ -8,9 +8,9 @@
 	<aside class="auth-brand">
 		<div class="auth-brand-inner">
 			<div class="auth-brand-main auth-holo">
-				<p class="auth-sys-label auth-brand-eyebrow">{t('auth.brandLabel')}</p>
+				<p class="auth-sys-label auth-brand-eyebrow">{t("auth.brandLabel")}</p>
 				<p class="auth-wordmark">Life<span>OS</span></p>
-				<p class="auth-tagline">{t('auth.brandTagline')}</p>
+				<p class="auth-tagline">{t("auth.brandTagline")}</p>
 			</div>
 
 			<!-- Abstract data motif: macro-style bars, no literal nutrition data -->
@@ -43,7 +43,7 @@
 				</div>
 			</div>
 
-			<p class="auth-sys-label auth-brand-status">{t('auth.brandStatus')}</p>
+			<p class="auth-sys-label auth-brand-status">{t("auth.brandStatus")}</p>
 		</div>
 	</aside>
 

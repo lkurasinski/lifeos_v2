@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     ports:
       - "5444:5432"
     environment:
@@ -8,7 +8,9 @@ services:
       POSTGRES_USER: lifeos
       POSTGRES_PASSWORD: lifeos
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # 18+ images store data in a major-version subdirectory (…/18/docker), so the mount goes
+      # one level up — mounting /var/lib/postgresql/data makes the container refuse to start.
+      - pgdata:/var/lib/postgresql
 
   meilisearch:
     image: getmeili/meilisearch:v1.13

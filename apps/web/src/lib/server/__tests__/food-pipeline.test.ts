@@ -11,7 +11,7 @@ import {
 	shouldKeepProduct,
 	hasBrandToken,
 	DROP_CATEGORY_IDS,
-} from '../../../../scripts/steps/import-usda.js';
+} from '../../../../scripts/legacy/import-usda.js';
 
 describe('nutrient registry integrity', () => {
 	it('has no duplicate tags', () => {

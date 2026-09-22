@@ -1,5 +1,10 @@
 /**
- * Step: curate
+ * RETIRED — not reachable from seed-food-data.ts. See scripts/legacy/README.md.
+ *
+ * Its result is baked into `catalog.jsonl`; further curation happens in the app and is
+ * captured by `--step export-jsonl`.
+ *
+ * Was: step `curate`.
  *
  * Slims the catalog down to a planning-grade set of staple ingredients. Two passes,
  * both idempotent and run against the LIVE database (not a USDA reseed):
@@ -23,7 +28,6 @@
  * After running this, run `--step index` to rebuild Meilisearch, and `--step export-jsonl`
  * to snapshot the curated catalog as the canonical reseed source.
  *
- *   pnpm tsx scripts/seed-food-data.ts --step curate
  */
 
 import path from 'path';

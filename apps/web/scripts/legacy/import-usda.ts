@@ -1,5 +1,12 @@
 /**
- * Step: usda
+ * RETIRED — not reachable from seed-food-data.ts. See scripts/legacy/README.md.
+ *
+ * Built the original catalog from the USDA SR Legacy dump. Kept as provenance for the
+ * category mapping and the raw-only filter (still unit-tested); `catalog.jsonl` is now
+ * the only reseed path. Re-running this would remint product ids and resurrect pruned
+ * products.
+ *
+ * Was: step `usda`.
  *
  * 1. Seed FoodCategory table from static mapping
  * 2. Read USDA SR Legacy CSVs (food.csv, food_nutrient.csv) from the full dataset

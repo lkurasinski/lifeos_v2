@@ -1,5 +1,9 @@
 /**
- * Step: translate
+ * RETIRED — not reachable from seed-food-data.ts. See scripts/legacy/README.md.
+ *
+ * Polish names now ship inside `catalog.jsonl`, so no row arrives untranslated.
+ *
+ * Was: step `translate`.
  *
  * Batch translate all FoodProduct rows where namePl IS NULL using Anthropic Haiku.
  * Idempotent: only queries namePl=null rows, safe to re-run after partial failures.

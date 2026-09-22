@@ -1,50 +1,54 @@
 /**
  * Food product data pipeline.
  *
+ * `data/catalog-seed/catalog.jsonl` is the SINGLE SOURCE OF TRUTH for the food catalog.
+ * It is committed, id-stable, and the only reseed path. The USDA import that originally
+ * produced it is retired — see scripts/legacy/README.md.
+ *
  * Usage:
- *   pnpm tsx scripts/seed-food-data.ts              # all implemented steps
+ *   pnpm tsx scripts/seed-food-data.ts              # full bootstrap (all steps below, in order)
+ *   pnpm tsx scripts/seed-food-data.ts --reset      # full REBUILD — see the warning below
  *   pnpm tsx scripts/seed-food-data.ts --step nutrients
- *   pnpm tsx scripts/seed-food-data.ts --step nutrients --reset
- *   pnpm tsx scripts/seed-food-data.ts --step usda
- *   pnpm tsx scripts/seed-food-data.ts --step translate
+ *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl   # reseed catalog from catalog.jsonl
  *   pnpm tsx scripts/seed-food-data.ts --step index
  *   pnpm tsx scripts/seed-food-data.ts --step recipe-taxonomies
  *   pnpm tsx scripts/seed-food-data.ts --step recipe-index
- *   pnpm tsx scripts/seed-food-data.ts --step curate         # merge meat cats + prune to shortlists
  *   pnpm tsx scripts/seed-food-data.ts --step export-jsonl   # snapshot catalog → catalog.jsonl
- *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl   # reseed catalog from catalog.jsonl
- *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl --reset   # also prune products not in snapshot (1:1)
+ *
+ * Curation loop: curate in the app (locally) → `--step export-jsonl` → commit the snapshot
+ * → publish to Railway. Work done on a deployed database is NOT a source of truth and is
+ * overwritten by the next publish.
+ *
+ * `--reset` applies to both `nutrients` (deletes every nutrient + food_nutrient row) and
+ * `import-jsonl` (prunes products absent from the snapshot, skipping any a recipe still
+ * references). EXPORT FIRST: a product that exists only in the database — a CUSTOM or OFF
+ * product added since the last snapshot — loses its nutrient rows and then its row.
+ *
+ * export-jsonl is step-only (never part of the default run): it WRITES the snapshot, so it
+ * must be an explicit act.
  *
  * Each step is idempotent. Run from apps/web/ so dotenv finds .env.
- * curate / export-jsonl / import-jsonl are step-only (not part of the default all-steps run).
  * On Railway: railway run pnpm tsx scripts/seed-food-data.ts
  */
 
 import 'dotenv/config';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { Meilisearch } from 'meilisearch';
 import { seedNutrients } from './steps/seed-nutrients.js';
-import { importUsda } from './steps/import-usda.js';
-import { translateProducts } from './steps/translate-products.js';
 import { indexMeilisearch } from './steps/index-meilisearch.js';
 import { seedRecipeTaxonomies } from './steps/seed-recipe-taxonomies.js';
 import { indexRecipes } from './steps/index-recipes.js';
-import { curateCatalog } from './steps/curate-catalog.js';
 import { exportCatalogJsonl } from './steps/export-catalog-jsonl.js';
 import { importFromJsonl } from './steps/import-from-jsonl.js';
 
 const VALID_STEPS = [
 	'nutrients',
-	'usda',
-	'translate',
+	'import-jsonl',
 	'index',
 	'recipe-taxonomies',
 	'recipe-index',
-	'curate',
 	'export-jsonl',
-	'import-jsonl',
 ] as const;
 type Step = (typeof VALID_STEPS)[number];
 
@@ -69,26 +73,19 @@ async function main() {
 	const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 	const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 
-	const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-
 	const meili = new Meilisearch({
 		host: process.env.MEILISEARCH_HOST!,
 		apiKey: process.env.MEILISEARCH_API_KEY,
 	});
-
 
 	try {
 		if (!step || step === 'nutrients') {
 			console.log('\n=== Step: nutrients ===');
 			await seedNutrients(prisma, { reset });
 		}
-		if (!step || step === 'usda') {
-			console.log('\n=== Step: usda ===');
-			await importUsda(prisma);
-		}
-		if (!step || step === 'translate') {
-			console.log('\n=== Step: translate ===');
-			await translateProducts(prisma, anthropic);
+		if (!step || step === 'import-jsonl') {
+			console.log('\n=== Step: import-jsonl ===');
+			await importFromJsonl(prisma, { reset });
 		}
 		if (!step || step === 'index') {
 			console.log('\n=== Step: index ===');
@@ -102,19 +99,10 @@ async function main() {
 			console.log('\n=== Step: recipe-index ===');
 			await indexRecipes(prisma, meili);
 		}
-		// Step-only (excluded from the default all-steps run): one-time curation and the
-		// JSONL snapshot/reset path.
-		if (step === 'curate') {
-			console.log('\n=== Step: curate ===');
-			await curateCatalog(prisma);
-		}
+		// Step-only (never part of the default run): writing the snapshot is an explicit act.
 		if (step === 'export-jsonl') {
 			console.log('\n=== Step: export-jsonl ===');
 			await exportCatalogJsonl(prisma);
-		}
-		if (step === 'import-jsonl') {
-			console.log('\n=== Step: import-jsonl ===');
-			await importFromJsonl(prisma, { reset });
 		}
 	} finally {
 		await prisma.$disconnect();

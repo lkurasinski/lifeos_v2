@@ -8,6 +8,7 @@
  * Usage:
  *   pnpm tsx scripts/seed-food-data.ts              # full bootstrap (all steps below, in order)
  *   pnpm tsx scripts/seed-food-data.ts --reset      # full REBUILD — see the warning below
+ *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl --reset --force  # ... incl. app-created products
  *   pnpm tsx scripts/seed-food-data.ts --step nutrients
  *   pnpm tsx scripts/seed-food-data.ts --step import-jsonl   # reseed catalog from catalog.jsonl
  *   pnpm tsx scripts/seed-food-data.ts --step index
@@ -20,9 +21,10 @@
  * overwritten by the next publish.
  *
  * `--reset` applies to both `nutrients` (deletes every nutrient + food_nutrient row) and
- * `import-jsonl` (prunes products absent from the snapshot, skipping any a recipe still
- * references). EXPORT FIRST: a product that exists only in the database — a CUSTOM or OFF
- * product added since the last snapshot — loses its nutrient rows and then its row.
+ * `import-jsonl` (prunes products absent from the snapshot). The prune keeps anything a recipe
+ * references, and keeps app-created (OFF / CUSTOM) products unless `--force` is passed, since
+ * those exist in no other place. EXPORT FIRST anyway: `--reset` on the full run wipes nutrient
+ * rows via the `nutrients` step, which no guard covers.
  *
  * export-jsonl is step-only (never part of the default run): it WRITES the snapshot, so it
  * must be an explicit act.
@@ -69,6 +71,7 @@ function hasFlag(flag: string): boolean {
 async function main() {
 	const step = parseStep();
 	const reset = hasFlag("--reset");
+	const force = hasFlag("--force");
 
 	const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 	const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
@@ -85,7 +88,7 @@ async function main() {
 		}
 		if (!step || step === "import-jsonl") {
 			console.log("\n=== Step: import-jsonl ===");
-			await importFromJsonl(prisma, { reset });
+			await importFromJsonl(prisma, { reset, force });
 		}
 		if (!step || step === "index") {
 			console.log("\n=== Step: index ===");
